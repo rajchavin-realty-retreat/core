@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Rajchavin Developer Suite | Pro</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { brand: '#3b82f6', dark: '#09090b', surface: '#18181b' } } }
+        }
+    </script>
+
+    <style>
+        :root { --bg: #09090b; --text: #ffffff; --glass: rgba(24, 24, 27, 0.95); --border: rgba(255, 255, 255, 0.1); --card-bg: rgba(24, 24, 27, 0.6); }
+        body { background-color: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overflow: hidden; }
+        .app-view { height: 100vh; overflow-y: auto; padding-bottom: 80px; }
+        .glass-panel { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: 20px; }
+        .glass-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; transition: 0.2s; }
+        .glass-card:active { transform: scale(0.98); background: rgba(255,255,255,0.05); }
+        
+        #modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 200; display: none; align-items: center; justify-content: center; }
+        #modal-content { width: 100%; max-width: 450px; background: #121214; border: 1px solid var(--border); border-radius: 24px; padding: 24px; max-height: 90vh; overflow-y: auto; }
+        
+        /* Map Styles */
+        .map-poly { cursor: pointer; transition: 0.2s; stroke: var(--svg-stroke); stroke-width: 1px; fill: #334155; fill-opacity: 0.5; }
+        .map-poly:hover { stroke: white; stroke-width: 2px; fill-opacity: 0.8; }
+        .status-sold { fill: #10b981 !important; fill-opacity: 0.9; background: #10b981; border-color: #10b981; }
+        .status-booked { fill: #eab308 !important; fill-opacity: 0.9; background: #eab308; border-color: #eab308; }
+        .status-open { fill: #334155 !important; background: #27272a; border-color: #3f3f46; }
+        .draw-line { stroke: #3b82f6; stroke-width: 2; fill: none; stroke-dasharray: 4; animation: dash 1s linear infinite; }
+        @keyframes dash { to { stroke-dashoffset: 8; } }
+        
+        /* Grid Item */
+        .grid-item { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 10px; font-weight: bold; cursor: pointer; border: 1px solid; transition: 0.2s; }
+        .grid-item:hover { transform: scale(1.05); z-index: 10; }
+
+        .hidden-view { display: none !important; }
+        .active-tool { background-color: #3b82f6 !important; color: white !important; }
+    </style>
+</head>
+<body>
+
+    <div id="view-dashboard" class="app-view">
+        <nav class="sticky top-0 z-40 glass-panel border-b-0 rounded-none border-b border-white/10 flex justify-between items-center px-6 py-4 mb-6">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">RD</div>
+                <div><h2 class="text-sm font-bold" id="dev-name-display">Developer</h2><p class="text-[10px] opacity-60" id="dev-plan-display">Basic Plan</p></div>
+            </div>
+            <button onclick="logout()" class="text-xs bg-red-500/10 text-red-500 px-3 py-1.5 rounded hover:bg-red-500/20 font-bold transition">Logout</button>
+        </nav>
+
+        <main class="px-5 pb-10 max-w-7xl mx-auto w-full">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="glass-panel p-4 border-l-4 border-brand">
+                    <p class="text-[10px] text-gray-500 font-bold uppercase">Plot Allowance</p>
+                    <h3 class="text-xl font-bold"><span id="global-usage">0</span> / <span id="global-limit">0</span></h3>
+                </div>
+                <div class="glass-panel p-4">
+                    <p class="text-[10px] text-gray-500 font-bold uppercase">Layouts</p>
+                    <h3 class="text-xl font-bold"><span id="global-layouts-usage">0</span> / <span id="global-layouts-limit">0</span></h3>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-end mb-6">
+                <h3 class="text-xs font-bold uppercase tracking-widest opacity-60">Your Projects</h3>
+                <button onclick="openNewProjectModal()" class="bg-white/10 hover:bg-white/20 border border-white/10 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition text-xs font-bold">
+                    <i class="ph-bold ph-plus"></i> New Project
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="project-list-container"></div>
+        </main>
+    </div>
+
+    <div id="view-project" class="app-view hidden-view">
+        <nav class="sticky top-0 z-40 glass-panel border-b-0 rounded-none border-b border-white/10 flex justify-between items-center px-6 py-4 mb-6">
+            <div class="flex items-center gap-4">
+                <button onclick="showDashboard()" class="flex items-center gap-2 text-sm font-bold opacity-80 hover:text-blue-500 transition"><i class="ph-bold ph-caret-left"></i> Back</button>
+                <div>
+                    <h2 class="text-sm font-bold" id="project-title">Project Name</h2>
+                    <p class="text-[10px] text-brand font-mono uppercase" id="editor-mode-badge">MODE</p>
+                </div>
+            </div>
+            <div id="project-toolbar" class="flex gap-2"></div>
+        </nav>
+
+        <main class="px-5 pb-10 max-w-7xl mx-auto w-full">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <div class="lg:col-span-8 space-y-6">
+                    
+                    <div id="interface-map" class="glass-panel p-4 relative h-[600px] flex flex-col hidden-view">
+                        <div class="flex justify-between items-center mb-3 absolute top-4 left-4 z-20 w-[calc(100%-2rem)] pointer-events-none">
+                            <div class="flex gap-2 pointer-events-auto">
+                                <button onclick="resetZoom()" class="bg-black/50 backdrop-blur p-2 rounded text-white hover:bg-black/70"><i class="ph-bold ph-corners-out"></i></button>
+                                <div id="draw-controls" class="hidden flex gap-1 bg-black/50 backdrop-blur rounded p-1">
+                                    <button onclick="setTool('select')" id="tool-select" class="p-1.5 rounded"><i class="ph-bold ph-cursor"></i></button>
+                                    <button onclick="setTool('poly')" id="tool-poly" class="p-1.5 rounded"><i class="ph-bold ph-polygon"></i></button>
+                                    <button onclick="finishPoly()" id="btn-finish-poly" class="hidden text-[10px] bg-green-600 px-2 rounded font-bold text-white">Done</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 rounded-xl border border-white/10 relative overflow-hidden bg-[#121214] cursor-crosshair w-full h-full" id="svg-wrapper" onwheel="handleZoom(event)">
+                            <div id="map-canvas" class="origin-top-left w-full h-full absolute top-0 left-0">
+                                <img id="map-bg-image" class="absolute top-0 left-0 max-w-none pointer-events-none hidden">
+                                <svg id="main-svg" class="absolute top-0 left-0 w-full h-full overflow-visible z-10"></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="interface-grid" class="glass-panel p-6 hidden-view">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-sm font-bold">Grid Management</h3>
+                            <button onclick="addMorePlots()" class="text-xs bg-brand px-3 py-1.5 rounded text-white font-bold">+ Generate Grids</button>
+                        </div>
+                        <div id="grid-content" class="grid grid-cols-5 md:grid-cols-8 gap-3 max-h-[600px] overflow-y-auto custom-scrollbar p-1"></div>
+                    </div>
+
+                    <div id="interface-list" class="glass-panel p-6 hidden-view">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-sm font-bold">Inventory List</h3>
+                            <button onclick="addManualPlot()" class="text-xs bg-brand px-3 py-1.5 rounded text-white font-bold">+ Add Plot Record</button>
+                        </div>
+                        <div id="list-content" class="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar"></div>
+                    </div>
+
+                    <div class="glass-panel p-5">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xs font-bold uppercase tracking-widest opacity-60">Customer Database</h3>
+                            <button onclick="openManualCustomerModal()" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded transition font-bold">+ Manual Entry</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead class="border-b border-white/10 text-gray-500 uppercase"><tr><th class="p-2">Name</th><th class="p-2">Plot</th><th class="p-2">Phone</th><th class="p-2 text-right">Edit</th></tr></thead>
+                                <tbody id="customer-table-body" class="text-gray-300"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-4 space-y-6">
+                    <div class="glass-panel p-5">
+                        <h3 class="text-xs font-bold uppercase tracking-widest opacity-60 mb-4">Project Status</h3>
+                        <div class="h-32 relative flex items-center justify-center"><canvas id="projectStatusChart"></canvas></div>
+                    </div>
+                    <div class="glass-panel p-5 relative">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xs font-bold uppercase tracking-widest opacity-60">Milestones</h3>
+                            <button onclick="addMilestone()" class="text-[10px] text-brand font-bold hover:text-white">+ Add</button>
+                        </div>
+                        <div id="project-milestones-container" class="wired-container space-y-2"></div>
+                    </div>
+                    <div class="glass-panel p-5">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-xs font-bold uppercase tracking-widest opacity-60">Documents</h3>
+                            <button onclick="document.getElementById('layout-doc-upload').click()" class="text-[10px] text-brand font-bold hover:text-white">+ Upload</button>
+                            <input type="file" id="layout-doc-upload" class="hidden" onchange="uploadLayoutDoc(this)">
+                        </div>
+                        <div id="project-docs-list" class="space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modal-backdrop">
+        <div id="modal-content" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-xl font-bold text-white">P</div>
+                    <div>
+                        <input id="modal-plot-id" class="text-xl font-bold bg-transparent border-b border-white/10 outline-none w-32 focus:border-brand" placeholder="Plot ID">
+                        <p class="text-xs opacity-60" id="modal-status">OPEN</p>
+                    </div>
+                </div>
+                <button onclick="deletePlot()" class="text-red-500 hover:bg-red-500/10 p-2 rounded"><i class="ph-bold ph-trash"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div class="grid grid-cols-3 gap-2 bg-black/20 p-1 rounded-lg">
+                    <button onclick="setPlotStatus('open')" class="py-2 text-[10px] font-bold rounded" id="btn-status-open">OPEN</button>
+                    <button onclick="setPlotStatus('booked')" class="py-2 text-[10px] font-bold rounded" id="btn-status-booked">BOOKED</button>
+                    <button onclick="setPlotStatus('sold')" class="py-2 text-[10px] font-bold rounded" id="btn-status-sold">SOLD</button>
+                </div>
+                <div><label class="text-[10px] uppercase font-bold text-gray-500">Price (₹)</label><input type="number" id="modal-price" class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white outline-none focus:border-brand mt-1"></div>
+                <div id="modal-customer-section" class="pt-4 border-t border-white/10 space-y-3 hidden">
+                    <p class="text-[10px] font-bold text-blue-400 uppercase flex items-center gap-1"><i class="ph-fill ph-user"></i> Customer Info</p>
+                    <input type="text" id="modal-cust-name" placeholder="Customer Name" class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white outline-none">
+                    <input type="text" id="modal-cust-phone" placeholder="Phone Number" class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white outline-none">
+                    <button onclick="document.getElementById('cust-doc-upload').click()" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs flex items-center justify-center gap-2 hover:bg-white/10"><i class="ph-bold ph-file-pdf"></i> Upload Agreement</button>
+                    <input type="file" id="cust-doc-upload" class="hidden" onchange="alert('Mock Upload: Agreement Attached')">
+                </div>
+                <button onclick="savePlotDetails()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl shadow-lg mt-2">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-new-proj" class="fixed inset-0 z-[250] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden">
+        <div class="glass-panel w-full max-w-sm p-6 bg-[#121214] rounded-2xl">
+            <h2 class="text-lg font-bold mb-4 text-white">Create New Project</h2>
+            <div class="space-y-4">
+                <input id="new-layout-name" type="text" placeholder="Project Name" class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white outline-none focus:border-brand mb-4">
+                <div class="flex gap-2">
+                    <button onclick="document.getElementById('modal-new-proj').classList.add('hidden')" class="flex-1 bg-white/5 py-2.5 rounded-lg text-xs font-bold hover:bg-white/10">Cancel</button>
+                    <button onclick="createNewLayout()" class="flex-1 bg-brand py-2.5 rounded-lg text-xs font-bold text-white hover:bg-blue-500">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="rapid-popup" class="absolute hidden z-[100] bg-[#18181b] border border-brand p-3 rounded-lg flex flex-col gap-2 w-40 shadow-xl">
+        <span class="text-[10px] font-bold text-gray-400">PLOT DETAILS</span>
+        <input type="text" id="rapid-id" placeholder="ID (e.g. A-1)" class="bg-[#09090b] border border-[#27272a] p-1 rounded text-xs text-white outline-none">
+        <input type="number" id="rapid-price" placeholder="Price" class="bg-[#09090b] border border-[#27272a] p-1 rounded text-xs text-white outline-none">
+        <div class="flex gap-1">
+            <button onclick="cancelRapid()" class="flex-1 bg-white/10 text-[10px] py-1 rounded text-white">Cancel</button>
+            <button onclick="confirmRapid()" class="flex-1 bg-brand text-[10px] py-1 rounded text-white font-bold">Save</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, query, where, getDocs, onSnapshot, doc, updateDoc, addDoc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDHHQXki7JAzDsnsKH6LoLNRYlySfnxW7Y",
+            authDomain: "rajchavin-live.firebaseapp.com",
+            projectId: "rajchavin-live",
+            storageBucket: "rajchavin-live.firebasestorage.app",
+            messagingSenderId: "14499629170",
+            appId: "1:14499629170:web:1cd21aa2434df98afcdaeb"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- AUTH & LIMITS ---
+        const session = JSON.parse(localStorage.getItem('rajchavin_user'));
+        if(!session || !session.sessionId) window.location.href = 'login.html';
+        
+        onSnapshot(doc(db, "sessions", session.sessionId), (snap) => {
+            if(!snap.exists()) { alert("Session Revoked"); window.location.href='login.html'; }
+        });
+
+        const feats = session.limits?.features || [];
+        const LIMITS = {
+            maxLayouts: session.limits?.maxLayouts || 1,
+            maxPlots: session.limits?.maxPlots || 50,
+            mode: feats.includes('Interactive Layout') ? 'interactive' : (feats.includes('Grid View') ? 'grid' : 'static'),
+            canUpload: feats.includes('Map Upload') || feats.includes('Interactive Layout')
+        };
+
+        const setText = (id, txt) => { const e=document.getElementById(id); if(e) e.innerText=txt; };
+        setText('dev-name-display', session.name);
+        setText('dev-plan-display', session.planName || 'Basic');
+        setText('global-limit', LIMITS.maxPlots);
+        setText('global-layouts-limit', LIMITS.maxLayouts);
+
+        // Global State
+        window.appState = { layouts: [], currentLayout: null, activeTool: 'select', drawPoints: [], selectedPlotId: null, charts: {}, scale: 1, panX: 0, panY: 0, isDragging: false, dragStart: {x:0,y:0} };
+
+        // --- DATA SYNC ---
+        onSnapshot(query(collection(db, "layouts"), where("devId", "==", session.id)), (snap) => {
+            window.appState.layouts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            
+            const usedPlots = window.appState.layouts.reduce((sum, l) => sum + (l.elements?.filter(e=>e.type==='plot').length || 0), 0);
+            setText('global-layouts-usage', window.appState.layouts.length);
+            setText('global-usage', usedPlots);
+
+            renderDashboard();
+            if(window.appState.currentLayout) {
+                window.appState.currentLayout = window.appState.layouts.find(l => l.id === window.appState.currentLayout.id);
+                renderInterface();
+            }
+        });
+
+        // --- DASHBOARD ---
+        function renderDashboard() {
+            const container = document.getElementById('project-list-container');
+            container.innerHTML = window.appState.layouts.map(l => {
+                const plots = l.elements?.filter(e=>e.type==='plot') || [];
+                const sold = plots.filter(p=>p.status==='sold').length;
+                return `
+                <div class="glass-card p-4 group">
+                    <div onclick="openProject('${l.id}')" class="flex justify-between items-center cursor-pointer mb-2">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center text-xl"><i class="ph-fill ph-house-line"></i></div>
+                            <div><h4 class="font-bold text-sm text-white">${l.name}</h4><p class="text-[10px] opacity-60 text-gray-400">${sold}/${plots.length} Sold</p></div>
+                        </div>
+                        <i class="ph-bold ph-caret-right opacity-40"></i>
+                    </div>
+                    <div class="flex justify-end gap-2 border-t border-white/5 pt-2 opacity-0 group-hover:opacity-100 transition">
+                        <button onclick="editProjectName('${l.id}')" class="text-[10px] bg-white/5 px-2 py-1 rounded hover:text-white"><i class="ph-bold ph-pencil"></i></button>
+                        <button onclick="deleteLayout('${l.id}')" class="text-[10px] bg-red-500/10 text-red-500 px-2 py-1 rounded hover:bg-red-500/20"><i class="ph-bold ph-trash"></i></button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        window.deleteLayout = async (id) => { if(confirm("Delete Project & All Data?")) await deleteDoc(doc(db, "layouts", id)); };
+        window.editProjectName = async (id) => { const n = prompt("New Name"); if(n) await updateDoc(doc(db, "layouts", id), { name: n }); };
+
+        window.openNewProjectModal = () => {
+            if(window.appState.layouts.length >= LIMITS.maxLayouts) return alert("Layout Limit Reached");
+            document.getElementById('modal-new-proj').classList.remove('hidden');
+        };
+
+        window.createNewLayout = async () => {
+            const name = document.getElementById('new-layout-name').value;
+            if(!name) return alert("Enter Name");
+            await addDoc(collection(db, "layouts"), { name, devId: session.id, elements: [], milestones: [], docs: [], createdAt: new Date() });
+            document.getElementById('modal-new-proj').classList.add('hidden');
+        };
+
+        // --- EDITOR ROUTER ---
+        window.openProject = (id) => {
+            window.appState.currentLayout = window.appState.layouts.find(l => l.id === id);
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-project').classList.remove('hidden-view');
+            document.getElementById('view-project').style.display = 'block';
+            document.getElementById('project-title').innerText = window.appState.currentLayout.name;
+            document.getElementById('editor-mode-badge').innerText = LIMITS.mode + " MODE";
+            
+            // Setup Toolbar based on Mode
+            const toolbar = document.getElementById('project-toolbar');
+            toolbar.innerHTML = '';
+            if(LIMITS.canUpload) toolbar.innerHTML += `<button onclick="document.getElementById('map-upload').click()" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded flex items-center gap-2"><i class="ph-bold ph-upload-simple"></i> Upload Map</button><input type="file" id="map-upload" class="hidden" accept="image/*" onchange="handleMapUpload(this)">`;
+            
+            renderInterface();
+        };
+
+        window.showDashboard = () => {
+            document.getElementById('view-dashboard').classList.remove('hidden');
+            document.getElementById('view-project').classList.add('hidden-view');
+            document.getElementById('view-project').style.display = 'none';
+            window.appState.currentLayout = null;
+        };
+
+        // --- RENDER INTERFACES ---
+        function renderInterface() {
+            // Hide all interfaces first
+            ['interface-map', 'interface-grid', 'interface-list'].forEach(id => document.getElementById(id).classList.add('hidden-view'));
+
+            if(LIMITS.mode === 'interactive') {
+                document.getElementById('interface-map').classList.remove('hidden-view');
+                document.getElementById('draw-controls').classList.remove('hidden');
+                renderMap();
+            } else if (LIMITS.mode === 'grid') {
+                document.getElementById('interface-grid').classList.remove('hidden-view');
+                renderGrid();
+            } else {
+                // Static Mode (Image + List)
+                document.getElementById('interface-map').classList.remove('hidden-view'); // Re-use map container for just viewing image
+                document.getElementById('interface-list').classList.remove('hidden-view');
+                document.getElementById('draw-controls').classList.add('hidden');
+                renderMap(); // Just renders image, drawing disabled by UI hiding
+                renderList();
+            }
+
+            renderCustomers();
+            renderDocs();
+            renderMilestones();
+            updateStats();
+        }
+
+        // --- 1. MAP ENGINE ---
+        const svgWrapper = document.getElementById('svg-wrapper');
+        const mapCanvas = document.getElementById('map-canvas');
+        const svg = document.getElementById('main-svg');
+
+        window.handleZoom = (e) => {
+            e.preventDefault();
+            const scaleAmount = -e.deltaY * 0.001;
+            window.appState.scale = Math.min(Math.max(0.5, window.appState.scale + scaleAmount), 5);
+            mapCanvas.style.transform = `translate(${window.appState.panX}px, ${window.appState.panY}px) scale(${window.appState.scale})`;
+        };
+        window.resetZoom = () => { window.appState.scale = 1; window.appState.panX = 0; window.appState.panY = 0; mapCanvas.style.transform = `translate(0px, 0px) scale(1)`; };
+
+        function renderMap() {
+            const img = document.getElementById('map-bg-image');
+            if(window.appState.currentLayout.bgImage) { img.src = window.appState.currentLayout.bgImage; img.classList.remove('hidden'); }
+            else img.classList.add('hidden');
+            
+            svg.innerHTML = (window.appState.currentLayout.elements || []).filter(e => e.points).map(el => {
+                let cls = `map-poly type-${el.type} ${el.type==='plot'?'status-'+(el.status||'open'):''}`;
+                return `<polygon points="${el.points}" class="${cls}" onclick="openPlotModal('${el.id}', event)"/>`;
+            }).join('');
+        }
+
+        window.setTool = (t) => { 
+            window.appState.activeTool = t; 
+            ['select','poly'].forEach(x => document.getElementById(`tool-${x}`).className = x===t ? 'p-1.5 rounded active-tool' : 'p-1.5 rounded');
+        };
+
+        // Draw Logic
+        svgWrapper.addEventListener('mousedown', (e) => {
+            if(window.appState.activeTool === 'select') {
+                window.appState.isDragging = true;
+                window.appState.dragStart = { x: e.clientX - window.appState.panX, y: e.clientY - window.appState.panY };
+                return;
+            }
+            if(parseInt(document.getElementById('global-usage').innerText) >= LIMITS.maxPlots) return alert("Limit Reached");
+
+            // Coords relative to canvas
+            const rect = svgWrapper.getBoundingClientRect();
+            const x = (e.clientX - rect.left - window.appState.panX) / window.appState.scale;
+            const y = (e.clientY - rect.top - window.appState.panY) / window.appState.scale;
+            
+            window.appState.drawPoints.push({x, y});
+            const pts = window.appState.drawPoints.map(p => `${p.x},${p.y}`).join(' ');
+            const existing = document.getElementById('temp-poly'); if(existing) existing.remove();
+            svg.innerHTML += `<polyline id="temp-poly" points="${pts}" class="draw-line" />`;
+            document.getElementById('btn-finish-poly').classList.remove('hidden');
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if(window.appState.isDragging) {
+                window.appState.panX = e.clientX - window.appState.dragStart.x;
+                window.appState.panY = e.clientY - window.appState.dragStart.y;
+                mapCanvas.style.transform = `translate(${window.appState.panX}px, ${window.appState.panY}px) scale(${window.appState.scale})`;
+            }
+        });
+        window.addEventListener('mouseup', () => { window.appState.isDragging = false; });
+
+        window.finishPoly = () => {
+            if(window.appState.drawPoints.length > 2) {
+                const pts = window.appState.drawPoints.map(p => `${p.x},${p.y}`).join(' ');
+                showRapidPopup(pts);
+            }
+            window.appState.drawPoints = [];
+            document.getElementById('temp-poly')?.remove();
+            document.getElementById('btn-finish-poly').classList.add('hidden');
+        };
+
+        function showRapidPopup(pts) {
+            const popup = document.getElementById('rapid-popup');
+            popup.classList.remove('hidden');
+            popup.style.left = '50%'; popup.style.top = '50%';
+            window.appState.pendingPoints = pts;
+        }
+
+        window.confirmRapid = async () => {
+            const id = document.getElementById('rapid-id').value;
+            const price = document.getElementById('rapid-price').value;
+            const newEl = { id: id || `P-${Date.now()}`, type: 'plot', points: window.appState.pendingPoints, status: 'open', price };
+            const updated = [...(window.appState.currentLayout.elements||[]), newEl];
+            await updateDoc(doc(db, "layouts", window.appState.currentLayout.id), { elements: updated });
+            document.getElementById('rapid-popup').classList.add('hidden');
+            window.setTool('select');
+        };
+
+        window.cancelRapid = () => { document.getElementById('rapid-popup').classList.add('hidden'); window.setTool('select'); };
+
+        window.handleMapUpload = (input) => {
+            const file = input.files[0];
+            const r = new FileReader();
+            r.onload = async () => { await updateDoc(doc(db, "layouts", window.appState.currentLayout.id), { bgImage: r.result }); };
+            r.readAsDataURL(file);
+        };
+
+        // --- 2. GRID & LIST ---
+        window.addMorePlots = async () => {
+            const count = parseInt(prompt("How many plots to add?"));
+            if(!count) return;
+            if(parseInt(document.getElementById('global-usage').innerText) + count > LIMITS.maxPlots) return alert("Limit Exceeded");
+            const prefix = prompt("Prefix (e.g. B-):") || "P-";
+            let newElements = [...window.appState.currentLayout.elements];
+            const start = newElements.length + 1;
+            for(let i=0; i<count; i++) newElements.push({ id: `${prefix}${start+i}`, type: 'plot', status: 'open', price: '' });
+            await updateDoc(doc(db, "layouts", window.appState.currentLayout.id), { elements: newElements });
+        };
+
+        window.addManualPlot = async () => {
+            const id = prompt("Enter Plot Number (e.g. A-101)");
+            if(!id) return;
+            const newElements = [...window.appState.currentLayout.elements, { id, type: 'plot', status: 'open', price: '' }];
+            await updateDoc(doc(db, "layouts", window.appState.currentLayout.id), { elements: newElements });
+        };
+
+        function renderGrid() {
+            const grid = document.getElementById('grid-content');
+            grid.innerHTML = (window.appState.currentLayout.elements || []).map(p => {
+                const color = p.status === 'sold' ? 'status-sold' : (p.status === 'booked' ? 'status-booked' : 'status-open');
+                return `<div onclick="openPlotModal('${p.id}', event)" class="grid-item ${color} text-white">${p.id}</div>`;
+            }).join('');
+        }
+
+        function renderList() {
+            const list = document.getElementById('list-content');
+            list.innerHTML = (window.appState.currentLayout.elements || []).map(p => `
+                <div class="flex justify-between items-center bg-white/5 p-2 rounded">
+                    <span class="text-sm font-bold">${p.id}</span>
+                    <button onclick="openPlotModal('${p.id}', event)" class="text-xs bg-brand px-2 py-1 rounded text-white">Edit</button>
+                </div>`).join('');
+        }
+
+        // --- SHARED MODAL ---
+        window.openPlotModal = (id, e) => {
+            if(e) e.stopPropagation();
+            const el = window.appState.currentLayout.elements.find(x => x.id === id);
+            window.appState.selectedPlotId = id;
+            document.getElementById('modal-plot-id').value = el.id;
+            document.getElementById('modal-status').innerText = (el.status || 'OPEN').toUpperCase();
+            document.getElementById('modal-price').value = el.price || '';
+            document.getElementById('modal-cust-name').value = el.customerName || '';
+            document.getElementById('modal-cust-phone').value = el.customerPhone || '';
+            window.setPlotStatus(el.status || 'open');
+            document.getElementById('modal-backdrop').style.display = 'flex';
+        };
+
+        window.setPlotStatus = (s) => {
+            document.getElementById('modal-status').dataset.tempStatus = s;
+            ['open','booked','sold'].forEach(st => document.getElementById(`btn-status-${st}`).className = s===st ? "py-2 text-[10px] font-bold rounded bg-white text-black" : "py-2 text-[10px] font-bold rounded hover:bg-white/5 text-gray-400");
+            document.getElementById('modal-customer-section').style.display = (s==='booked'||s==='sold') ? 'block' : 'none';
+        };
+
+        window.savePlotDetails = async () => {
+            const status = document.getElementById('modal-status').dataset.tempStatus;
+            const updated = window.appState.currentLayout.elements.map(el => el.id === window.appState.selectedPlotId ? {
+                ...el, status,
+                id: document.getElementById('modal-plot-id').value,
+                price: document.getElementById('modal-price').value,
+                customerName: document.getElementById('modal-cust-name').value,
+                customerPhone: document.getElementById('modal-cust-phone').value
+            } : el);
+            await updateDoc(doc(db, "layouts", window.appState.currentLayout.id), { elements: updated });
+            document.getElementById('modal-backdrop').style.display = 'none';
+        };
+
+        window.deletePlot = async () => {
+            if(!confirm("Delete Plot?")) return;
+            const updated = window.appState.currentLayout.elements.filter(el => el.id !== window.appState.selectedPlotId);
+            await updateDoc(doc(db, "layouts", window.appState.currentLayout.id), { elements: updated });
+            document.getElementById('modal-backdrop').style.display = 'none';
+        };
+
+        window.closeModal = () => document.getElementById('modal-backdrop').style.display = 'none';
+
+        // --- EXTRAS ---
+        function renderCustomers() {
+            const tbody = document.getElementById('customer-table-body');
+            const custs = window.appState.currentLayout.elements.filter(e => e.customerName);
+            tbody.innerHTML = custs.map(c => `<tr class="border-b border-white/5 hover:bg-white/5"><td class="p-2">${c.customerName}</td><td class="p-2 font-mono text-brand">${c.id}</td><td class="p-2 text-gray-400">${c.customerPhone}</td><td class="p-2 text-right"><i class="ph-pencil cursor-pointer hover:text-white" onclick="openPlotModal('${c.id}')"></i></td></tr>`).join('');
+        }
+
+        window.openManualCustomerModal = () => {
+            const id = prompt("Enter Plot ID:");
+            if(!id) return;
+            let plot = window.appState.currentLayout.elements.find(e => e.id === id);
+            if(!plot) return alert("Create the plot first.");
+            window.openPlotModal(id);
+        };
+
+        window.uploadLayoutDoc = (input) => {
+            const file = input.files[0];
+            const updatedDocs = [...(window.appState.currentLayout.docs || []), file.name];
+            updateDoc(doc(db, "layouts", window.appState.currentLayout.id), { docs: updatedDocs });
+        };
+
+        function renderDocs() {
+            document.getElementById('project-docs-list').innerHTML = (window.appState.currentLayout.docs || []).map((d, i) => `<div class="glass-card p-3 flex justify-between items-center text-xs"><span class="flex items-center gap-2"><i class="ph-file-pdf text-red-500"></i> ${d}</span><div class="flex gap-2"><i class="ph-download hover:text-white cursor-pointer" onclick="alert('Downloading ${d}...')"></i><i class="ph-trash hover:text-red-500 cursor-pointer" onclick="deleteDocItem(${i})"></i></div></div>`).join('');
+        }
+
+        window.deleteDocItem = async (i) => {
+            const newDocs = window.appState.currentLayout.docs.filter((_, idx) => idx !== i);
+            await updateDoc(doc(db, "layouts", window.appState.currentLayout.id), { docs: newDocs });
+        };
+
+        window.addMilestone = async () => {
+            const title = prompt("Milestone Name:");
+            if(!title) return;
+            const updated = [...(window.appState.currentLayout.milestones||[]), { title, done: false }];
+            await updateDoc(doc(db, "layouts", window.appState.currentLayout.id), { milestones: updated });
+        };
+
+        function renderMilestones() {
+            document.getElementById('project-milestones-container').innerHTML = (window.appState.currentLayout.milestones || []).map((m, i) => `<div class="wired-node-box ${m.done ? 'wired-active' : ''}"><div class="wired-dot"></div><div class="wired-line"></div><div class="flex justify-between items-center"><h4 class="text-xs font-bold text-gray-400 cursor-pointer" onclick="editMilestone(${i})">${m.title}</h4><div class="flex gap-2 text-xs text-gray-600"><i class="ph-pencil hover:text-brand cursor-pointer" onclick="editMilestone(${i})"></i><i class="ph-trash hover:text-red-500 cursor-pointer" onclick="deleteMilestone(${i})"></i><i class="ph-check hover:text-green-500 cursor-pointer" onclick="toggleMilestone(${i})"></i></div></div></div>`).join('');
+        }
+
+        window.editMilestone = async (i) => { const newTitle = prompt("New Name:", window.appState.currentLayout.milestones[i].title); if(newTitle) { const ms = window.appState.currentLayout.milestones; ms[i].title = newTitle; await updateDoc(doc(db, "layouts", window.appState.currentLayout.id), { milestones: ms }); } };
+        window.toggleMilestone = async (i) => { const ms = window.appState.currentLayout.milestones; ms[i].done = !ms[i].done; await updateDoc(doc(db, "layouts", window.appState.currentLayout.id), { milestones: ms }); };
+        window.deleteMilestone = async (i) => { const ms = window.appState.currentLayout.milestones.filter((_, idx) => idx !== i); await updateDoc(doc(db, "layouts", window.appState.currentLayout.id), { milestones: ms }); };
+
+        function updateStats() {
+            const plots = window.appState.currentLayout.elements?.filter(e=>e.type==='plot') || [];
+            const ctx = document.getElementById('projectStatusChart').getContext('2d');
+            if(window.appState.charts.status) window.appState.charts.status.destroy();
+            window.appState.charts.status = new Chart(ctx, { type: 'doughnut', data: { labels: ['Sold', 'Booked', 'Open'], datasets: [{ data: [plots.filter(p=>p.status==='sold').length, plots.filter(p=>p.status==='booked').length, plots.filter(p=>p.status==='open').length], backgroundColor: ['#10b981', '#eab308', '#475569'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+        }
+
+        window.logout = async () => {
+            const session = JSON.parse(localStorage.getItem('rajchavin_user'));
+            if(session?.sessionId) { try { await deleteDoc(doc(db, "sessions", session.sessionId)); } catch(e){} }
+            localStorage.removeItem('rajchavin_user');
+            window.location.href='login.html';
+        };
+    </script>
+</body>
+</html>

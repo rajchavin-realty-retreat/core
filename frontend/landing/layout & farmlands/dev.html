@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Rajchavin Developer Suite | Live</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        // Apply theme immediately to prevent flash
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { brand: '#3b82f6', dark: '#09090b' } } }
+        }
+    </script>
+
+    <style>
+        /* CSS Variables for Dynamic Theming */
+        :root {
+            /* Light Mode Defaults */
+            --bg: #f3f4f6;
+            --text: #111827;
+            --glass: rgba(255, 255, 255, 0.85);
+            --border: rgba(0, 0, 0, 0.1);
+            --card-bg: rgba(255, 255, 255, 0.6);
+            --svg-land: #e5e7eb;
+            --svg-road: #cbd5e1;
+            --svg-stroke: rgba(0,0,0,0.1);
+            --modal-bg: #ffffff;
+        }
+
+        /* Dark Mode Overrides */
+        .dark {
+            --bg: #09090b;
+            --text: #ffffff;
+            --glass: rgba(24, 24, 27, 0.95);
+            --border: rgba(255, 255, 255, 0.1);
+            --card-bg: rgba(24, 24, 27, 0.6);
+            --svg-land: #18181b;
+            --svg-road: #27272a;
+            --svg-stroke: rgba(255,255,255,0.1);
+            --modal-bg: #121214;
+        }
+
+        body { background-color: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overflow: hidden; transition: background-color 0.3s, color 0.3s; }
+        .app-view { height: 100vh; overflow-y: auto; padding-bottom: 80px; }
+        
+        /* Glass Components using Variables */
+        .glass-panel { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: 20px; transition: 0.3s; }
+        .glass-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; transition: 0.2s; }
+        .glass-card:active { transform: scale(0.98); opacity: 0.8; }
+        
+        /* Modal */
+        #modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; display: none; align-items: flex-end; justify-content: center; backdrop-filter: blur(4px); }
+        #modal-content { width: 100%; background: var(--modal-bg); border-top: 1px solid var(--border); border-radius: 24px 24px 0 0; padding: 24px; max-height: 90vh; overflow-y: auto; transition: 0.3s; }
+        
+        /* Calendar */
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 12px; }
+        .cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 10px; background: var(--border); cursor: default; }
+        .cal-day.has-pay { background: #10b981; color: white; font-weight: bold; cursor: pointer; }
+        
+        @media (min-width: 1024px) { #modal-backdrop { align-items: center; } #modal-content { max-width: 450px; border-radius: 24px; border: 1px solid var(--border); } }
+        
+        .hidden-view { display: none !important; }
+        .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        
+        /* Map Styling */
+        .map-poly { cursor: pointer; transition: 0.2s; stroke: var(--svg-stroke); stroke-width: 1px; }
+        .map-poly:hover { stroke: var(--text); stroke-width: 2px; filter: brightness(1.2); }
+        .map-poly.active-selected { stroke: #eab308; stroke-width: 3; stroke-dasharray: 4; fill: rgba(234, 179, 8, 0.2); }
+        .map-poly.highlight-target { stroke: #3b82f6; stroke-width: 3px; fill: rgba(59, 130, 246, 0.4) !important; animation: pulse 1s infinite; }
+        
+        @keyframes pulse { 0% { stroke-opacity: 1; } 50% { stroke-opacity: 0.5; } 100% { stroke-opacity: 1; } }
+        
+        /* Map Colors (Adaptive) */
+        .type-plot { fill: var(--svg-land); } 
+        .type-road { fill: var(--svg-road); stroke: var(--border); pointer-events: none; }
+        .type-park { fill: #166534; opacity: 0.6; pointer-events: none; }
+        .type-infra { fill: #3b82f6; opacity: 0.4; pointer-events: none; }
+        .status-sold { fill: #10b981 !important; }
+        .status-booked { fill: #eab308 !important; }
+        .status-open { fill: var(--svg-land) !important; } /* Open plots blend with land */
+        
+        /* Wired Phase */
+        .wired-container { position: relative; padding-left: 24px; border-left: 2px solid var(--border); }
+        .wired-container::before { content: ''; position: absolute; left: -1px; top: 0; bottom: 0; width: 2px; background: linear-gradient(to bottom, transparent, #3b82f6, transparent); opacity: 0.5; }
+        .wired-node-box { position: relative; margin-bottom: 24px; }
+        .wired-node-box:last-child { margin-bottom: 0; }
+        .wired-dot { position: absolute; left: -29px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--bg); border: 2px solid var(--border); z-index: 10; transition: all 0.3s ease; }
+        .wired-line { position: absolute; left: -24px; top: 10px; width: 15px; height: 1px; background: var(--border); }
+        .wired-active .wired-dot { background: #10b981; border-color: #10b981; box-shadow: 0 0 10px #10b981, 0 0 20px rgba(16, 185, 129, 0.4); }
+        .wired-active .wired-line { background: #10b981; box-shadow: 0 0 5px #10b981; }
+        .wired-active h4 { color: var(--text); font-weight: bold; }
+        
+        :fullscreen { background-color: var(--bg); display: flex; align-items: center; justify-content: center; }
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <div id="view-dashboard" class="app-view">
+        <nav class="sticky top-0 z-40 glass-panel border-b-0 rounded-none border-b border-white/10 flex justify-between items-center px-6 py-4 mb-6">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">RD</div>
+                <div><h2 class="text-sm font-bold" id="dev-name-display">Developer</h2><p class="text-[10px] opacity-60">Admin Dashboard</p></div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="toggleTheme()" class="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center hover:scale-110 transition">
+                    <i class="ph-bold ph-sun hidden dark:block"></i>
+                    <i class="ph-bold ph-moon block dark:hidden"></i>
+                </button>
+                <button onclick="logout()" class="text-xs bg-red-500/10 text-red-500 px-3 py-1.5 rounded hover:bg-red-500/20 font-bold transition">Logout</button>
+            </div>
+        </nav>
+
+        <main class="px-5 pb-10 max-w-7xl mx-auto w-full">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-4">
+                    <div class="flex justify-between items-end mb-3"><h3 class="text-xs font-bold uppercase tracking-widest opacity-60">Your Projects</h3><span class="text-[10px] text-green-500 font-bold bg-green-500/10 px-2 py-1 rounded">Live</span></div>
+                    <div class="grid grid-cols-1 gap-3" id="project-list-container"></div>
+                </div>
+
+                <div class="lg:col-span-8 space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <section class="glass-panel p-5">
+                            <h3 class="text-sm font-bold mb-4">Inventory Overview</h3>
+                            <div class="flex items-center">
+                                <div class="w-1/2 h-32 relative"><canvas id="pieChart"></canvas></div>
+                                <div class="w-1/2 pl-4 border-l border-white/10">
+                                    <div class="flex justify-between items-center mb-1"><p class="text-xs opacity-60 flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-green-500"></div> Sold</p><p class="text-lg font-bold text-green-500" id="stat-sold">0</p></div>
+                                    <div class="flex justify-between items-center mb-1"><p class="text-xs opacity-60 flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-yellow-500"></div> Booked</p><p class="text-lg font-bold text-yellow-500" id="stat-booked">0</p></div>
+                                    <div class="flex justify-between items-center"><p class="text-xs opacity-60 flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-slate-600"></div> Open</p><p class="text-lg font-bold text-slate-400" id="stat-unsold">0</p></div>
+                                </div>
+                            </div>
+                        </section>
+                        <section class="glass-panel p-5">
+                            <h3 class="text-sm font-bold mb-4">Collected Revenue</h3>
+                            <div class="h-32 w-full"><canvas id="barChart"></canvas></div>
+                        </section>
+                    </div>
+                    <section class="stat-grid lg:grid-cols-4">
+                        <div class="glass-card p-4 border-l-4 border-yellow-500 col-span-2 lg:col-span-2 flex justify-between items-center">
+                            <div><p class="text-[10px] uppercase opacity-50 font-bold">Total Sales Value</p><p class="text-2xl font-bold" id="dash-total-val">₹ 0</p></div>
+                            <div class="w-10 h-10 rounded-full bg-yellow-500/20 text-yellow-500 flex items-center justify-center"><i class="ph-bold ph-coins text-xl"></i></div>
+                        </div>
+                        <div class="glass-card p-4"><p class="text-[10px] uppercase opacity-50 font-bold">Collected Inflow</p><p class="text-lg font-bold text-green-500" id="dash-today-val">₹0</p></div>
+                    </section>
+                </div>
+                
+                <div class="lg:col-span-4">
+                    <h3 class="text-xs font-bold uppercase tracking-widest opacity-60 mb-3">Customer Database</h3>
+                    <div class="space-y-3" id="global-customer-list"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="view-project" class="app-view" style="display: none;">
+        <nav class="sticky top-0 z-40 glass-panel border-b-0 rounded-none border-b border-white/10 flex justify-between items-center px-6 py-4 mb-6">
+            <button onclick="router('dashboard')" class="flex items-center gap-2 text-sm font-bold opacity-80 hover:text-blue-500 transition"><i class="ph-bold ph-caret-left"></i> Back</button>
+            <h2 class="text-sm font-bold" id="project-title">Project Name</h2>
+            <div class="flex bg-black/5 dark:bg-white/5 rounded-lg p-1 border border-white/10">
+                <button onclick="toggleView('map')" id="btn-view-map" class="px-3 py-1 rounded bg-brand text-white text-[10px] font-bold">Map</button>
+                <button onclick="toggleView('grid')" id="btn-view-grid" class="px-3 py-1 rounded text-gray-400 text-[10px] font-bold">Grid</button>
+            </div>
+        </nav>
+
+        <main class="px-5 pb-10 max-w-7xl mx-auto w-full">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-8 space-y-6">
+                    <div id="container-map-view" class="glass-panel p-4">
+                        <div class="flex justify-between items-end mb-3">
+                            <h3 class="text-sm font-bold flex items-center gap-2"><i class="ph-duotone ph-map-trifold text-purple-400"></i> Master Plan</h3>
+                            <span class="text-[10px] bg-white/10 px-2 py-1 rounded cursor-pointer hover:bg-white/20 transition" onclick="toggleFullScreen()"><i class="ph-bold ph-corners-out"></i> Full Screen</span>
+                        </div>
+                        <div id="realTimeSvgContainer" class="w-full aspect-video rounded-xl border border-white/10 relative overflow-hidden bg-white/50 dark:bg-[#121214] flex items-center justify-center cursor-pointer" onclick="toggleFullScreen()"></div>
+                    </div>
+                    <div id="container-grid-view" class="glass-panel p-6 hidden-view">
+                        <div id="grid-view-content" class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-3"></div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-4 space-y-6">
+                    <div class="glass-panel p-5">
+                        <h3 class="text-xs font-bold uppercase tracking-widest opacity-60 mb-4">Project Status</h3>
+                        <div class="h-32 relative flex items-center justify-center">
+                            <canvas id="projectStatusChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-5 flex justify-between items-center border-l-4 border-green-500">
+                        <div><p class="text-[10px] font-bold uppercase opacity-50">Project Sales</p><h3 class="text-2xl font-bold" id="project-revenue">₹ 0</h3></div>
+                        <div class="w-10 h-10 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center"><i class="ph-bold ph-currency-inr text-lg"></i></div>
+                    </div>
+
+                    <div class="glass-panel p-5 relative overflow-hidden group">
+                        <div class="absolute -top-2 -right-2 opacity-[0.03] group-hover:opacity-10 transition duration-500 pointer-events-none"><i class="ph-fill ph-circuitry text-9xl"></i></div>
+                        <h3 class="text-xs font-bold uppercase tracking-widest opacity-60 mb-4 flex items-center gap-2"><i class="ph-fill ph-git-commit text-brand"></i> Development Phase</h3>
+                        <div id="project-milestones-container" class="wired-container space-y-2"></div>
+                    </div>
+                    
+                    <section>
+                        <h3 class="text-xs font-bold uppercase tracking-widest opacity-60 mb-3">Documents</h3>
+                        <div id="project-docs-list" class="space-y-2"></div>
+                    </section>
+                    
+                    <section class="flex flex-col max-h-96">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-xs font-bold uppercase tracking-widest opacity-60">Layout Customers</h3>
+                            <span class="text-[10px] bg-white/10 px-2 py-0.5 rounded font-mono" id="proj-cust-count">0</span>
+                        </div>
+                        <div class="space-y-2 overflow-y-auto pr-1 custom-scrollbar" id="project-customer-list"></div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modal-backdrop" onclick="closeModal()">
+        <div id="modal-content" onclick="event.stopPropagation()">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="w-14 h-14 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-xl font-bold text-white" id="modal-icon">P</div>
+                <div><h2 class="text-xl font-bold" id="modal-title">Title</h2><p class="text-sm opacity-60" id="modal-subtitle">Subtitle</p></div>
+            </div>
+            
+            <div id="modal-details-body"></div>
+
+            <div id="modal-calendar-section" class="mt-6 pt-6 border-t border-white/10 hidden-view">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="text-xs font-bold uppercase opacity-60">Transaction Calendar</h4>
+                    <span class="text-[10px] bg-white/10 px-2 py-1 rounded" id="cal-month-display">--</span>
+                </div>
+                <div class="cal-grid" id="calendar-grid"></div>
+                <div id="cal-info-area" class="mt-3 text-center h-5">
+                    <p class="text-[10px] opacity-40 italic">Tap green date to view amount.</p>
+                </div>
+            </div>
+
+            <button onclick="closeModal()" class="w-full bg-white/10 hover:bg-white/20 py-4 rounded-xl font-bold transition mt-6">Close</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, query, where, getDocs, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // --- PASTE KEYS HERE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDHHQXki7JAzDsnsKH6LoLNRYlySfnxW7Y",
+            authDomain: "rajchavin-live.firebaseapp.com",
+            projectId: "rajchavin-live",
+            storageBucket: "rajchavin-live.firebasestorage.app",
+            messagingSenderId: "626552794688",
+            appId: "1:626552794688:web:92988d178bde6c8e6439a5"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- AUTH CHECK ---
+        const session = JSON.parse(localStorage.getItem('rajchavin_user'));
+        if(!session || session.role !== 'developer') {
+            window.location.href = 'login.html';
+        } else {
+            window.appState = { currentUser: session, users: [], layouts: [], assignments: [], transactions: [], currentLayout: null, charts: {} };
+            document.getElementById('dev-name-display').innerText = session.name;
+            initData();
+        }
+
+        window.logout = () => {
+            localStorage.removeItem('rajchavin_user');
+            window.location.href = 'login.html';
+        }
+
+        // --- THEME TOGGLE LOGIC ---
+        window.toggleTheme = () => {
+            const html = document.documentElement;
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                localStorage.theme = 'light';
+            } else {
+                html.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
+        }
+
+        // --- UTILS ---
+        window.formatVal = (num) => {
+            if (!num) return '0';
+            num = Number(num);
+            if (num >= 10000000) return (num / 10000000).toFixed(2) + ' Cr';
+            if (num >= 100000) return (num / 100000).toFixed(2) + ' L';
+            return num.toLocaleString('en-IN');
+        };
+        window.toggleFullScreen = () => { const el = document.getElementById('realTimeSvgContainer'); !document.fullscreenElement ? el.requestFullscreen().catch(()=>{}) : document.exitFullscreen(); }
+
+        // --- DATA ---
+        function initData() {
+            onSnapshot(collection(db, "users"), (snap) => { window.appState.users = snap.docs.map(d => ({ id: d.id, ...d.data() })); });
+            onSnapshot(collection(db, "layouts"), (snap) => {
+                window.appState.layouts = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => l.devId == window.appState.currentUser.id);
+                renderDashboard();
+                if(window.appState.currentLayout) window.openProject(window.appState.currentLayout.id);
+            });
+            onSnapshot(collection(db, "assignments"), (snap) => { window.appState.assignments = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderDashboard(); });
+            onSnapshot(collection(db, "transactions"), (snap) => { window.appState.transactions = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderDashboard(); });
+        }
+
+        function renderDashboard() {
+            const container = document.getElementById('project-list-container');
+            if(container) {
+                container.innerHTML = window.appState.layouts.map(l => {
+                    const plots = l.elements?.filter(e=>e.type==='plot') || [];
+                    const sold = plots.filter(p=>p.status==='sold').length;
+                    return `<div onclick="openProject('${l.id}')" class="glass-card p-4 flex justify-between items-center cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition"><div class="flex items-center gap-4"><div class="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center text-xl"><i class="ph-fill ph-house-line"></i></div><div><h4 class="font-bold text-sm">${l.name}</h4><p class="text-[10px] opacity-60">${sold}/${plots.length} Sold</p></div></div><i class="ph-bold ph-caret-right opacity-40"></i></div>`;
+                }).join('');
+            }
+
+            let revenue=0, sold=0, booked=0, open=0;
+            window.appState.layouts.forEach(l => {
+                const plots = l.elements?.filter(e => e.type === 'plot') || [];
+                plots.forEach(p => {
+                    if (p.status === 'sold') { sold++; revenue += Number(p.price || 0); }
+                    else if (p.status === 'booked') { booked++; revenue += Number(p.price || 0); }
+                    else { open++; }
+                });
+            });
+
+            const allMyLayoutIds = window.appState.layouts.map(l => l.id);
+            const myAssignments = window.appState.assignments.filter(a => allMyLayoutIds.includes(a.layoutId)).map(a => a.id);
+            const totalCollected = window.appState.transactions
+                .filter(t => myAssignments.includes(t.assignmentId))
+                .reduce((sum, t) => sum + Number(t.amount), 0);
+
+            const elTotal = document.getElementById('dash-total-val'); if(elTotal) elTotal.innerText = "₹ " + window.formatVal(revenue);
+            const elSold = document.getElementById('stat-sold'); if(elSold) elSold.innerText = sold;
+            const elBooked = document.getElementById('stat-booked'); if(elBooked) elBooked.innerText = booked;
+            const elUnsold = document.getElementById('stat-unsold'); if(elUnsold) elUnsold.innerText = open;
+            const elToday = document.getElementById('dash-today-val'); if(elToday) elToday.innerText = "₹ " + window.formatVal(totalCollected);
+
+            const canvasPie = document.getElementById('pieChart');
+            if(canvasPie) {
+                if(window.appState.charts.pie) window.appState.charts.pie.destroy();
+                window.appState.charts.pie = new Chart(canvasPie, { type: 'doughnut', data: { datasets: [{ data: [sold, booked, open], backgroundColor: ['#10b981', '#eab308', '#475569'], borderWidth:0 }] }, options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} } });
+            }
+            
+            const canvasBar = document.getElementById('barChart');
+            if(canvasBar) {
+                if(window.appState.charts.bar) window.appState.charts.bar.destroy();
+                window.appState.charts.bar = new Chart(canvasBar, { type: 'bar', data: { labels: window.appState.layouts.map(l=>l.name.split(' ')[0]), datasets: [{ label:'Collected (Lakhs)', data: window.appState.layouts.map(l => { const assignIds = window.appState.assignments.filter(a => a.layoutId === l.id).map(a => a.id); const txs = window.appState.transactions.filter(t => assignIds.includes(t.assignmentId)); const collected = txs.reduce((s,t) => s + Number(t.amount), 0); return collected / 100000; }), backgroundColor:'#3b82f6', borderRadius:4 }] }, options: { responsive:true, maintainAspectRatio:false, scales:{x:{display:false},y:{display:false}}, plugins:{legend:{display:false}} } });
+            }
+            
+            const custContainer = document.getElementById('global-customer-list');
+            if(custContainer) {
+                const myLayouts = window.appState.layouts.map(l => l.id);
+                const uniqueCustNames = [...new Set(window.appState.assignments
+                    .filter(a => myLayouts.includes(a.layoutId))
+                    .map(a => a.saverName)
+                )];
+                
+                custContainer.innerHTML = uniqueCustNames.map(name => {
+                    const myPlots = window.appState.assignments.filter(a => a.saverName === name && myLayouts.includes(a.layoutId));
+                    const totalVal = myPlots.reduce((s, a) => s + Number(a.value || 0), 0);
+
+                    return `
+                    <div onclick="openSaverModal('${name}')" class="glass-card p-4 flex justify-between items-center cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition border-l-4 border-transparent hover:border-brand">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-purple-500/20 text-purple-500 flex items-center justify-center text-sm font-bold uppercase">${name[0]}</div>
+                            <div>
+                                <p class="text-sm font-bold">${name}</p>
+                                <p class="text-[10px] opacity-60">${myPlots.length} Plots Owned</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs font-bold text-green-400">₹ ${window.formatVal(totalVal)}</p>
+                            <p class="text-[9px] opacity-40 uppercase">Total Value</p>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+        }
+
+        window.openSaverModal = (saverName) => {
+            const user = window.appState.users.find(u => u.name === saverName);
+            const userAssignments = window.appState.assignments.filter(a => a.saverName === saverName);
+            const myLayoutIds = window.appState.layouts.map(l => l.id);
+            const filteredAssignments = userAssignments.filter(a => myLayoutIds.includes(a.layoutId));
+
+            if (filteredAssignments.length === 0 && !user) { alert("Data unavailable."); return; }
+
+            let totalPortfolioValue = 0;
+            let totalPaid = 0;
+            let plotsListHtml = '';
+
+            filteredAssignments.forEach((a, index) => {
+                const layout = window.appState.layouts.find(l => l.id === a.layoutId);
+                const plot = layout ? layout.elements.find(e => e.id === a.plotId) : null;
+                const price = plot ? Number(plot.price) : 0;
+                const txs = window.appState.transactions.filter(t => t.assignmentId === a.id);
+                const paid = txs.reduce((s, t) => s + Number(t.amount), 0);
+                
+                totalPortfolioValue += price;
+                totalPaid += paid;
+
+                plotsListHtml += `
+                <div class="glass-card p-3 mb-2 flex items-center justify-between border-l-4 border-brand">
+                    <div class="cursor-pointer" onclick="jumpToSpecificPlot('${a.layoutId}', '${a.plotId}')">
+                        <p class="text-xs font-bold opacity-80 hover:opacity-100">${a.layoutName}</p>
+                        <p class="text-sm font-bold hover:text-brand">${a.plotId}</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="text-right"><p class="text-[10px] opacity-60">Paid</p><p class="text-xs font-bold text-green-400">₹${window.formatVal(paid)}</p></div>
+                        <div style="width:30px; height:30px;"><canvas id="chart-saver-${index}"></canvas></div>
+                    </div>
+                </div>`;
+            });
+
+            document.getElementById('modal-icon').innerText = saverName.charAt(0);
+            document.getElementById('modal-title').innerText = saverName;
+            document.getElementById('modal-subtitle').innerText = user ? (user.contact || user.email) : "Customer";
+
+            document.getElementById('modal-details-body').innerHTML = `
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="glass-card p-3 text-center"><p class="text-[10px] uppercase opacity-50">Portfolio</p><p class="text-lg font-bold">₹${window.formatVal(totalPortfolioValue)}</p></div>
+                    <div class="glass-card p-3 text-center"><p class="text-[10px] uppercase opacity-50">Total Paid</p><p class="text-lg font-bold text-green-500">₹${window.formatVal(totalPaid)}</p></div>
+                </div>
+                <h4 class="text-xs font-bold uppercase opacity-60 mb-2">Properties Owned</h4>
+                ${plotsListHtml.length ? plotsListHtml : '<p class="text-xs opacity-40 p-2">No plots purchased from you.</p>'}
+            `;
+
+            setTimeout(() => {
+                filteredAssignments.forEach((a, index) => {
+                    const layout = window.appState.layouts.find(l => l.id === a.layoutId);
+                    const plot = layout ? layout.elements.find(e => e.id === a.plotId) : null;
+                    const price = plot ? Number(plot.price) : 1;
+                    const txs = window.appState.transactions.filter(t => t.assignmentId === a.id);
+                    const paid = txs.reduce((s, t) => s + Number(t.amount), 0);
+                    new Chart(document.getElementById(`chart-saver-${index}`), { type: 'doughnut', data: { datasets: [{ data: [paid, Math.max(0, price-paid)], backgroundColor: ['#10b981', '#334155'], borderWidth:0 }] }, options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{enabled:false}}, cutout:'70%' } });
+                });
+            }, 100);
+
+            document.getElementById('modal-calendar-section').classList.add('hidden-view');
+            const modal = document.getElementById('modal-backdrop');
+            modal.style.display = 'flex';
+        };
+
+        window.jumpToSpecificPlot = (layoutId, plotId) => {
+             window.closeModal();
+             window.openProject(layoutId, plotId);
+        };
+
+        window.openProject = (id, targetPlotId = null) => {
+            const layout = window.appState.layouts.find(l => l.id === id);
+            window.appState.currentLayout = layout;
+            document.getElementById('view-dashboard').style.display = 'none';
+            document.getElementById('view-project').style.display = 'block';
+            document.getElementById('project-title').innerText = layout.name;
+            
+            const plots = layout.elements?.filter(e=>e.type==='plot') || [];
+            const revenue = plots.reduce((s,p) => (p.status=='sold'||p.status=='booked') ? s+Number(p.price||0) : s, 0);
+            document.getElementById('project-revenue').innerText = "₹ " + window.formatVal(revenue);
+
+            const sold = plots.filter(p=>p.status==='sold').length;
+            const booked = plots.filter(p=>p.status==='booked').length;
+            const open = plots.filter(p=>p.status!=='sold' && p.status!=='booked').length;
+
+            if(window.appState.charts.projPie) window.appState.charts.projPie.destroy();
+            window.appState.charts.projPie = new Chart(document.getElementById('projectStatusChart'), {
+                type: 'pie',
+                data: { labels: ['Sold','Booked','Open'], datasets: [{ data: [sold, booked, open], backgroundColor: ['#10b981','#eab308','#475569'], borderWidth:0 }] },
+                options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right', labels:{color:'white', font:{size:10}}}} }
+            });
+
+            renderRealTimeMap(layout);
+            renderGridView(layout);
+
+            const msContainer = document.getElementById('project-milestones-container');
+            const milestones = layout.milestones || [];
+            if(milestones.length === 0) {
+                msContainer.innerHTML = '<p class="text-xs opacity-30 italic py-2">No milestones set by admin.</p>';
+            } else {
+                msContainer.innerHTML = milestones.map((m) => `
+                    <div class="wired-node-box ${m.done ? 'wired-active' : ''}">
+                        <div class="wired-dot"></div>
+                        <div class="wired-line"></div>
+                        <h4 class="text-xs font-bold text-gray-400 transition">${m.title}</h4>
+                    </div>
+                `).join('');
+            }
+
+            document.getElementById('project-docs-list').innerHTML = (layout.docs || []).map(doc => `
+                <div class="glass-card p-3 flex justify-between items-center mb-2 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer">
+                    <div class="flex items-center gap-3"><i class="ph-fill ph-file-pdf text-red-500 text-xl"></i><p class="text-xs font-bold">${doc}</p></div>
+                    <div class="w-8 h-8 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center"><i class="ph-bold ph-download-simple"></i></div>
+                </div>`).join('') || '<p class="text-xs opacity-40">No documents uploaded</p>';
+
+            const projCust = window.appState.assignments.filter(a => a.layoutId === id);
+            document.getElementById('proj-cust-count').innerText = projCust.length;
+            document.getElementById('project-customer-list').innerHTML = projCust.map(c => `
+                <div onclick="openSaverModal('${c.saverName}')" class="glass-card p-3 flex justify-between items-center cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition border-l-2 border-transparent hover:border-brand">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-blue-400 flex items-center justify-center text-xs font-bold">${c.saverName[0]}</div>
+                        <div>
+                            <p class="text-xs font-bold">${c.saverName}</p>
+                            <p class="text-[10px] opacity-50">Owner</p>
+                        </div>
+                    </div>
+                    <span class="text-xs font-mono font-bold bg-white/5 px-2 py-1 rounded text-brand">${c.plotId}</span>
+                </div>`).join('') || '<div class="text-center py-4 opacity-30 text-xs italic">No customers yet</div>';
+
+            if(targetPlotId) { setTimeout(() => { window.openPlotModal(targetPlotId); }, 500); }
+        }
+
+        window.toggleView = (mode) => {
+            document.getElementById('container-map-view').classList.toggle('hidden-view', mode !== 'map');
+            document.getElementById('container-grid-view').classList.toggle('hidden-view', mode !== 'grid');
+            document.getElementById('btn-view-map').className = mode === 'map' ? 'px-3 py-1 rounded bg-brand text-white text-[10px] font-bold' : 'px-3 py-1 rounded text-gray-400 text-[10px] font-bold';
+            document.getElementById('btn-view-grid').className = mode === 'grid' ? 'px-3 py-1 rounded bg-brand text-white text-[10px] font-bold' : 'px-3 py-1 rounded text-gray-400 text-[10px] font-bold';
+        }
+
+        function renderRealTimeMap(layout) {
+            const container = document.getElementById('realTimeSvgContainer');
+            if(!layout.elements) { container.innerHTML = ''; return; }
+            let svg = `<svg viewBox="0 0 800 500" class="w-full h-full">`;
+            [...layout.elements].sort((a,b)=>a.type=='plot'?1:-1).forEach(el => {
+                let cls = `map-poly type-${el.type} ${el.type==='plot'?'status-'+(el.status||'open'):''}`;
+                let click = el.type==='plot' ? `onclick="openPlotModal('${el.id}', event)"` : '';
+                svg += `<polygon points="${el.points}" class="${cls}" ${click} id="poly-${el.id}"/>`;
+                if(el.type==='plot') {
+                    const pts=el.points.split(' ').map(p=>p.split(',').map(Number));
+                    const cx=pts.reduce((s,p)=>s+p[0],0)/pts.length; const cy=pts.reduce((s,p)=>s+p[1],0)/pts.length;
+                    svg += `<text x="${cx}" y="${cy}" fill="white" font-size="10" text-anchor="middle" dominant-baseline="middle" pointer-events="none" style="text-shadow:0 1px 2px black;">${el.id}</text>`;
+                }
+            });
+            container.innerHTML = svg + `</svg>`;
+        }
+
+        function renderGridView(layout) {
+            const grid = document.getElementById('grid-view-content');
+            const plots = layout.elements?.filter(e=>e.type==='plot') || [];
+            grid.innerHTML = plots.map(p => {
+                const color = p.status === 'sold' ? 'bg-green-500' : (p.status === 'booked' ? 'bg-yellow-500' : 'bg-slate-700');
+                return `<div onclick="openPlotModal('${p.id}', event)" class="aspect-square ${color} rounded-lg flex items-center justify-center text-xs font-bold text-white shadow-lg cursor-pointer hover:scale-105 transition">${p.id}</div>`;
+            }).join('');
+        }
+
+        window.openPlotModal = async (plotId, event) => {
+            if(event) event.stopPropagation();
+            if(document.fullscreenElement) document.exitFullscreen();
+
+            const layout = window.appState.currentLayout;
+            const plot = layout.elements.find(e => e.id === plotId);
+            const assign = window.appState.assignments.find(a => a.layoutId === layout.id && a.plotId === plotId);
+
+            document.getElementById('modal-icon').innerText = "P";
+            document.getElementById('modal-title').innerText = plotId;
+            document.getElementById('modal-subtitle').innerText = (plot.status || 'Open').toUpperCase();
+
+            let html = '';
+            const calSection = document.getElementById('modal-calendar-section');
+            document.getElementById('cal-info-area').innerHTML = '<p class="text-[10px] opacity-40 italic">Tap green date to view amount.</p>';
+
+            if(assign) {
+                const txs = window.appState.transactions.filter(t => t.assignmentId === assign.id);
+                const paidTotal = txs.reduce((sum, t) => sum + Number(t.amount), 0);
+                const price = Number(plot.price);
+                
+                if(paidTotal > 0 && plot.status !== 'sold') {
+                    plot.status = 'sold';
+                    const newElements = layout.elements.map(e => e.id === plotId ? plot : e);
+                    await updateDoc(doc(db, "layouts", layout.id), { elements: newElements });
+                }
+
+                html = `
+                <div class="glass-card p-4 border-l-4 border-green-500 mb-4">
+                    <p class="text-xs uppercase opacity-50 font-bold">Owner</p>
+                    <p class="text-lg font-bold">${assign.saverName}</p>
+                    <p class="text-xs opacity-60">Banker: ${assign.bankerName}</p>
+                </div>
+                <div class="flex justify-between text-sm py-2"><span>Value</span><span class="font-bold">₹ ${window.formatVal(price)}</span></div>
+                <div class="flex justify-between text-sm py-2"><span>Paid</span><span class="text-green-400 font-bold">₹ ${window.formatVal(paidTotal)}</span></div>
+                `;
+                
+                calSection.classList.remove('hidden-view');
+                renderCalendar(assign.id);
+            } else {
+                html = `<div class="glass-card p-4 border-l-4 border-slate-500 mb-4"><p class="text-lg font-bold">Available</p><p class="text-xs opacity-60">Price: ₹ ${window.formatVal(plot.price)}</p></div>`;
+                calSection.classList.add('hidden-view');
+            }
+
+            document.getElementById('modal-details-body').innerHTML = html;
+            const modal = document.getElementById('modal-backdrop');
+            modal.style.display = 'flex';
+            
+            const poly = document.getElementById(`poly-${plotId}`);
+            if(poly) {
+                document.querySelectorAll('.map-poly').forEach(p => p.classList.remove('highlight-target'));
+                poly.classList.add('highlight-target');
+            }
+        }
+
+        function renderCalendar(assignId) {
+            const today = new Date();
+            const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+            document.getElementById('cal-month-display').innerText = `${monthNames[today.getMonth()]} ${today.getFullYear()}`;
+            
+            const txs = window.appState.transactions.filter(t => t.assignmentId === assignId);
+            const dailyMap = {};
+            txs.forEach(t => {
+                const d = new Date(t.date.seconds * 1000);
+                if(d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()){
+                    dailyMap[d.getDate()] = (dailyMap[d.getDate()] || 0) + Number(t.amount);
+                }
+            });
+
+            const daysInMonth = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+            
+            for(let i=1; i<=daysInMonth; i++) {
+                const el = document.createElement('div');
+                el.className = 'cal-day';
+                el.innerText = i;
+                if(dailyMap[i]) {
+                    el.classList.add('has-pay');
+                    el.onclick = () => {
+                        const amt = window.formatVal(dailyMap[i]);
+                        document.getElementById('cal-info-area').innerHTML = `<p class="text-sm font-bold text-green-400">Received ₹${amt}</p><p class="text-[10px] opacity-50">on ${i} ${monthNames[today.getMonth()]}</p>`;
+                    };
+                }
+                grid.appendChild(el);
+            }
+        }
+
+        window.router = (view) => { document.querySelectorAll('.app-view').forEach(e=>e.style.display='none'); document.getElementById('view-'+view).style.display='block'; }
+        window.closeModal = () => { document.getElementById('modal-backdrop').style.display='none'; }
+        window.openProject = window.openProject; window.openPlotModal = window.openPlotModal; window.openSaverModal = window.openSaverModal; window.toggleView = window.toggleView;
+    </script>
+</body>
+</html>

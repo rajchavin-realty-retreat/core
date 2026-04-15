@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seller Console | Raj Chavin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { dark: '#050505', surface: '#121212', gold: '#D4AF37', pearl: '#F9FAFB' },
+                    fontFamily: { sans: ['Manrope', 'sans-serif'], serif: ['Playfair Display', 'serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.5); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .dark .glass-panel { background: rgba(18, 18, 18, 0.8); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .input-field { background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.1); color: #333; padding: 12px; border-radius: 8px; width: 100%; transition: all 0.3s; }
+        .dark .input-field { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; }
+        .input-field:focus { border-color: #D4AF37; outline: none; }
+        
+        /* Modal Animation */
+        .modal { opacity: 0; visibility: hidden; transition: all 0.3s ease-in-out; }
+        .modal.active { opacity: 1; visibility: visible; }
+        .modal-content { transform: scale(0.95); transition: all 0.3s ease-in-out; }
+        .modal.active .modal-content { transform: scale(1); }
+    </style>
+</head>
+<body class="bg-pearl text-gray-900 dark:bg-dark dark:text-gray-300 font-sans min-h-screen transition-colors duration-300">
+
+    <nav class="fixed top-0 w-full z-50 px-4 py-4">
+        <div class="max-w-7xl mx-auto glass-panel rounded-2xl px-4 py-3 flex justify-between items-center transition-all">
+            <a href="../index.html" class="flex items-center gap-2">
+                <img src="Gemini_Generated_Image_hd7sbhd7sbhd7sbh-removebg-preview.png" alt="Raj Chavin Logo" class="h-10 w-auto object-contain">
+                <span class="font-serif text-lg font-bold tracking-wide hidden sm:block">Seller Console</span>
+            </a>
+            
+            <div class="flex items-center gap-4">
+                <button id="theme-toggle" class="w-9 h-9 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center hover:scale-110 transition">
+                    <i class="fas fa-sun hidden dark:block text-gold text-xs"></i>
+                    <i class="fas fa-moon block dark:hidden text-xs"></i>
+                </button>
+
+                <span id="userGreeting" class="text-xs font-bold text-gold uppercase tracking-wider hidden sm:block"></span>
+
+                <button id="logoutBtn" class="text-xs font-bold uppercase tracking-widest hover:text-gold pl-2 border-l border-gray-300 dark:border-white/10">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="pt-28 pb-12 px-4 max-w-7xl mx-auto grid lg:grid-cols-12 gap-8">
+        
+        <div class="lg:col-span-8">
+            <div class="glass-panel p-6 md:p-8 rounded-2xl">
+                <h2 class="font-serif text-2xl md:text-3xl mb-2">List New Property</h2>
+                <p class="text-sm opacity-60 mb-8">Details sent for Admin verification.</p>
+                
+                <form id="addPropertyForm" class="space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] uppercase font-bold text-gold mb-2">Action</label>
+                            <select id="pType" class="input-field" onchange="toggleFields()">
+                                <option value="sell" class="text-black">Sell</option>
+                                <option value="rent" class="text-black">Rent</option>
+                                <option value="lease" class="text-black">Lease</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] uppercase font-bold text-gold mb-2">Category</label>
+                            <select id="pCategory" class="input-field">
+                                <option value="residential" class="text-black">Residential</option>
+                                <option value="commercial" class="text-black">Commercial</option>
+                                <option value="land" class="text-black">Land</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div><label class="block text-[10px] uppercase font-bold text-gold mb-2">Title</label><input type="text" id="pTitle" class="input-field" placeholder="e.g. 3BHK Villa"></div>
+                    
+                    <div><label class="block text-[10px] uppercase font-bold text-gold mb-2">Description</label><textarea id="pDesc" rows="3" class="input-field" placeholder="Describe the property..."></textarea></div>
+
+                    <div id="dynamicFields" class="bg-black/5 dark:bg-white/5 p-4 rounded-xl border border-dashed border-gray-400 dark:border-white/10"></div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="block text-[10px] uppercase font-bold text-gold mb-2">Price (₹)</label><input type="number" id="pPrice" class="input-field" placeholder="0"></div>
+                        <div><label class="block text-[10px] uppercase font-bold text-gold mb-2">City</label><input type="text" id="pCity" class="input-field" placeholder="Hubli"></div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-gold mb-2">Photo URLs (Max 5)</label>
+                        <div class="flex gap-2">
+                            <input type="url" id="urlInput" class="input-field" placeholder="Paste image link (https://...)">
+                            <button type="button" onclick="addImageUrl()" class="bg-gold text-dark font-bold px-6 rounded-lg text-xs uppercase tracking-wider hover:bg-white transition">Add</button>
+                        </div>
+                        <p class="text-[10px] text-gray-500 mt-1">Add up to 5 image links.</p>
+                        <div id="urlPreview" class="grid grid-cols-5 gap-2 mt-3"></div>
+                    </div>
+
+                    <button type="submit" class="w-full py-4 bg-gold text-dark font-bold rounded-xl hover:bg-white transition shadow-lg shadow-gold/20">Submit Listing</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="lg:col-span-4">
+            <h3 class="font-serif text-xl mb-6 pl-2 border-l-4 border-gold">Your Portfolio</h3>
+            <p class="text-xs text-gray-500 mb-4">Tap on a card to view full details.</p>
+            <div id="myListings" class="space-y-4 max-h-[600px] overflow-y-auto pr-2 pb-10">
+                <div class="glass-panel p-4 rounded-xl text-center opacity-50">
+                    <i class="fas fa-circle-notch fa-spin text-gold mb-2"></i>
+                    <p class="text-xs">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="detailModal" class="modal fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div class="modal-content w-full max-w-lg glass-panel rounded-2xl overflow-hidden shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeModal()" class="absolute top-4 right-4 w-8 h-8 bg-black/20 hover:bg-red-500 hover:text-white rounded-full flex items-center justify-center transition z-10">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <div class="h-48 relative">
+                <img id="mImage" src="" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+                <div class="absolute bottom-4 left-6">
+                    <span id="mType" class="text-[10px] uppercase font-bold bg-gold text-dark px-2 py-1 rounded mb-2 inline-block">Sell</span>
+                    <h2 id="mTitle" class="text-2xl font-serif text-white font-bold leading-tight">Property Title</h2>
+                </div>
+            </div>
+
+            <div class="p-6 md:p-8 space-y-6">
+                <div class="text-sm text-gray-600 dark:text-gray-300 italic border-l-2 border-gold pl-3" id="mDesc"></div>
+
+                <div class="grid grid-cols-2 gap-4 pb-6 border-b border-gray-200 dark:border-white/10">
+                    <div>
+                        <p class="text-[10px] uppercase text-gray-500 font-bold">Price</p>
+                        <p id="mPrice" class="text-xl text-gold font-mono font-bold">₹0</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] uppercase text-gray-500 font-bold">Location</p>
+                        <p id="mCity" class="text-gray-800 dark:text-white font-medium">City</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] uppercase text-gray-500 font-bold">Status</p>
+                        <p id="mStatus" class="font-bold text-sm">Pending</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] uppercase text-gray-500 font-bold">Category</p>
+                        <p id="mCategory" class="text-gray-800 dark:text-white font-medium">Residential</p>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-xs uppercase text-gold font-bold mb-3 tracking-widest">Specifications</p>
+                    <div id="mDetailsGrid" class="grid grid-cols-2 gap-y-4 gap-x-2 text-sm bg-gray-50 dark:bg-white/5 p-4 rounded-xl"></div>
+                </div>
+
+                <button id="deleteBtn" class="w-full py-3 border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white rounded-xl font-bold text-sm transition uppercase tracking-wide flex items-center justify-center gap-2">
+                    <i class="fas fa-trash-alt"></i> Delete Listing Permanently
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, db } from './firebase-config.js';
+        import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { collection, addDoc, query, where, getDocs, serverTimestamp, doc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        let currentUser = null;
+        let userData = null;
+        let propertiesCache = [];
+        let addedUrls = [];
+
+        // --- THEME TOGGLE LOGIC ---
+        const themeBtn = document.getElementById('theme-toggle');
+        // Initial state set in HEAD script, so just toggle here
+        themeBtn.addEventListener('click', () => { 
+            document.documentElement.classList.toggle('dark'); 
+            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light'; 
+        });
+
+        // --- DYNAMIC INPUTS ---
+        window.toggleFields = () => {
+            const type = document.getElementById('pType').value;
+            const container = document.getElementById('dynamicFields');
+            if(type === 'sell') {
+                container.innerHTML = `
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="text-[10px] text-gray-500 uppercase font-bold">Total Area</label><input type="text" id="specArea" class="input-field mt-1" placeholder="sqft"></div>
+                        <div><label class="text-[10px] text-gray-500 uppercase font-bold">Khata Type</label><input type="text" id="specKhata" class="input-field mt-1" placeholder="A/B/E"></div>
+                    </div>`;
+            } else {
+                container.innerHTML = `
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="text-[10px] text-gray-500 uppercase font-bold">Security Deposit</label><input type="text" id="specDeposit" class="input-field mt-1" placeholder="₹"></div>
+                        <div><label class="text-[10px] text-gray-500 uppercase font-bold">Furnishing</label><input type="text" id="specFurnish" class="input-field mt-1" placeholder="Semi/Full"></div>
+                    </div>`;
+            }
+        };
+        toggleFields(); // Init on load
+
+        // --- AUTH ---
+        onAuthStateChanged(auth, async (user) => { 
+            if (user) { 
+                currentUser = user; 
+                const snap = await getDoc(doc(db, "users", user.uid));
+                if(snap.exists()) {
+                    userData = snap.data();
+                    document.getElementById('userGreeting').innerText = `Hello, ${userData.name || 'Seller'}`;
+                }
+                loadMyProperties(user.uid); 
+            } else window.location.href = 'real-estate-login.html'; 
+        });
+
+        // --- MULTIPLE URL LOGIC ---
+        window.addImageUrl = () => {
+            const input = document.getElementById('urlInput');
+            const url = input.value.trim();
+            if(!url) return;
+            if(addedUrls.length >= 5) { alert("Max 5 photos allowed."); return; }
+            addedUrls.push(url);
+            input.value = '';
+            renderPreviews();
+        };
+
+        window.removeUrl = (index) => {
+            addedUrls.splice(index, 1);
+            renderPreviews();
+        };
+
+        function renderPreviews() {
+            const container = document.getElementById('urlPreview');
+            container.innerHTML = '';
+            addedUrls.forEach((url, idx) => {
+                container.innerHTML += `
+                    <div class="relative w-full h-12 rounded overflow-hidden group border border-white/10">
+                        <img src="${url}" class="w-full h-full object-cover">
+                        <button type="button" onclick="removeUrl(${idx})" class="absolute inset-0 bg-black/60 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><i class="fas fa-trash"></i></button>
+                    </div>`;
+            });
+        }
+
+        // --- SUBMIT ---
+        document.getElementById('addPropertyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(addedUrls.length === 0) { alert("Please add at least 1 image URL."); return; }
+
+            const type = document.getElementById('pType').value;
+            // Handle optional fields safely
+            const area = document.getElementById('specArea')?.value || "";
+            const khata = document.getElementById('specKhata')?.value || "";
+            const deposit = document.getElementById('specDeposit')?.value || "";
+            const furnish = document.getElementById('specFurnish')?.value || "";
+
+            let details = type === 'sell' ? { "Area Size": area, "Khata Type": khata } : { "Deposit": deposit, "Furnishing": furnish };
+
+            try {
+                await addDoc(collection(db, "properties"), {
+                    sellerId: currentUser.uid, 
+                    sellerEmail: currentUser.email,
+                    sellerName: userData?.name || 'Owner', 
+                    sellerPhone: userData?.phone || 'Hidden',
+                    type, 
+                    category: document.getElementById('pCategory').value, 
+                    title: document.getElementById('pTitle').value, 
+                    description: document.getElementById('pDesc').value, 
+                    price: Number(document.getElementById('pPrice').value), 
+                    location: document.getElementById('pCity').value, 
+                    images: addedUrls, 
+                    image: addedUrls[0], 
+                    status: 'pending', 
+                    details, 
+                    createdAt: serverTimestamp()
+                });
+                alert("Submitted! Listing pending admin approval."); 
+                document.getElementById('addPropertyForm').reset(); 
+                addedUrls = []; renderPreviews(); toggleFields();
+                loadMyProperties(currentUser.uid);
+            } catch (err) { alert(err.message); }
+        });
+
+        // --- DISPLAY ---
+        async function loadMyProperties(uid) {
+            const container = document.getElementById('myListings'); container.innerHTML = '';
+            const q = query(collection(db, "properties"), where("sellerId", "==", uid));
+            const snapshot = await getDocs(q);
+            if(snapshot.empty) { container.innerHTML = '<p class="text-sm opacity-50 text-center py-10">No active listings.</p>'; return; }
+            
+            propertiesCache = []; 
+            snapshot.forEach(docSnap => {
+                const p = docSnap.data();
+                const pid = docSnap.id;
+                propertiesCache.push({ id: pid, ...p });
+                
+                const displayImg = (p.images && p.images.length > 0) ? p.images[0] : (p.image || 'https://via.placeholder.com/150');
+                const color = p.status === 'approved' ? 'text-green-500' : (p.status === 'rejected' ? 'text-red-500' : 'text-yellow-500');
+                
+                const div = document.createElement('div');
+                div.className = "glass-panel p-3 rounded-xl flex gap-3 items-center cursor-pointer hover:bg-white/5 transition";
+                div.innerHTML = `<img src="${displayImg}" class="w-16 h-16 rounded-lg object-cover"><div><h4 class="font-bold text-sm line-clamp-1 text-gray-900 dark:text-white">${p.title}</h4><p class="text-gold font-mono text-xs">₹${Number(p.price).toLocaleString()}</p><p class="text-[10px] uppercase font-bold ${color}">${p.status}</p></div>`;
+                div.onclick = () => openModal(pid);
+                container.appendChild(div);
+            });
+        }
+
+        // --- MODAL ---
+        window.openModal = (pid) => {
+            const p = propertiesCache.find(item => item.id === pid);
+            if(!p) return;
+            
+            const displayImg = (p.images && p.images.length > 0) ? p.images[0] : (p.image || 'https://via.placeholder.com/400');
+            document.getElementById('mImage').src = displayImg;
+            
+            document.getElementById('mType').innerText = p.type;
+            document.getElementById('mTitle').innerText = p.title;
+            document.getElementById('mDesc').innerText = p.description || "No description provided.";
+            document.getElementById('mPrice').innerText = "₹" + Number(p.price).toLocaleString();
+            document.getElementById('mCity').innerText = p.location;
+            document.getElementById('mCategory').innerText = p.category;
+            
+            const statusEl = document.getElementById('mStatus');
+            statusEl.innerText = p.status;
+            statusEl.className = `font-bold text-sm uppercase ${p.status === 'approved' ? 'text-green-500' : (p.status === 'rejected' ? 'text-red-500' : 'text-yellow-500')}`;
+
+            const grid = document.getElementById('mDetailsGrid');
+            grid.innerHTML = '';
+            if(p.details) {
+                for (const [key, value] of Object.entries(p.details)) {
+                    if(value) grid.innerHTML += `<div class="col-span-1"><span class="block text-[10px] uppercase text-gray-500 font-bold">${key}</span><span class="block text-gray-800 dark:text-gray-200 font-medium">${value}</span></div>`;
+                }
+            } else grid.innerHTML = '<p class="text-xs text-gray-500 italic col-span-2">No details.</p>';
+
+            document.getElementById('deleteBtn').onclick = () => deleteListing(pid);
+            document.getElementById('detailModal').classList.add('active');
+        };
+
+        window.closeModal = () => document.getElementById('detailModal').classList.remove('active');
+
+        window.deleteListing = async (pid) => {
+            if(confirm("Permanently delete this listing?")) {
+                try { await deleteDoc(doc(db, "properties", pid)); alert("Deleted."); closeModal(); loadMyProperties(currentUser.uid); } 
+                catch(e) { alert("Error: " + e.message); }
+            }
+        };
+
+        document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth).then(() => window.location.href = 'real-estate-login.html'));
+    </script>
+</body>
+</html>

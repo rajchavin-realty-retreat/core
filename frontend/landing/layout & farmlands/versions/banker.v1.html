@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Rajchavin | Banker Console</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { brand: '#8b5cf6', dark: '#09090b' } } }
+        }
+    </script>
+
+    <style>
+        :root {
+            --bg: #09090b; --text: #ffffff;
+            --glass: rgba(24, 24, 27, 0.95); --border: rgba(255, 255, 255, 0.1);
+            --card-bg: rgba(24, 24, 27, 0.6);
+        }
+        body { background-color: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overflow: hidden; }
+        .app-view { height: 100vh; overflow-y: auto; padding-bottom: 80px; }
+        .glass-panel { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: 20px; }
+        .glass-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; transition: 0.2s; }
+        .glass-card:active { transform: scale(0.98); background: rgba(255,255,255,0.05); }
+        
+        #modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 200; display: none; align-items: flex-end; justify-content: center; }
+        #modal-content { width: 100%; background: #121214; border-top: 1px solid var(--border); border-radius: 24px 24px 0 0; padding: 24px; max-height: 90vh; overflow-y: auto; }
+        @media (min-width: 1024px) {
+            #modal-backdrop { align-items: center; }
+            #modal-content { max-width: 450px; border-radius: 24px; border: 1px solid var(--border); }
+        }
+        
+        .progress-bar { transition: width 1s ease-in-out; }
+    </style>
+</head>
+<body>
+
+    <div id="view-login" class="app-view flex flex-col items-center justify-center p-6">
+        <div class="glass-panel w-full max-w-sm p-8 space-y-6 text-center shadow-2xl border-t-4 border-t-purple-500">
+            <div class="w-16 h-16 bg-gradient-to-tr from-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl">
+                <i class="ph-fill ph-wallet text-3xl text-white"></i>
+            </div>
+            <div><h1 class="text-3xl font-bold">Rajchavin</h1><p class="text-xs font-bold uppercase tracking-widest opacity-60 mt-1">Banker Console</p></div>
+            <div class="space-y-3">
+                <input type="email" id="login-email" placeholder="Banker Email" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 outline-none focus:border-purple-500 transition">
+                <input type="password" id="login-pass" placeholder="Password" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 outline-none focus:border-purple-500 transition">
+                <button onclick="handleLogin()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3.5 rounded-xl shadow-lg mt-2 transition">Secure Login</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-dashboard" class="app-view" style="display: none;">
+        <nav class="sticky top-0 z-40 glass-panel border-b-0 rounded-none border-b border-white/10 flex justify-between items-center px-6 py-4 mb-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">RB</div>
+                <div><h2 class="text-sm font-bold" id="banker-name-display">Banker</h2><p class="text-[10px] opacity-60">Collections Agent</p></div>
+            </div>
+            <div class="text-right">
+                <p class="text-[10px] uppercase opacity-60 font-bold">Collected Today</p>
+                <p class="text-green-400 font-bold font-mono" id="stats-today">₹ 0</p>
+            </div>
+        </nav>
+
+        <main class="px-4 pb-20 max-w-xl mx-auto w-full">
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="glass-card p-4">
+                    <p class="text-[10px] uppercase opacity-50 font-bold">Total Assigned</p>
+                    <h3 class="text-2xl font-bold text-white" id="stats-assigned">0</h3>
+                </div>
+                <div class="glass-card p-4">
+                    <p class="text-[10px] uppercase opacity-50 font-bold">Total Collected</p>
+                    <h3 class="text-2xl font-bold text-purple-400" id="stats-total">₹ 0</h3>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-end mb-3">
+                <h3 class="text-xs font-bold uppercase tracking-widest opacity-60">My Portfolio</h3>
+            </div>
+            <div id="customer-list" class="space-y-3">
+                </div>
+        </main>
+    </div>
+
+    <div id="modal-backdrop" onclick="closeModal()">
+        <div id="modal-content" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold" id="pay-name">Customer Name</h2>
+                    <p class="text-sm opacity-60 flex items-center gap-2">
+                        <i class="ph-fill ph-map-pin text-purple-500"></i> <span id="pay-plot">Plot P-101</span>
+                    </p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs opacity-50">Total Value</p>
+                    <p class="font-mono font-bold text-lg" id="pay-total-val">₹ 45.0L</p>
+                </div>
+            </div>
+
+            <div class="bg-white/5 rounded-xl p-4 mb-6">
+                <div class="flex justify-between text-xs mb-2">
+                    <span class="opacity-60">Paid Amount</span>
+                    <span class="font-bold text-green-400" id="pay-paid-display">₹ 0</span>
+                </div>
+                <div class="w-full h-2 bg-black rounded-full overflow-hidden mb-2">
+                    <div id="pay-progress-bar" class="h-full bg-green-500 progress-bar" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between text-xs">
+                    <span class="opacity-60">Balance</span>
+                    <span class="font-bold text-red-400" id="pay-balance-display">₹ 45.0L</span>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold uppercase opacity-50 ml-1">Payment Amount (₹)</label>
+                    <input type="number" id="tx-amount" class="w-full bg-white/10 border border-white/10 rounded-xl p-4 text-xl font-bold outline-none focus:border-green-500 text-green-400 mt-1" placeholder="0">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="setTxType('cash')" id="btn-cash" class="py-3 rounded-lg border border-white/10 text-xs font-bold hover:bg-white/10 transition bg-white/20 text-white">CASH</button>
+                    <button onclick="setTxType('online')" id="btn-online" class="py-3 rounded-lg border border-white/10 text-xs font-bold hover:bg-white/10 transition text-gray-400">ONLINE / UPI</button>
+                </div>
+
+                <button onclick="submitPayment()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2">
+                    <i class="ph-bold ph-check-circle text-xl"></i> Record Payment
+                </button>
+            </div>
+
+            <div class="mt-8 pt-6 border-t border-white/10">
+                <h3 class="text-xs font-bold uppercase opacity-50 mb-3">Transaction History</h3>
+                <div id="tx-history-list" class="space-y-2 max-h-40 overflow-y-auto pr-2">
+                    </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, query, where, getDocs, addDoc, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // --- CREDENTIALS ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDHHQXki7JAzDsnsKH6LoLNRYlySfnxW7Y",
+            authDomain: "rajchavin-live.firebaseapp.com",
+            projectId: "rajchavin-live",
+            storageBucket: "rajchavin-live.firebasestorage.app",
+            messagingSenderId: "626552794688",
+            appId: "1:626552794688:web:92988d178bde6c8e6439a5"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // State
+        window.appState = {
+            currentUser: null,
+            assignments: [],
+            transactions: [],
+            activeAssignment: null,
+            txType: 'cash'
+        };
+
+        // --- UTILS ---
+        window.formatVal = (num) => !num ? '0' : Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(num);
+        window.formatCurr = (num) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(num);
+
+        // --- 1. AUTH ---
+        window.handleLogin = async () => {
+            const email = document.getElementById('login-email').value.trim();
+            const pass = document.getElementById('login-pass').value.trim();
+            
+            const q = query(collection(db, "users"), where("email", "==", email));
+            const snapshot = await getDocs(q);
+            let user = null;
+            snapshot.forEach(doc => { if (doc.data().password === pass && doc.data().role === 'banker') user = { id: doc.id, ...doc.data() }; });
+
+            if (user) {
+                window.appState.currentUser = user;
+                document.getElementById('banker-name-display').innerText = user.name;
+                initData();
+                document.getElementById('view-login').style.display = 'none';
+                document.getElementById('view-dashboard').style.display = 'block';
+            } else alert("Invalid Banker Credentials");
+        };
+
+        // --- 2. DATA ---
+        function initData() {
+            // Fetch Assignments for this Banker
+            // Using 'bankerName' as per Admin setup. 
+            const qAssign = query(collection(db, "assignments"), where("bankerName", "==", window.appState.currentUser.name));
+            
+            onSnapshot(qAssign, (snap) => {
+                window.appState.assignments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                fetchTransactions(); // Fetch txns after getting assignments
+            });
+        }
+
+        function fetchTransactions() {
+            // Fetch ALL transactions then filter client side (simpler for prototype than complex queries)
+            onSnapshot(collection(db, "transactions"), (snap) => {
+                const allTx = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                // Filter only for my assignments
+                const myAssignIds = window.appState.assignments.map(a => a.id);
+                window.appState.transactions = allTx.filter(t => myAssignIds.includes(t.assignmentId));
+                
+                renderDashboard();
+                if(window.appState.activeAssignment) openPaymentModal(window.appState.activeAssignment.id); // Refresh modal if open
+            });
+        }
+
+        // --- 3. DASHBOARD ---
+        function renderDashboard() {
+            let totalCollected = 0;
+            let todayCollected = 0;
+            const today = new Date().toDateString();
+
+            const listHtml = window.appState.assignments.map(a => {
+                // Calculate Paid
+                const paid = window.appState.transactions
+                    .filter(t => t.assignmentId === a.id)
+                    .reduce((sum, t) => sum + Number(t.amount), 0);
+                
+                totalCollected += paid;
+                
+                // Today Stats
+                window.appState.transactions
+                    .filter(t => t.assignmentId === a.id && new Date(t.date.seconds*1000).toDateString() === today)
+                    .forEach(t => todayCollected += Number(t.amount));
+
+                const plotVal = Number(a.value);
+                const percent = Math.min(100, (paid / plotVal) * 100);
+
+                return `
+                <div onclick="openPaymentModal('${a.id}')" class="glass-card p-4 cursor-pointer hover:bg-white/5 border-l-4 border-purple-500">
+                    <div class="flex justify-between items-start mb-2">
+                        <div><h3 class="font-bold text-lg">${a.saverName}</h3><p class="text-xs opacity-60 font-mono">${a.plotId} • ${a.layoutName}</p></div>
+                        <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><i class="ph-bold ph-caret-right"></i></div>
+                    </div>
+                    
+                    <div class="flex justify-between text-xs mb-1 mt-3">
+                        <span class="opacity-60">Paid: ₹${window.formatVal(paid)}</span>
+                        <span class="font-bold text-purple-300">${percent.toFixed(0)}%</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-black rounded-full overflow-hidden">
+                        <div class="h-full bg-purple-500" style="width: ${percent}%"></div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            document.getElementById('customer-list').innerHTML = listHtml;
+            document.getElementById('stats-assigned').innerText = window.appState.assignments.length;
+            document.getElementById('stats-total').innerText = window.formatVal(totalCollected);
+            document.getElementById('stats-today').innerText = window.formatCurr(todayCollected);
+        }
+
+        // --- 4. TRANSACTION MODAL ---
+        window.openPaymentModal = (assignId) => {
+            const assign = window.appState.assignments.find(a => a.id === assignId);
+            window.appState.activeAssignment = assign;
+
+            const txs = window.appState.transactions.filter(t => t.assignmentId === assignId).sort((a,b) => b.date - a.date);
+            const paid = txs.reduce((sum, t) => sum + Number(t.amount), 0);
+            const total = Number(assign.value);
+            const balance = total - paid;
+            const percent = (paid/total)*100;
+
+            document.getElementById('pay-name').innerText = assign.saverName;
+            document.getElementById('pay-plot').innerText = `${assign.plotId} (${assign.layoutName})`;
+            document.getElementById('pay-total-val').innerText = window.formatVal(total);
+            document.getElementById('pay-paid-display').innerText = window.formatCurr(paid);
+            document.getElementById('pay-balance-display').innerText = window.formatCurr(balance);
+            document.getElementById('pay-progress-bar').style.width = `${percent}%`;
+
+            // Render History
+            document.getElementById('tx-history-list').innerHTML = txs.map(t => `
+                <div class="flex justify-between items-center bg-white/5 p-2 rounded text-xs">
+                    <div>
+                        <p class="font-bold text-white">₹ ${Number(t.amount).toLocaleString()}</p>
+                        <p class="opacity-50 text-[10px]">${new Date(t.date.seconds*1000).toLocaleDateString()}</p>
+                    </div>
+                    <span class="uppercase font-bold opacity-40 text-[10px] border border-white/10 px-1 rounded">${t.method}</span>
+                </div>
+            `).join('') || '<p class="text-xs opacity-30 text-center italic">No payments yet</p>';
+
+            document.getElementById('modal-backdrop').style.display = 'flex';
+        };
+
+        window.setTxType = (type) => {
+            window.appState.txType = type;
+            const btnCash = document.getElementById('btn-cash');
+            const btnOnline = document.getElementById('btn-online');
+            
+            if(type === 'cash') {
+                btnCash.className = "py-3 rounded-lg border border-purple-500/50 text-xs font-bold bg-purple-600 text-white transition shadow-lg";
+                btnOnline.className = "py-3 rounded-lg border border-white/10 text-xs font-bold hover:bg-white/10 transition text-gray-400";
+            } else {
+                btnCash.className = "py-3 rounded-lg border border-white/10 text-xs font-bold hover:bg-white/10 transition text-gray-400";
+                btnOnline.className = "py-3 rounded-lg border border-purple-500/50 text-xs font-bold bg-purple-600 text-white transition shadow-lg";
+            }
+        };
+
+        window.submitPayment = async () => {
+            const amt = document.getElementById('tx-amount').value;
+            if(!amt || amt <= 0) return alert("Enter valid amount");
+
+            // Add to Firebase
+            await addDoc(collection(db, "transactions"), {
+                assignmentId: window.appState.activeAssignment.id,
+                amount: Number(amt),
+                method: window.appState.txType,
+                date: new Date(),
+                bankerId: window.appState.currentUser.id
+            });
+
+            document.getElementById('tx-amount').value = '';
+            alert("Payment Recorded Successfully!");
+        };
+
+        window.closeModal = () => {
+            document.getElementById('modal-backdrop').style.display = 'none';
+            window.appState.activeAssignment = null;
+        };
+        
+        // Init UI
+        window.setTxType('cash');
+
+    </script>
+</body>
+</html>

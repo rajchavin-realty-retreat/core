@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rajchavin Nexus | Enterprise</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+                extend: { colors: { bg: '#09090b', surface: '#18181b', border: '#27272a', brand: '#3b82f6' } }
+            }
+        }
+        window.router = (v) => { 
+            document.querySelectorAll('.app-view').forEach(e => e.classList.add('hidden')); 
+            const target = document.getElementById(`view-${v}`);
+            if(target) target.classList.remove('hidden');
+            document.getElementById('breadcrumb').innerText = v.charAt(0).toUpperCase() + v.slice(1);
+        };
+    </script>
+
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #18181b; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+        
+        .glass-panel { background: rgba(24, 24, 27, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
+        .glass-sidebar { background: #18181b; border-right: 1px solid #27272a; }
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; opacity: 0; transform: translateY(5px); }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+        
+        .map-poly { stroke-width: 1; transition: 0.2s; cursor: pointer; stroke: rgba(255,255,255,0.2); }
+        .map-poly:hover { stroke: white; stroke-width: 2; filter: brightness(1.2); }
+        .map-poly.active-selected { stroke: #eab308; stroke-width: 3; stroke-dasharray: 4; fill: rgba(234, 179, 8, 0.2); }
+
+        .type-plot { fill: #334155; }
+        .type-road { fill: #27272a; stroke: #3f3f46; }
+        .type-park { fill: #166534; opacity: 0.8; }
+        .type-infra { fill: #3b82f6; opacity: 0.5; }
+
+        .status-sold { fill: #10b981 !important; }
+        .status-booked { fill: #eab308 !important; }
+
+        .cursor-crosshair { cursor: crosshair; }
+        .drawing-poly { fill: rgba(59, 130, 246, 0.2); stroke: #3b82f6; stroke-width: 2; }
+        .proj-line { stroke: #eab308; stroke-width: 1; stroke-dasharray: 4; pointer-events: none; }
+        
+        /* Zoom & Container Styles */
+        #draw-area, #view-map-wrapper { overflow: auto; position: relative; }
+        #canvas-container, #view-map-content { transform-origin: 0 0; transition: transform 0.1s ease-out; }
+        #view-map-content, #canvas-container { min-width: 100%; min-height: 100%; }
+
+        .rapid-popup { 
+            position: fixed; z-index: 100; 
+            background: rgba(15, 15, 18, 0.95); border: 1px solid #3b82f6; 
+            padding: 12px; border-radius: 12px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            display: flex; flex-direction: column; gap: 8px;
+            width: 180px; backdrop-filter: blur(10px);
+            transform: translate(-50%, -100%); pointer-events: auto;
+        }
+        .rapid-popup input { 
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); 
+            color: white; padding: 6px 10px; border-radius: 6px; font-size: 13px; outline: none; 
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .rapid-popup button {
+            background: #3b82f6; color: white; border: none; padding: 6px; border-radius: 6px;
+            font-size: 11px; font-weight: bold; cursor: pointer; text-transform: uppercase;
+        }
+
+        .ss-container { position: relative; width: 100%; margin-bottom: 0; }
+        .ss-input { width: 100%; background: #18181b; border: 1px solid #27272a; padding: 8px 12px; border-radius: 8px; font-size: 12px; outline: none; color: white; cursor: text; }
+        .ss-input:focus { border-color: #3b82f6; }
+        .ss-list { 
+            position: absolute; top: 100%; left: 0; width: 100%; 
+            max-height: 200px; overflow-y: auto; 
+            background: #09090b; border: 1px solid #3b82f6; border-radius: 8px; 
+            z-index: 999; display: none; margin-top: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.8); 
+        }
+        .ss-list.open { display: block; }
+        .ss-option { padding: 10px 12px; font-size: 12px; cursor: pointer; color: #d4d4d8; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .ss-option:hover { background: #3b82f6; color: white; }
+
+        #user-detail-panel {
+            position: fixed; top: 0; right: -500px; width: 450px; height: 100%;
+            background: #09090b; border-left: 1px solid #27272a;
+            z-index: 60; transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex; flex-direction: column;
+        }
+        #user-detail-panel.open { right: 0; }
+        
+        tr.clickable-row:hover td { background: rgba(59, 130, 246, 0.1); cursor: pointer; color: white; }
+        th { font-size: 11px; text-transform: uppercase; color: #71717a; font-weight: 600; padding: 12px 16px; border-bottom: 1px solid #27272a; text-align: left; }
+        td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); color: #e4e4e7; font-size: 13px; }
+        
+        .milestone-check { appearance: none; width: 16px; height: 16px; border: 2px solid #52525b; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .milestone-check.checked { background: #10b981; border-color: #10b981; }
+        .milestone-check.checked::after { content: '✓'; color: white; font-size: 10px; font-weight: bold; }
+    </style>
+</head>
+<body class="bg-bg text-gray-200 h-screen w-full flex overflow-hidden selection:bg-brand/30">
+
+    <div id="login-overlay" class="fixed inset-0 z-50 flex items-center justify-center bg-bg">
+        <div class="glass-panel w-96 p-8 rounded-2xl shadow-2xl flex flex-col items-center border border-white/10">
+            <h1 class="text-xl font-bold text-white mb-1">Rajchavin Nexus</h1>
+            <p class="text-xs text-gray-500 font-mono mb-8">SystemRoot</p>
+            <button onclick="enterSystem()" class="w-full bg-white text-black font-bold py-2.5 rounded-lg text-sm transition">Unlock Console</button>
+        </div>
+    </div>
+
+    <div id="user-detail-panel" class="shadow-2xl">
+        <div class="p-6 border-b border-white/10 flex justify-between items-center bg-surface">
+            <div><span class="text-[10px] font-bold text-brand uppercase" id="detail-role">ROLE</span><h2 class="text-xl font-bold text-white" id="detail-name">User Name</h2></div>
+            <button onclick="closeUserDetail()" class="text-gray-400 hover:text-white"><i class="ph-bold ph-x text-xl"></i></button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+            <div id="detail-stats-grid" class="grid grid-cols-2 gap-3"></div>
+            <div><h3 class="text-xs font-bold text-gray-500 uppercase mb-3" id="detail-list-title">Associated Assets</h3><div id="detail-list-content" class="space-y-2"></div></div>
+            <div class="border-t border-white/10 pt-6"><h3 class="text-xs font-bold text-gray-500 uppercase mb-3">Admin Overrides</h3><div class="space-y-3">
+                <div><label class="text-[10px] text-gray-500">Full Name</label><input id="edit-u-name" class="w-full bg-surface border border-white/10 rounded px-3 py-2 text-sm"></div>
+                <div><label class="text-[10px] text-gray-500">Contact</label><input id="edit-u-contact" class="w-full bg-surface border border-white/10 rounded px-3 py-2 text-sm"></div>
+                <div><label class="text-[10px] text-gray-500">Password</label><input id="edit-u-pass" class="w-full bg-surface border border-white/10 rounded px-3 py-2 text-sm font-mono text-brand"></div>
+                <button onclick="saveUserEdits()" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded text-sm transition">Save Changes</button>
+            </div></div>
+        </div>
+    </div>
+
+    <div id="modal-milestones" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 hidden">
+        <div class="glass-panel w-[400px] p-6 rounded-xl border border-white/10 flex flex-col max-h-[80vh]">
+            <div class="flex justify-between items-center mb-4"><h2 class="text-lg font-bold">Project Milestones</h2><button onclick="document.getElementById('modal-milestones').classList.add('hidden')" class="text-gray-500"><i class="ph-bold ph-x"></i></button></div>
+            <div class="flex gap-2 mb-4"><input type="text" id="ms-input" placeholder="New Milestone Name..." class="flex-1 bg-surface border border-white/10 rounded px-3 py-2 text-sm outline-none"><button onclick="addMilestone()" class="bg-brand text-white px-3 rounded font-bold text-sm">+</button></div>
+            <div class="w-full bg-white/5 h-1.5 rounded-full mb-4 overflow-hidden"><div id="ms-progress" class="bg-green-500 h-full w-0 transition-all duration-500"></div></div>
+            <div id="ms-list" class="flex-1 overflow-y-auto space-y-2"></div>
+        </div>
+    </div>
+
+    <div id="modal-layout-settings" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 hidden">
+        <div class="glass-panel w-[500px] p-6 rounded-xl border border-white/10">
+            <div class="flex justify-between items-center mb-6"><h2 class="text-lg font-bold">Layout Settings</h2><button onclick="closeLayoutSettings()" class="text-gray-500"><i class="ph-bold ph-x"></i></button></div>
+            <div class="mb-6">
+                <label class="text-xs font-bold text-gray-500 uppercase block mb-2">Project Documents</label>
+                <div class="bg-black/30 p-3 rounded-lg border border-white/5 mb-3">
+                    <div class="flex gap-2 mb-2"><input type="text" id="ld-name" placeholder="Doc Name" class="flex-1 bg-surface border border-border rounded-lg px-3 py-2 text-sm outline-none"><button class="bg-white/10 px-3 rounded-lg text-white"><i class="ph-bold ph-upload-simple"></i></button></div>
+                    <button onclick="addLayoutDoc()" class="w-full bg-brand/20 text-brand text-xs font-bold py-2 rounded">+ Add Document</button>
+                </div>
+                <div id="layout-doc-list" class="space-y-2 max-h-32 overflow-y-auto"></div>
+            </div>
+            <div class="pt-6 border-t border-white/10"><button onclick="deleteCurrentLayout()" class="w-full border border-red-500/30 text-red-500 font-bold py-2.5 rounded-lg text-sm transition"><i class="ph-bold ph-trash"></i> Delete This Layout</button></div>
+        </div>
+    </div>
+
+    <div id="rapid-popup" class="rapid-popup hidden">
+        <div class="flex justify-between items-center text-[10px] font-bold text-gray-400 mb-1 px-1"><span>PLOT DETAILS</span><span class="text-brand">ENTER ↵</span></div>
+        <input type="text" id="rapid-id" placeholder="ID"><input type="number" id="rapid-price" placeholder="Price">
+        <div class="grid grid-cols-2 gap-2"><button onclick="clearPoints()" class="bg-white/10 text-gray-400">Cancel</button><button onclick="confirmRapidSave()">Save</button></div>
+    </div>
+
+    <div id="modal-new-layout" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 hidden">
+        <div class="glass-panel w-96 p-6 rounded-xl border border-white/10">
+            <h2 class="text-lg font-bold mb-4">Initialize New Layout</h2>
+            <div class="space-y-4">
+                <div><label class="text-xs font-bold text-gray-500 uppercase">Layout Name</label><input type="text" id="nl-name" class="w-full bg-surface border border-border rounded-lg p-2.5 text-sm outline-none"></div>
+                <div><label class="text-xs font-bold text-gray-500 uppercase">Assign Developer</label><select id="nl-dev" class="hidden-select"></select></div>
+                <div class="flex gap-2 pt-2"><button onclick="document.getElementById('modal-new-layout').classList.add('hidden')" class="flex-1 bg-white/5 py-2 rounded-lg text-sm">Cancel</button><button onclick="confirmCreateLayout()" class="flex-1 bg-brand text-white font-bold py-2 rounded-lg text-sm">Create</button></div>
+            </div>
+        </div>
+    </div>
+
+    <aside class="w-64 glass-sidebar flex flex-col justify-between hidden" id="sidebar">
+        <div>
+            <div class="h-16 flex items-center px-6 border-b border-border gap-3"><div class="w-6 h-6 bg-brand rounded flex items-center justify-center text-white font-bold text-xs">R</div><span class="font-bold text-sm tracking-wide">RAJCHAVIN <span class="text-gray-600 font-normal">OS</span></span></div>
+            <nav class="p-4 space-y-1">
+                <button onclick="router('users')" id="nav-users" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition"><i class="ph-duotone ph-users text-lg"></i> User Factory</button>
+                <button onclick="router('layouts')" id="nav-layouts" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition"><i class="ph-duotone ph-map-trifold text-lg"></i> Layout Architect</button>
+                <button onclick="router('assign')" id="nav-assign" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition"><i class="ph-duotone ph-git-merge text-lg"></i> Assignment Nexus</button>
+            </nav>
+        </div>
+    </aside>
+
+    <main class="flex-1 bg-bg relative overflow-hidden hidden" id="main-content">
+        <header class="h-16 border-b border-border flex justify-between items-center px-8 bg-bg/80 backdrop-blur z-20"><div class="flex items-center gap-2 text-sm text-gray-500"><i class="ph-bold ph-house"></i><span>/</span><span id="breadcrumb" class="text-white font-medium">Dashboard</span></div><div class="flex items-center gap-2 bg-surface border border-border px-3 py-1.5 rounded-md text-xs text-gray-400"><i class="ph-bold ph-clock"></i> <span id="clock">--:--</span></div></header>
+
+        <div id="view-users" class="app-view absolute inset-0 top-16 p-8 flex gap-8">
+            <div class="w-80 flex-shrink-0 fade-in">
+                <div class="glass-panel p-6 rounded-xl space-y-6 sticky top-0 overflow-y-auto max-h-full">
+                    <h2 class="text-lg font-bold text-white">Create Entity</h2>
+                    <div class="grid grid-cols-3 bg-black/40 p-1 rounded-lg border border-white/5"><button onclick="setRole('developer')" class="role-btn active px-3 py-1.5 text-[10px] font-bold rounded bg-brand text-white">DEV</button><button onclick="setRole('banker')" class="role-btn px-3 py-1.5 text-[10px] font-bold rounded text-gray-500">BANK</button><button onclick="setRole('saver')" class="role-btn px-3 py-1.5 text-[10px] font-bold rounded text-gray-500">USER</button></div>
+                    <div class="space-y-3"><input type="text" id="u-name" placeholder="Full Name" class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm outline-none"><input type="email" id="u-email" placeholder="Email" class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm outline-none">
+                    <div class="relative"><input type="text" id="u-password" placeholder="Set Password" class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm outline-none font-mono text-brand"><button onclick="generatePass()" class="absolute right-2 top-2 text-[10px] font-bold bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded text-gray-400 hover:text-white transition">GENERATE</button></div>
+                    <input type="text" id="u-contact" placeholder="Phone" class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm outline-none"></div>
+                    <div class="bg-black/30 p-3 rounded-lg border border-white/5"><label class="text-[10px] font-bold text-gray-500 uppercase mb-2 block">Upload Documents</label><div class="flex gap-2 mb-2"><input type="text" id="u-doc-name" placeholder="Doc Name" class="flex-1 bg-surface border border-border rounded px-2 py-1.5 text-xs outline-none"><button class="bg-white/10 px-2 rounded text-white"><i class="ph-bold ph-upload-simple"></i></button></div><button onclick="addUserDoc()" class="w-full bg-brand/20 text-brand text-[10px] font-bold py-1.5 rounded">Add to List</button><div id="u-doc-list-preview" class="mt-2 space-y-1"></div></div>
+                    <button onclick="createUser()" class="w-full bg-white text-black font-bold py-2 rounded-lg text-sm">Create User</button>
+                </div>
+            </div>
+            <div class="flex-1 glass-panel rounded-xl overflow-hidden flex flex-col fade-in">
+                <div class="p-4 border-b border-border bg-surface/50 flex justify-between items-center">
+                    <h3 class="text-sm font-bold text-gray-300">System Directory</h3>
+                    <div class="relative w-64"><i class="ph-bold ph-magnifying-glass absolute left-3 top-2.5 text-gray-500"></i><input type="text" onkeyup="filterUsers(this.value)" placeholder="Search users, emails..." class="w-full bg-black/30 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-xs outline-none focus:border-brand"></div>
+                </div>
+                <div class="flex-1 overflow-auto"><table class="w-full"><thead><tr class="bg-surface/80"><th>Name</th><th>Role</th><th>Credentials</th><th>Stats</th><th>Status</th></tr></thead><tbody id="user-table-body"></tbody></table></div>
+            </div>
+        </div>
+
+        <div id="view-layouts" class="app-view absolute inset-0 top-16 p-8 hidden flex-col h-full fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-2xl font-bold text-white">Blueprint Engine</h2><div class="h-6 w-px bg-white/20"></div>
+                    <div class="w-48"><select id="layout-filter-dev" onchange="updateLayoutListByDev()" class="hidden-select"></select></div>
+                    <div class="w-48"><select id="active-layout-select" onchange="switchLayout(this.value)" class="hidden-select"></select></div>
+                    <button onclick="openMilestonesModal()" class="text-gray-400 hover:text-white px-2"><i class="ph-bold ph-flag-banner text-lg"></i></button>
+                    <button onclick="openLayoutSettings()" class="text-gray-400 hover:text-white px-2"><i class="ph-bold ph-gear text-lg"></i></button><button onclick="openNewLayoutModal()" class="text-xs bg-brand px-3 py-1.5 rounded text-white font-bold flex items-center gap-2"><i class="ph-bold ph-plus"></i> New</button>
+                </div>
+                <div class="flex bg-surface p-1 rounded-lg border border-border"><button onclick="toggleLayoutMode('view')" id="mode-view" class="px-4 py-1.5 text-xs font-bold rounded bg-brand text-white">View Mode</button><button onclick="toggleLayoutMode('edit')" id="mode-edit" class="px-4 py-1.5 text-xs font-bold rounded text-gray-400">Drawing Mode</button></div>
+            </div>
+            
+            <div id="layout-view-panel" class="flex-1 flex gap-8 min-h-0 relative">
+                <div class="flex-1 glass-panel rounded-xl flex flex-col bg-[#121214] overflow-hidden relative">
+                    <div id="view-map-wrapper" class="w-full h-full relative cursor-move">
+                        <div id="view-map-content" class="absolute top-0 left-0 origin-top-left">
+                            <img id="view-bg-img" src="" class="absolute top-0 left-0 hidden pointer-events-none opacity-50">
+                            <div id="view-map-container" class="absolute top-0 left-0 w-full h-full"></div>
+                        </div>
+                    </div>
+                    <div class="absolute bottom-4 right-4 flex gap-2 z-10">
+                        <button onclick="changeZoom(0.1)" class="bg-surface border border-white/10 p-2 rounded-lg hover:bg-white/10 text-white shadow-lg"><i class="ph-bold ph-plus"></i></button>
+                        <button onclick="changeZoom(-0.1)" class="bg-surface border border-white/10 p-2 rounded-lg hover:bg-white/10 text-white shadow-lg"><i class="ph-bold ph-minus"></i></button>
+                        <button onclick="resetZoom()" class="bg-surface border border-white/10 px-3 rounded-lg hover:bg-white/10 text-white text-xs font-bold shadow-lg">RESET</button>
+                    </div>
+                </div>
+                
+                <div class="w-80 glass-panel rounded-xl p-6 flex flex-col border-l border-border bg-surface">
+                    <div id="inspector-content" class="hidden flex-col h-full"><div class="mb-4 flex justify-between items-start"><div><span class="text-[10px] font-mono text-brand bg-brand/10 px-2 py-1 rounded">SELECTED</span></div><button onclick="deleteElement()" class="bg-red-500/10 text-red-500 p-2 rounded hover:bg-red-500 hover:text-white transition"><i class="ph-bold ph-trash"></i></button></div><div id="insp-buyable" class="space-y-4 flex-1"><div><label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">ID</label><input type="text" id="insp-id" class="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-lg font-bold text-white outline-none focus:border-brand"></div><div><label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Price</label><input type="number" id="insp-price" class="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm text-green-400 outline-none focus:border-green-500"></div><div class="pt-4 border-t border-white/10"><button onclick="saveInspectorChanges()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded-lg text-sm mb-4">Save Changes</button><label class="text-[10px] uppercase font-bold text-gray-500 mb-2 block">Status Override</label><div class="space-y-2"><button onclick="updateStatus('sold')" class="w-full py-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 rounded text-xs font-bold hover:bg-emerald-500/20">Mark SOLD</button><button onclick="updateStatus('booked')" class="w-full py-1.5 bg-amber-500/10 text-amber-500 border border-amber-500/30 rounded text-xs font-bold hover:bg-amber-500/20">Mark BOOKED</button><button onclick="updateStatus('open')" class="w-full py-1.5 bg-gray-700/30 text-gray-400 border border-gray-600 rounded text-xs font-bold hover:bg-gray-700/50">Reset OPEN</button></div></div></div><div id="insp-nonbuyable" class="hidden flex-1 text-center opacity-50 flex flex-col items-center justify-center"><i class="ph-duotone ph-cone text-4xl mb-2"></i><p class="text-xs">Infrastructure</p></div></div>
+                    <div id="inspector-empty" class="flex-1 flex items-center justify-center text-center opacity-40"><p class="text-sm">Select an element</p></div>
+                </div>
+            </div>
+            
+            <div id="layout-edit-panel" class="flex-1 flex gap-8 min-h-0 hidden relative">
+                <div class="flex-1 relative bg-[#101010] flex items-center justify-center overflow-auto cursor-crosshair rounded-xl border border-dashed border-white/10 select-none" id="draw-area">
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none" id="draw-placeholder"><span class="text-xs text-gray-600">Upload Blueprint First</span></div>
+                    <div id="canvas-container" class="relative shadow-2xl origin-top-left">
+                        <img id="blueprint-img" src="" class="max-w-none opacity-50 pointer-events-none hidden absolute top-0 left-0">
+                        <svg id="draw-layer" class="absolute inset-0 w-full h-full" viewBox="0 0 2000 2000" onmousedown="onMouseDown(evt)" onmousemove="onMouseMove(evt)" onmouseup="onMouseUp(evt)" onclick="onClick(evt)">
+                            <g id="editor-ghost-layer"></g>
+                            <rect id="tool-rect" x="0" y="0" width="0" height="0" class="drawing-poly hidden" />
+                            <line id="tool-proj" x1="0" y1="0" x2="0" y2="0" class="proj-line hidden" />
+                            <polyline id="tool-poly-line" points="" class="drawing-poly hidden" />
+                            <g id="tool-points"></g>
+                        </svg>
+                    </div>
+                </div>
+                <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                    <button onclick="changeZoom(0.1)" class="bg-surface border border-white/10 p-2 rounded-lg hover:bg-white/10 text-white shadow-lg"><i class="ph-bold ph-plus"></i></button>
+                    <button onclick="changeZoom(-0.1)" class="bg-surface border border-white/10 p-2 rounded-lg hover:bg-white/10 text-white shadow-lg"><i class="ph-bold ph-minus"></i></button>
+                    <button onclick="resetZoom()" class="bg-surface border border-white/10 px-3 rounded-lg hover:bg-white/10 text-white text-xs font-bold shadow-lg">RESET</button>
+                </div>
+
+                <div class="w-72 glass-panel p-6 flex flex-col border-l border-border bg-surface">
+                    <div class="mb-6"><label class="text-[10px] font-bold text-gray-500 uppercase mb-2 block">1. Background</label><div class="border-2 border-dashed border-gray-700 rounded-xl h-16 flex flex-col items-center justify-center text-gray-500 hover:border-brand cursor-pointer" onclick="document.getElementById('file-upload').click()"><i class="ph-bold ph-upload-simple text-xl"></i></div><input type="file" id="file-upload" class="hidden" onchange="loadImage(event)"></div>
+                    <div class="mb-6"><label class="text-[10px] font-bold text-gray-500 uppercase mb-2 block">2. Type</label><div class="grid grid-cols-2 gap-2 mb-4 bg-black/40 p-1 rounded-lg"><button onclick="setDrawType('plot')" class="py-1 text-[10px] font-bold rounded bg-brand text-white" id="btn-type-plot">PLOT</button><button onclick="setDrawType('road')" class="py-1 text-[10px] font-bold rounded text-gray-500" id="btn-type-road">ROAD</button><button onclick="setDrawType('park')" class="py-1 text-[10px] font-bold rounded text-gray-500" id="btn-type-park">PARK</button><button onclick="setDrawType('infra')" class="py-1 text-[10px] font-bold rounded text-gray-500" id="btn-type-infra">INFRA</button></div><div id="manual-data-panel"><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Current / Next Shape</label><input type="text" id="new-plot-id" placeholder="ID" class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-2 outline-none"><div id="plot-fields"><input type="number" id="new-plot-price" placeholder="Price" class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm outline-none"></div><button id="btn-update-shape" onclick="saveShape()" class="hidden w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded-lg text-sm mt-2">Update Selected</button></div></div>
+                    <div class="mb-4"><label class="text-[10px] font-bold text-gray-500 uppercase mb-2 block">3. Tool</label><div class="grid grid-cols-3 gap-1 bg-black/40 p-1 rounded-lg"><button onclick="setTool('box')" id="btn-tool-box" class="py-2 text-[10px] font-bold rounded bg-brand text-white"><i class="ph-bold ph-bounding-box"></i></button><button onclick="setTool('pen')" id="btn-tool-pen" class="py-2 text-[10px] font-bold rounded text-gray-500"><i class="ph-bold ph-pen-nib"></i></button><button onclick="setTool('free')" id="btn-tool-free" class="py-2 text-[10px] font-bold rounded text-gray-500"><i class="ph-bold ph-scribble-loop"></i></button></div></div>
+                    <div class="space-y-2 mt-auto"><button id="btn-save-shape" onclick="saveShape()" class="w-full bg-brand text-white font-bold py-2 rounded-lg text-sm">Save New Shape</button><button onclick="clearPoints()" class="w-full bg-white/5 text-gray-400 font-bold py-2 rounded-lg text-sm">Reset</button></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-assign" class="app-view absolute inset-0 top-16 p-8 hidden overflow-y-auto fade-in">
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                <div class="xl:col-span-1 glass-panel p-6 rounded-xl h-fit sticky top-0">
+                    <h2 class="text-lg font-bold mb-6">Create Assignment</h2>
+                    <div class="space-y-4">
+                        <label class="text-[10px] font-bold text-gray-500 uppercase block">1. Select Developer</label><select id="sel-nexus-dev" onchange="updateNexusLayoutsByDev()" class="hidden-select"></select>
+                        <label class="text-[10px] font-bold text-gray-500 uppercase block">2. Select Project</label><select id="sel-nexus-layout" onchange="updateNexusPlots()" class="hidden-select"></select>
+                        <label class="text-[10px] font-bold text-gray-500 uppercase block">3. Customer</label><select id="sel-saver" class="hidden-select"></select>
+                        <label class="text-[10px] font-bold text-gray-500 uppercase block">4. Plot</label><select id="sel-plot" class="hidden-select"></select>
+                        <label class="text-[10px] font-bold text-gray-500 uppercase block">5. Banker</label><select id="sel-banker" class="hidden-select"></select>
+                        <button onclick="createAssignment()" class="w-full bg-brand hover:bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg transition mt-4">Link & Book</button>
+                    </div>
+                </div>
+                <div class="xl:col-span-2 glass-panel rounded-xl overflow-hidden flex flex-col">
+                    <div class="p-4 border-b border-border bg-surface/50 flex justify-between items-center"><h3 class="text-sm font-bold text-gray-300">Active Chains</h3><div class="relative w-64"><i class="ph-bold ph-magnifying-glass absolute left-3 top-2.5 text-gray-500"></i><input type="text" onkeyup="filterAssignments(this.value)" placeholder="Search layout, customer..." class="w-full bg-black/30 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-xs outline-none focus:border-brand"></div></div>
+                    <table class="w-full"><thead><tr class="bg-surface/80"><th>Layout</th><th>Customer</th><th>Plot</th><th>Value</th><th>Banker</th><th>Status</th></tr></thead><tbody id="assign-table-body"></tbody></table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // --- 🔴 PASTE KEYS HERE 🔴 ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDHHQXki7JAzDsnsKH6LoLNRYlySfnxW7Y",
+            authDomain: "rajchavin-live.firebaseapp.com",
+            projectId: "rajchavin-live",
+            storageBucket: "rajchavin-live.firebasestorage.app",
+            messagingSenderId: "626552794688",
+            appId: "1:626552794688:web:92988d178bde6c8e6439a5"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Global State
+        window.appState = {
+            users: [], layouts: [], assignments: [],
+            currentLayoutId: null, drawType: 'plot', 
+            localBlueprints: {}, selectedElementId: null, tempDocs: [],
+            activeTool: 'box', isDrawing: false, points: [], startPt: null, tempBox: null, lastId: 100, lastPrice: '',
+            selectedUserId: null, searchUser: '', searchAssign: '', currentRole: 'developer',
+            zoom: 1.0, currentMapWidth: 2000, currentMapHeight: 2000
+        };
+
+        // --- SEARCHABLE SELECT LOGIC ---
+        function createSearchableSelect(id, placeholder) {
+            const select = document.getElementById(id);
+            if(!select || select.nextElementSibling?.classList.contains('ss-container')) return; 
+            
+            select.style.display = 'none'; 
+            const wrapper = document.createElement('div'); wrapper.className = 'ss-container';
+            const input = document.createElement('input'); input.type = 'text'; input.className = 'ss-input'; input.placeholder = placeholder;
+            const list = document.createElement('div'); list.className = 'ss-list';
+            
+            const populate = () => {
+                list.innerHTML = '';
+                Array.from(select.options).forEach(opt => {
+                    if(opt.value === "" && opt.innerText.includes("Select")) return;
+                    const item = document.createElement('div');
+                    item.className = 'ss-option';
+                    item.innerText = opt.innerText;
+                    item.onmousedown = (e) => {
+                        e.preventDefault(); 
+                        input.value = opt.innerText;
+                        select.value = opt.value;
+                        select.dispatchEvent(new Event('change'));
+                        list.classList.remove('open');
+                    };
+                    list.appendChild(item);
+                });
+            };
+
+            input.onfocus = () => { populate(); list.classList.add('open'); };
+            input.onblur = () => setTimeout(() => list.classList.remove('open'), 200);
+            input.onkeyup = (e) => {
+                const term = e.target.value.toLowerCase();
+                Array.from(list.children).forEach(item => {
+                    item.style.display = item.innerText.toLowerCase().includes(term) ? 'block' : 'none';
+                });
+            };
+
+            wrapper.appendChild(input); wrapper.appendChild(list);
+            select.parentNode.insertBefore(wrapper, select.nextSibling);
+            
+            const observer = new MutationObserver(() => { input.value = ''; populate(); });
+            observer.observe(select, {childList: true});
+        }
+
+        function initSearchables() {
+            createSearchableSelect('nl-dev', 'Search Developer...');
+            createSearchableSelect('active-layout-select', 'Switch Project...');
+            createSearchableSelect('layout-filter-dev', 'Filter by Dev...'); 
+            createSearchableSelect('sel-nexus-dev', 'Search Developer...');
+            createSearchableSelect('sel-nexus-layout', 'Search Project...');
+            createSearchableSelect('sel-saver', 'Search Customer...');
+            createSearchableSelect('sel-banker', 'Search Banker...');
+            createSearchableSelect('sel-plot', 'Search Plot...');
+        }
+
+        // --- APP INITIALIZATION ---
+        window.enterSystem = () => {
+            document.getElementById('login-overlay').classList.add('hidden');
+            document.getElementById('sidebar').classList.remove('hidden');
+            document.getElementById('main-content').classList.remove('hidden');
+            setInterval(() => document.getElementById('clock').innerText = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}), 1000);
+            startListeners();
+            window.router('users');
+            document.addEventListener('keydown', (e) => { if(e.key === 'Escape') window.clearPoints(); });
+            setTimeout(initSearchables, 1000);
+        };
+
+        function startListeners() {
+            onSnapshot(collection(db, "users"), snap => {
+                window.appState.users = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                window.renderUserList(); 
+                window.populateNexusDevs(); 
+                window.populateLayoutDevs();
+            });
+            onSnapshot(collection(db, "layouts"), snap => {
+                window.appState.layouts = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                if(!document.getElementById('modal-milestones').classList.contains('hidden')) window.renderMilestones();
+                window.updateLayoutListByDev(); 
+                if(window.appState.currentLayoutId) window.switchLayout(window.appState.currentLayoutId);
+                window.updateNexusLayoutsByDev(); 
+            });
+            onSnapshot(collection(db, "assignments"), snap => {
+                window.appState.assignments = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                window.renderAssignments();
+            });
+        }
+
+        // --- ZOOM LOGIC ---
+        window.changeZoom = (delta) => {
+            const newZoom = Math.max(0.1, Math.min(5.0, window.appState.zoom + delta));
+            window.appState.zoom = newZoom;
+            window.applyZoom();
+        };
+
+        window.resetZoom = () => {
+            window.appState.zoom = 1.0;
+            window.applyZoom();
+        };
+
+        window.applyZoom = () => {
+            const scale = window.appState.zoom;
+            const editCont = document.getElementById('canvas-container');
+            if(editCont) editCont.style.transform = `scale(${scale})`;
+            const viewCont = document.getElementById('view-map-content');
+            if(viewCont) viewCont.style.transform = `scale(${scale})`;
+        };
+
+        // --- LAYOUT LOGIC ---
+        window.confirmCreateLayout = async () => {
+            const name = document.getElementById('nl-name').value;
+            const devId = document.getElementById('nl-dev').value;
+            if(!name || !devId) return alert("Fill all fields");
+            try {
+                const docRef = await addDoc(collection(db, "layouts"), {
+                    name, devId, elements: [], milestones: [], docs: [], bgImage: null, createdAt: new Date()
+                });
+                document.getElementById('modal-new-layout').classList.add('hidden');
+                window.appState.currentLayoutId = docRef.id;
+                alert("Layout Created");
+            } catch(e) { alert("Error"); }
+        };
+
+        window.deleteCurrentLayout = async () => {
+            if (!window.appState.currentLayoutId) return alert("No layout selected.");
+            if (!confirm("Permanently delete this layout and all plot data?")) return;
+            try {
+                await deleteDoc(doc(db, "layouts", window.appState.currentLayoutId));
+                alert("Layout deleted.");
+                window.closeLayoutSettings();
+                window.appState.currentLayoutId = null;
+                document.getElementById('view-map-container').innerHTML = '';
+                document.getElementById('blueprint-img').classList.add('hidden');
+                document.getElementById('view-bg-img').classList.add('hidden');
+                document.getElementById('draw-placeholder').classList.remove('hidden');
+                window.updateLayoutListByDev();
+            } catch (e) { alert("Error deleting layout"); }
+        };
+
+        // --- USER LOGIC ---
+        window.createUser = async () => {
+            const name = document.getElementById('u-name').value;
+            const email = document.getElementById('u-email').value;
+            const password = document.getElementById('u-password').value;
+            const contact = document.getElementById('u-contact').value;
+            if(!name || !email || !password) return alert("Fill required fields");
+            try {
+                await addDoc(collection(db, "users"), {
+                    name, email, password, contact, role: window.appState.currentRole, docs: window.appState.tempDocs
+                });
+                alert("User Created");
+                window.appState.tempDocs = [];
+                document.getElementById('u-doc-list-preview').innerHTML = '';
+                ['u-name','u-email','u-password','u-contact'].forEach(id => document.getElementById(id).value = '');
+            } catch(e) { alert("Error creating user"); }
+        };
+
+        window.renderUserList = () => { 
+            const filtered = window.appState.users.filter(u => u.name.toLowerCase().includes(window.appState.searchUser) || u.email.toLowerCase().includes(window.appState.searchUser));
+            document.getElementById('user-table-body').innerHTML = filtered.map(u => `
+                <tr class="clickable-row transition" onclick="openUserDetail('${u.id}')">
+                    <td><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center font-bold text-xs text-white">${u.name.charAt(0)}</div><span>${u.name}</span></div></td>
+                    <td><span class="text-[10px] uppercase font-bold px-2 py-1 rounded bg-white/10 text-gray-300">${u.role}</span></td>
+                    <td class="text-xs text-gray-400"><div>${u.email}</div><div class="font-mono text-[10px] text-brand opacity-80">Pass: ${u.password}</div></td>
+                    <td><span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded">${u.role === 'developer' ? window.appState.layouts.filter(l=>l.devId===u.id).length + ' Proj' : window.appState.assignments.filter(a=>a.saverName===u.name).length + ' Plots'}</span></td>
+                    <td><span class="text-green-500 text-xs">● Active</span></td>
+                </tr>`).join(''); 
+        };
+
+        // --- MILESTONE LOGIC ---
+        window.renderMilestones = () => {
+            const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+            const list = document.getElementById('ms-list');
+            const milestones = layout ? (layout.milestones || []) : [];
+            const completed = milestones.filter(m => m.done).length;
+            const pct = milestones.length === 0 ? 0 : (completed/milestones.length)*100;
+            document.getElementById('ms-progress').style.width = `${pct}%`;
+            list.innerHTML = milestones.map((m, idx) => `
+                <div class="flex items-center justify-between bg-white/5 p-3 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <div onclick="toggleMilestone(${idx})" class="milestone-check ${m.done ? 'checked' : ''}"></div>
+                        <span class="${m.done ? 'line-through text-gray-500' : ''}">${m.title}</span>
+                    </div>
+                    <button onclick="deleteMilestone(${idx})" class="text-gray-500 hover:text-red-500"><i class="ph-bold ph-trash"></i></button>
+                </div>`).join('');
+        };
+
+        window.addMilestone = async () => {
+            const title = document.getElementById('ms-input').value;
+            if(!title) return;
+            const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+            const updated = [...(layout.milestones || []), { title, done: false }];
+            await updateDoc(doc(db, "layouts", window.appState.currentLayoutId), { milestones: updated });
+            document.getElementById('ms-input').value = '';
+        };
+
+        window.toggleMilestone = async (idx) => {
+            const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+            const ms = [...layout.milestones];
+            ms[idx].done = !ms[idx].done;
+            await updateDoc(doc(db, "layouts", window.appState.currentLayoutId), { milestones: ms });
+        };
+
+        window.deleteMilestone = async (idx) => {
+            const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+            const ms = layout.milestones.filter((_, i) => i !== idx);
+            await updateDoc(doc(db, "layouts", window.appState.currentLayoutId), { milestones: ms });
+        };
+
+        // --- MAPPING ENGINE ---
+        window.switchLayout = (id) => { 
+            window.appState.currentLayoutId = id; 
+            const l = window.appState.layouts.find(x => x.id === id);
+            
+            // Reset Views
+            const imgEdit = document.getElementById('blueprint-img');
+            const imgView = document.getElementById('view-bg-img');
+            
+            // Check for image in DB first, then local
+            const bgSrc = l?.bgImage || window.appState.localBlueprints[id];
+
+            // If we have saved dimensions, use them (fallback to 2000 if not found)
+            if(l && l.width && l.height) {
+                window.updateCanvasDimensions(l.width, l.height);
+            }
+
+            if (bgSrc) { 
+                imgEdit.src = bgSrc; 
+                imgEdit.classList.remove('hidden'); 
+                imgView.src = bgSrc;
+                imgView.classList.remove('hidden');
+                document.getElementById('draw-placeholder').classList.add('hidden');
+                
+                // Ensure dimensions are correct if not in DB yet (local load case)
+                if(!l.width) {
+                    const i = new Image(); 
+                    i.src = bgSrc;
+                    i.onload = () => window.updateCanvasDimensions(i.naturalWidth, i.naturalHeight);
+                }
+            } else {
+                imgEdit.classList.add('hidden');
+                imgView.classList.add('hidden');
+                document.getElementById('draw-placeholder').classList.remove('hidden');
+            }
+            window.resetZoom();
+            window.renderMap(); window.renderGhostLayer(); 
+        };
+
+        window.renderMap = () => {
+            const l = window.appState.layouts.find(x => x.id === window.appState.currentLayoutId);
+            if(!l) return;
+            const w = window.appState.currentMapWidth;
+            const h = window.appState.currentMapHeight;
+            let svg = `<svg viewBox="0 0 ${w} ${h}" class="w-full h-full">`;
+            l.elements.forEach(e => {
+                const isSel = e.id === window.appState.selectedElementId;
+                svg += `<polygon points="${e.points}" class="map-poly type-${e.type} ${isSel ? 'active-selected' : ''} status-${e.status || 'open'}" onclick="inspectElement('${e.id}')"/>`;
+            });
+            document.getElementById('view-map-container').innerHTML = svg + `</svg>`;
+        };
+
+        window.renderGhostLayer = () => {
+            const l = window.appState.layouts.find(x => x.id === window.appState.currentLayoutId);
+            document.getElementById('editor-ghost-layer').innerHTML = l ? l.elements.map(e => `<polygon points="${e.points}" fill="rgba(255,255,255,0.1)" stroke="white" stroke-width="0.5" onclick="inspectElementEdit('${e.id}')" />`).join('') : '';
+        };
+
+        // --- DRAWING LOGIC ---
+        window.getSvgPoint = (evt) => {
+            const svg = document.getElementById('draw-layer');
+            const pt = svg.createSVGPoint();
+            pt.x = evt.clientX; pt.y = evt.clientY;
+            return pt.matrixTransform(svg.getScreenCTM().inverse());
+        };
+
+        window.onMouseDown = (e) => {
+            if(document.getElementById('layout-edit-panel').classList.contains('hidden')) return;
+            window.appState.isDrawing = true;
+            window.appState.startPt = window.getSvgPoint(e);
+            if(window.appState.activeTool === 'free') window.appState.points = [window.appState.startPt];
+        };
+
+        window.onMouseMove = (e) => {
+            if(!window.appState.isDrawing) return;
+            const curr = window.getSvgPoint(e);
+            if(window.appState.activeTool === 'box') {
+                const x = Math.min(window.appState.startPt.x, curr.x);
+                const y = Math.min(window.appState.startPt.y, curr.y);
+                const w = Math.abs(window.appState.startPt.x - curr.x);
+                const h = Math.abs(window.appState.startPt.y - curr.y);
+                const rect = document.getElementById('tool-rect');
+                rect.setAttribute('x', x); rect.setAttribute('y', y); rect.setAttribute('width', w); rect.setAttribute('height', h);
+                rect.classList.remove('hidden');
+                window.appState.tempBox = {x,y,w,h};
+            }
+        };
+
+        window.onMouseUp = (e) => {
+            window.appState.isDrawing = false;
+            if(window.appState.tempBox) window.showRapidPopup(e.clientX, e.clientY);
+        };
+
+        window.showRapidPopup = (cx, cy) => {
+            const popup = document.getElementById('rapid-popup');
+            popup.style.left = cx + 'px'; popup.style.top = cy + 'px';
+            popup.classList.remove('hidden');
+        };
+
+        window.confirmRapidSave = async () => {
+            const id = document.getElementById('rapid-id').value;
+            const price = document.getElementById('rapid-price').value;
+            const {x,y,w,h} = window.appState.tempBox;
+            const points = `${x},${y} ${x+w},${y} ${x+w},${y+h} ${x},${y+h}`;
+            const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+            const updated = [...layout.elements, {id, price, points, type: window.appState.drawType, status: 'open'}];
+            await updateDoc(doc(db, "layouts", window.appState.currentLayoutId), { elements: updated });
+            window.clearPoints();
+        };
+
+        window.clearPoints = () => {
+            window.appState.tempBox = null;
+            document.getElementById('tool-rect').classList.add('hidden');
+            document.getElementById('rapid-popup').classList.add('hidden');
+        };
+
+        // --- IMAGE LOADER WITH DYNAMIC SIZING ---
+        window.loadImage = (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
+            if(file.size > 800000) alert("⚠️ Warning: Image is large. It might fail to save to database. Please use images under 800KB.");
+
+            const reader = new FileReader();
+            reader.onload = async () => {
+                const result = reader.result;
+                const img = new Image();
+                img.src = result;
+                img.onload = async () => {
+                    const w = img.naturalWidth;
+                    const h = img.naturalHeight;
+                    
+                    window.updateCanvasDimensions(w, h);
+                    window.appState.localBlueprints[window.appState.currentLayoutId] = result;
+                    
+                    document.getElementById('blueprint-img').src = result;
+                    document.getElementById('blueprint-img').classList.remove('hidden');
+                    document.getElementById('view-bg-img').src = result;
+                    document.getElementById('view-bg-img').classList.remove('hidden');
+                    document.getElementById('draw-placeholder').classList.add('hidden');
+                    
+                    try {
+                        await updateDoc(doc(db, "layouts", window.appState.currentLayoutId), { bgImage: result, width: w, height: h });
+                    } catch(err) {
+                        console.error("DB Save Failed", err);
+                        alert("Image too large to save to DB.");
+                    }
+                };
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.updateCanvasDimensions = (w, h) => {
+            window.appState.currentMapWidth = w;
+            window.appState.currentMapHeight = h;
+            
+            const editCont = document.getElementById('canvas-container');
+            const viewCont = document.getElementById('view-map-content');
+            const svg = document.getElementById('draw-layer');
+            const viewSvgContainer = document.getElementById('view-map-container').querySelector('svg');
+
+            editCont.style.width = `${w}px`; editCont.style.height = `${h}px`;
+            viewCont.style.width = `${w}px`; viewCont.style.height = `${h}px`;
+            svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+            if(viewSvgContainer) viewSvgContainer.setAttribute('viewBox', `0 0 ${w} ${h}`);
+        }
+
+        // --- ASSIGNMENT NEXUS ---
+        window.createAssignment = async () => {
+            const layId = document.getElementById('sel-nexus-layout').value;
+            const layName = document.getElementById('sel-nexus-layout').options[document.getElementById('sel-nexus-layout').selectedIndex].text;
+            const s = document.getElementById('sel-saver').value;
+            const pId = document.getElementById('sel-plot').value;
+            const b = document.getElementById('sel-banker').value;
+            const layout = window.appState.layouts.find(l => l.id === layId);
+            const plot = layout.elements.find(e => e.id === pId);
+            await addDoc(collection(db, "assignments"), { layoutId: layId, layoutName: layName, saverName: s, bankerName: b, plotId: pId, value: plot.price, status: 'active' });
+            const updated = layout.elements.map(e => e.id === pId ? {...e, status: 'booked'} : e);
+            await updateDoc(doc(db, "layouts", layId), { elements: updated });
+            alert("Assigned");
+        };
+
+        window.renderAssignments = () => {
+            const q = window.appState.searchAssign || '';
+            const filtered = window.appState.assignments.filter(a => a.layoutName.toLowerCase().includes(q) || a.saverName.toLowerCase().includes(q));
+            document.getElementById('assign-table-body').innerHTML = filtered.map(a => `
+                <tr>
+                    <td>${a.layoutName}</td>
+                    <td>${a.saverName}</td>
+                    <td>${a.plotId}</td>
+                    <td>₹${Number(a.value).toLocaleString()}</td>
+                    <td>${a.bankerName}</td>
+                    <td>Active</td>
+                </tr>`).join('');
+        };
+
+        // --- UTILS ---
+        window.populateNexusDevs = () => {
+            const devs = window.appState.users.filter(u => u.role === 'developer');
+            const savers = window.appState.users.filter(u => u.role === 'saver');
+            const bankers = window.appState.users.filter(u => u.role === 'banker');
+            document.getElementById('sel-nexus-dev').innerHTML = `<option value="">Select Developer</option>` + devs.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+            document.getElementById('sel-saver').innerHTML = savers.map(x => `<option value="${x.name}">${x.name}</option>`).join('');
+            document.getElementById('sel-banker').innerHTML = bankers.map(x => `<option value="${x.name}">${x.name}</option>`).join('');
+            document.getElementById('nl-dev').innerHTML = devs.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+        };
+
+        window.updateNexusLayoutsByDev = () => {
+            const devId = document.getElementById('sel-nexus-dev').value;
+            const filtered = window.appState.layouts.filter(l => l.devId === devId);
+            document.getElementById('sel-nexus-layout').innerHTML = `<option value="">Select Project</option>` + filtered.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+        };
+
+        window.updateNexusPlots = () => {
+            const id = document.getElementById('sel-nexus-layout').value;
+            const l = window.appState.layouts.find(x => x.id === id);
+            const plots = l.elements.filter(e => e.type === 'plot' && e.status === 'open');
+            document.getElementById('sel-plot').innerHTML = plots.map(p => `<option value="${p.id}">${p.id}</option>`).join('');
+        };
+
+        window.setRole = (r) => { window.appState.currentRole = r; };
+        window.setDrawType = (t) => { window.appState.drawType = t; };
+        window.openNewLayoutModal = () => { document.getElementById('modal-new-layout').classList.remove('hidden'); };
+        window.openLayoutSettings = () => { document.getElementById('modal-layout-settings').classList.remove('hidden'); };
+        window.closeLayoutSettings = () => { document.getElementById('modal-layout-settings').classList.add('hidden'); };
+        window.generatePass = () => { document.getElementById('u-password').value = Math.random().toString(36).slice(-8); };
+        window.toggleLayoutMode = (m) => {
+            document.getElementById('layout-view-panel').classList.toggle('hidden', m==='edit');
+            document.getElementById('layout-edit-panel').classList.toggle('hidden', m==='view');
+        };
+        window.setTool = (t) => {
+            window.appState.activeTool = t;
+            ['box','pen','free'].forEach(tool => document.getElementById(`btn-tool-${tool}`).className = 'py-2 text-[10px] font-bold rounded ' + (tool===t ? 'bg-brand text-white' : 'text-gray-500'));
+        };
+        window.inspectElement = (id) => {
+            window.appState.selectedElementId = id;
+            const l = window.appState.layouts.find(x => x.id === window.appState.currentLayoutId);
+            const e = l.elements.find(x => x.id === id);
+            document.getElementById('inspector-empty').classList.add('hidden');
+            document.getElementById('inspector-content').classList.remove('hidden');
+            document.getElementById('insp-id').value = e.id;
+            if(e.price) document.getElementById('insp-price').value = e.price;
+            window.renderMap();
+        };
+        window.closeUserDetail = () => { document.getElementById('user-detail-panel').classList.remove('open'); };
+        window.openUserDetail = (uid) => {
+            window.appState.selectedUserId = uid;
+            const user = window.appState.users.find(u => u.id === uid);
+            document.getElementById('detail-role').innerText = user.role;
+            document.getElementById('detail-name').innerText = user.name;
+            document.getElementById('edit-u-name').value = user.name;
+            document.getElementById('edit-u-contact').value = user.contact || '';
+            document.getElementById('edit-u-pass').value = user.password;
+            document.getElementById('user-detail-panel').classList.add('open');
+        };
+        window.saveUserEdits = async () => {
+            const name = document.getElementById('edit-u-name').value;
+            const contact = document.getElementById('edit-u-contact').value;
+            const password = document.getElementById('edit-u-pass').value;
+            await updateDoc(doc(db, "users", window.appState.selectedUserId), { name, contact, password });
+            window.closeUserDetail();
+        };
+        window.populateLayoutDevs = () => {
+            const devs = window.appState.users.filter(u => u.role === 'developer');
+            document.getElementById('layout-filter-dev').innerHTML = `<option value="">Filter Developer...</option>` + devs.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+        };
+        window.updateLayoutListByDev = () => {
+            const devId = document.getElementById('layout-filter-dev').value;
+            const select = document.getElementById('active-layout-select');
+            let filtered = window.appState.layouts;
+            if(devId) filtered = filtered.filter(l => l.devId === devId);
+            select.innerHTML = `<option value="">Select Layout</option>` + filtered.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+        };
+        window.addUserDoc = () => {
+            const name = document.getElementById('u-doc-name').value;
+            if(!name) return alert("Name required");
+            window.appState.tempDocs.push(name);
+            document.getElementById('u-doc-name').value = '';
+            document.getElementById('u-doc-list-preview').innerHTML = window.appState.tempDocs.map(d => `<div class="text-[10px] bg-white/5 px-2 py-1 rounded flex justify-between"><span>${d}</span> <i class="ph-check text-green-500"></i></div>`).join('');
+        };
+    </script>
+</body>
+</html>

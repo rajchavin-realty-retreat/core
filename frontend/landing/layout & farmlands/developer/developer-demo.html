@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Rajchavin Developer Suite</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { brand: '#3b82f6', dark: '#09090b' } } }
+        }
+
+        // --- GLOBAL STATE ---
+        let currentMonth = new Date(); 
+        let selectedSeed = 0; 
+
+        // --- LOGIN & NAVIGATION ---
+        function safeLogin() {
+            if(navigator.vibrate) navigator.vibrate(10);
+            document.getElementById('view-login').style.display = 'none';
+            document.getElementById('view-dashboard').style.display = 'block';
+            setTimeout(() => { if(window.initDashboard) window.initDashboard(); }, 100);
+        }
+
+        function router(view, projId = null) {
+            if(navigator.vibrate) navigator.vibrate(10);
+            document.querySelectorAll('.app-view').forEach(el => el.style.display = 'none');
+            document.getElementById('view-' + view).style.display = 'block';
+            window.scrollTo(0,0);
+            if(view === 'project' && projId && window.loadProject) window.loadProject(projId);
+        }
+    </script>
+
+    <style>
+        :root {
+            --bg: #09090b; --text: #ffffff; --sub: #94a3b8;
+            --glass: rgba(24, 24, 27, 0.85); --border: rgba(255, 255, 255, 0.1);
+            --card-bg: rgba(24, 24, 27, 0.6);
+            --svg-land: #18181b; --svg-road: #27272a; --svg-stroke: rgba(255,255,255,0.1);
+        }
+        [data-theme="light"] {
+            --bg: #f1f5f9; --text: #0f172a; --sub: #475569;
+            --glass: rgba(255, 255, 255, 0.9); --border: rgba(0, 0, 0, 0.1);
+            --card-bg: rgba(255, 255, 255, 0.8);
+            --svg-land: #e2e8f0; --svg-road: #cbd5e1; --svg-stroke: rgba(0,0,0,0.1);
+        }
+        body { background-color: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overflow: hidden; }
+        
+        .app-view { height: 100vh; overflow-y: auto; padding-bottom: 80px; }
+        
+        .glass-panel { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: 20px; }
+        .glass-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; }
+        
+        /* Modal Responsive Fix */
+        #modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 100; display: none; align-items: flex-end; justify-content: center; }
+        #modal-content { width: 100%; background: var(--bg); border-top: 1px solid var(--border); border-radius: 24px 24px 0 0; padding: 24px; max-height: 90vh; overflow-y: auto; transform: translateY(100%); transition: transform 0.3s; }
+        
+        @media (min-width: 1024px) {
+            #modal-backdrop { align-items: center; }
+            #modal-content { max-width: 500px; border-radius: 24px; border: 1px solid var(--border); transform: scale(0.9); opacity: 0; }
+            #modal-backdrop.open #modal-content { transform: scale(1); opacity: 1; }
+        }
+        @media (max-width: 1023px) {
+            #modal-backdrop.open #modal-content { transform: translateY(0); }
+        }
+
+        .cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 10px; cursor: pointer; }
+        .cal-day.has-pay { background: #10b981; color: white; font-weight: bold; }
+        .cal-day.active { border: 2px solid #3b82f6; transform: scale(1.1); z-index: 10; }
+        
+        .hidden-section { display: none !important; }
+        .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+
+        /* SVG */
+        .svg-plot { cursor: pointer; transition: 0.2s; stroke: var(--svg-stroke); stroke-width: 1px; }
+        .svg-plot:hover { stroke: var(--text); stroke-width: 2px; filter: brightness(1.2); }
+        .svg-text { pointer-events: none; font-size: 10px; font-weight: bold; fill: rgba(255,255,255,0.7); text-anchor: middle; dominant-baseline: middle; }
+        
+        .status-sold { fill: #10b981 !important; }
+        .status-booked { fill: #eab308 !important; }
+        .status-open { fill: #334155 !important; }
+    </style>
+</head>
+<body>
+
+    <div id="view-login" class="app-view flex flex-col items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-sm p-8 space-y-6 text-center shadow-2xl">
+            <div class="w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl">
+                <i class="ph-fill ph-buildings text-3xl text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-3xl font-bold">Rajchavin</h1>
+                <p class="text-xs font-bold uppercase tracking-widest opacity-60 mt-1">Developer Console</p>
+            </div>
+            <div class="space-y-3">
+                <input type="text" value="admin" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 outline-none focus:border-blue-500 transition">
+                <input type="password" value="password" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 outline-none focus:border-blue-500 transition">
+                <button onclick="safeLogin()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl shadow-lg mt-2 transition">Login</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-dashboard" class="app-view" style="display: none;">
+        <nav class="sticky top-0 z-40 glass-panel border-b-0 rounded-none border-b border-white/10 flex justify-between items-center px-6 py-4 mb-6">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">RD</div>
+                <div><h2 class="text-sm font-bold">Raj Developers</h2><p class="text-[10px] opacity-60">Admin Dashboard</p></div>
+            </div>
+            <button onclick="toggleTheme()" class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition"><i class="ph-fill ph-moon"></i></button>
+        </nav>
+
+        <main class="px-5 pb-10 max-w-7xl mx-auto w-full">
+            
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 grid-flow-row-dense">
+                
+                <div class="lg:col-span-4">
+                    <div class="flex justify-between items-end mb-3">
+                        <h3 class="text-xs font-bold uppercase tracking-widest opacity-60">Live Projects</h3>
+                        <span class="text-[10px] text-green-500 font-bold bg-green-500/10 px-2 py-1 rounded">Active</span>
+                    </div>
+                    <div class="grid grid-cols-1 gap-3" id="project-list-container"></div>
+                </div>
+
+                <div class="lg:col-span-8 lg:row-span-2 space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <section class="glass-panel p-5">
+                            <h3 class="text-sm font-bold mb-4">Inventory Overview</h3>
+                            <div class="flex items-center">
+                                <div class="w-1/2 h-32 relative"><canvas id="pieChart"></canvas></div>
+                                <div class="w-1/2 pl-4 border-l border-white/10">
+                                    <div class="mb-2"><p class="text-xs opacity-60">Sold</p><p class="text-xl font-bold text-green-500" id="stat-sold">0</p></div>
+                                    <div><p class="text-xs opacity-60">Available</p><p class="text-xl font-bold" id="stat-unsold">0</p></div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="glass-panel p-5">
+                            <h3 class="text-sm font-bold mb-4">Collection (Cr)</h3>
+                            <div class="h-32 w-full"><canvas id="barChart"></canvas></div>
+                        </section>
+                    </div>
+
+                    <section class="stat-grid lg:grid-cols-4">
+                        <div class="glass-card p-4">
+                            <p class="text-[10px] uppercase opacity-50 font-bold">Today's Inflow</p>
+                            <p class="text-lg font-bold text-green-500" id="dash-today-val">+ ₹0</p>
+                        </div>
+                        <div class="glass-card p-4">
+                            <p class="text-[10px] uppercase opacity-50 font-bold">This Month</p>
+                            <p class="text-lg font-bold text-blue-500" id="dash-monthly-val">+ ₹0</p>
+                        </div>
+                        <div class="glass-card p-4 border-l-4 border-yellow-500 col-span-2 lg:col-span-2 flex justify-between items-center">
+                            <div>
+                                <p class="text-[10px] uppercase opacity-50 font-bold">Total Revenue</p>
+                                <p class="text-2xl font-bold text-white" id="dash-total-val">₹ 0</p>
+                            </div>
+                            <div class="w-10 h-10 rounded-full bg-yellow-500/20 text-yellow-500 flex items-center justify-center"><i class="ph-bold ph-coins text-xl"></i></div>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="lg:col-span-4">
+                    <h3 class="text-xs font-bold uppercase tracking-widest opacity-60 mb-3">All Customers</h3>
+                    <div class="space-y-3" id="global-customer-list"></div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div id="view-project" class="app-view" style="display: none;">
+        <nav class="sticky top-0 z-40 glass-panel border-b-0 rounded-none border-b border-white/10 flex justify-between items-center px-6 py-4 mb-6">
+            <button onclick="router('dashboard')" class="flex items-center gap-2 text-sm font-bold opacity-80 hover:text-blue-500 transition"><i class="ph-bold ph-caret-left"></i> Back</button>
+            <h2 class="text-sm font-bold" id="project-title">Project Name</h2>
+            <div class="w-8"></div>
+        </nav>
+
+        <main class="px-5 pb-10 max-w-7xl mx-auto w-full">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <div class="lg:col-span-8 space-y-6">
+                    <div class="glass-panel p-1">
+                        <div class="p-3 flex justify-between items-end">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-blue-500">Master Plan</h3>
+                            <span class="text-[10px] bg-green-500/20 text-green-500 px-2 py-0.5 rounded font-bold">Grid View</span>
+                        </div>
+                        <div class="relative w-full h-64 lg:h-80 bg-white/5 rounded-xl overflow-hidden border border-white/5">
+                            <canvas id="projectCanvas" class="w-full h-full"></canvas>
+                        </div>
+                        <div class="flex justify-center gap-4 p-2 text-[10px] font-bold opacity-70">
+                            <span class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-green-500"></div> Sold</span>
+                            <span class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-yellow-500"></div> Booked</span>
+                            <span class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-slate-500"></div> Open</span>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-4">
+                        <div class="flex justify-between items-end mb-3">
+                            <h3 class="text-sm font-bold flex items-center gap-2"><i class="ph-duotone ph-map-trifold text-purple-400"></i> Real-time Layout</h3>
+                            <span class="text-[10px] opacity-60">Physical View</span>
+                        </div>
+                        <div class="w-full aspect-video rounded-xl border border-white/10 relative overflow-hidden" style="background: var(--svg-land);">
+                            <svg viewBox="0 0 800 500" class="w-full h-full" id="realTimeSvg" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M 0,250 H 800 M 400,0 V 500" style="stroke: var(--svg-road);" stroke-width="50" fill="none" />
+                                <path d="M 20,20 H 150 V 100 H 20 Z" class="svg-plot" data-id="P-1" /> <text x="85" y="60" class="svg-text">P-1</text>
+                                <path d="M 160,20 H 290 V 100 H 160 Z" class="svg-plot" data-id="P-2" /> <text x="225" y="60" class="svg-text">P-2</text>
+                                <path d="M 20,110 H 150 V 220 H 20 Z" class="svg-plot" data-id="P-3" /> <text x="85" y="165" class="svg-text">P-3</text>
+                                <path d="M 160,110 H 350 L 320,220 H 160 Z" class="svg-plot" data-id="P-4" /> <text x="240" y="165" class="svg-text">P-4</text>
+                                <path d="M 450,20 H 550 V 120 H 450 Z" class="svg-plot" data-id="P-5" /> <text x="500" y="70" class="svg-text">P-5</text>
+                                <path d="M 560,20 H 660 V 120 H 560 Z" class="svg-plot" data-id="P-6" /> <text x="610" y="70" class="svg-text">P-6</text>
+                                <path d="M 670,20 H 770 V 220 H 670 Z" class="svg-plot" data-id="P-7" /> <text x="720" y="120" class="svg-text">P-7 (L)</text>
+                                <path d="M 20,300 H 200 V 480 H 20 Z" class="svg-plot" data-id="P-8" /> <text x="110" y="390" class="svg-text">P-8</text>
+                                <path d="M 210,300 H 350 V 400 H 210 Z" class="svg-plot" data-id="P-9" /> <text x="280" y="350" class="svg-text">P-9</text>
+                                <path d="M 450,300 H 770 V 450 H 450 Z" class="svg-plot" data-id="P-10" /> <text x="610" y="375" class="svg-text">P-10 (Park View)</text>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-4 space-y-6">
+                    <div class="glass-panel p-5 flex justify-between items-center border-l-4 border-green-500">
+                        <div><p class="text-[10px] font-bold uppercase opacity-50">Project Revenue</p><h3 class="text-2xl font-bold" id="project-revenue">₹ 0</h3></div>
+                        <div class="w-10 h-10 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center"><i class="ph-bold ph-currency-inr text-lg"></i></div>
+                    </div>
+
+                    <section>
+                        <h3 class="text-xs font-bold uppercase tracking-widest opacity-60 mb-3">Documents</h3>
+                        <div class="glass-card p-3 flex justify-between items-center mb-2 hover:bg-white/5 cursor-pointer transition">
+                            <div class="flex items-center gap-3">
+                                <i class="ph-fill ph-file-pdf text-red-500 text-xl"></i>
+                                <div><p class="text-xs font-bold">NAKGPA Approval.pdf</p></div>
+                            </div>
+                            <button class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center"><i class="ph-bold ph-download-simple"></i></button>
+                        </div>
+                    </section>
+
+                    <section>
+                        <h3 class="text-xs font-bold uppercase tracking-widest opacity-60 mb-3">Plot Owners</h3>
+                        <div class="space-y-3" id="project-customer-list"></div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modal-backdrop" onclick="closeModal()">
+        <div id="modal-content" onclick="event.stopPropagation()">
+            <div class="w-12 h-1 bg-white/20 rounded-full mx-auto mb-6 lg:hidden"></div>
+            
+            <div class="flex items-center gap-4 mb-6">
+                <div class="w-14 h-14 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-xl font-bold text-white" id="modal-icon">P</div>
+                <div>
+                    <h2 class="text-xl font-bold" id="modal-title">Title</h2>
+                    <p class="text-sm opacity-60" id="modal-subtitle">Subtitle</p>
+                </div>
+            </div>
+
+            <div id="modal-owner-section" class="hidden-section mb-6">
+                <h4 class="text-xs font-bold uppercase opacity-50 mb-3">Owner Details</h4>
+                <div class="glass-card p-4 border-l-4 border-green-500">
+                    <p class="text-sm font-bold" id="plot-owner-name">Name</p>
+                    <p class="text-xs opacity-60" id="plot-owner-contact">Contact</p>
+                    <div class="mt-3 pt-3 border-t border-white/10 flex justify-between text-xs">
+                        <span>Plot Value</span>
+                        <span class="font-bold">₹ 45.0 Lakhs</span>
+                    </div>
+                    <div class="flex justify-between text-xs mt-1">
+                        <span class="opacity-60">Total Paid</span>
+                        <span class="font-bold text-green-400" id="plot-saved-val">₹ 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="modal-portfolio-section" class="hidden-section mb-6">
+                <h4 class="text-xs font-bold uppercase opacity-50 mb-3">Property Portfolio</h4>
+                <div id="modal-portfolio-list" class="space-y-2"></div>
+            </div>
+
+            <div id="modal-calendar-section" class="glass-card p-4 mb-4 hidden-section">
+                <div class="flex justify-between items-center mb-4">
+                    <button onclick="changeMonth(-1)" class="p-2 bg-white/5 rounded-full"><i class="ph-bold ph-caret-left"></i></button>
+                    <span class="text-xs font-bold uppercase tracking-widest" id="cal-month-name">Month</span>
+                    <button onclick="changeMonth(1)" class="p-2 bg-white/5 rounded-full"><i class="ph-bold ph-caret-right"></i></button>
+                </div>
+                <div class="grid grid-cols-7 gap-2 text-center text-[10px] opacity-50 mb-2 font-bold"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+                <div class="grid grid-cols-7 gap-2" id="modal-calendar"></div>
+                <div id="date-details" class="mt-4 pt-4 border-t border-white/10 text-center"><p class="text-xs opacity-50 italic">Tap date for transaction</p></div>
+            </div>
+
+            <button onclick="closeModal()" class="w-full bg-white/10 hover:bg-white/20 py-4 rounded-xl font-bold transition">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const projects = [
+            { id: 1, name: "Sunrise Estate", plots: 24, sold: 18, revenue: 35000000 },
+            { id: 2, name: "Green Valley", plots: 24, sold: 12, revenue: 12000000 },
+            { id: 3, name: "Urban Enclave", plots: 24, sold: 22, revenue: 98000000 }
+        ];
+        
+        const customers = [
+            { id: 101, name: "Arjun Mehta", phone: "+91 98765 43210", plots: [{pid:"P-1", proj:"Sunrise Estate", val:"45L"}, {pid:"B-04", proj:"Green Valley", val:"32L"}] },
+            { id: 102, name: "Priya Sharma", phone: "+91 87654 32109", plots: [{pid:"P-4", proj:"Sunrise Estate", val:"50L"}] },
+            { id: 103, name: "Rahul Dravid", phone: "+91 76543 21098", plots: [{pid:"P-10", proj:"Urban Enclave", val:"80L"}] }
+        ];
+
+        const plotsData = [];
+        for(let i=0; i<24; i++) {
+            plotsData.push({ 
+                id: `P-${i+1}`, 
+                status: Math.random() > 0.4 ? 2 : (Math.random()>0.5 ? 1:0),
+                ownerId: Math.random() > 0.4 ? 101 : (Math.random()>0.5 ? 102 : 103),
+                saved: Math.floor(Math.random() * 2000000) + 500000
+            });
+        }
+
+        window.initDashboard = function() {
+            document.getElementById('project-list-container').innerHTML = projects.map(p => `
+                <div onclick="router('project', ${p.id})" class="glass-card p-4 flex justify-between items-center cursor-pointer hover:bg-white/5 transition">
+                    <div class="flex items-center gap-4"><div class="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center text-xl"><i class="ph-fill ph-house-line"></i></div><div><h4 class="font-bold text-sm">${p.name}</h4><p class="text-[10px] opacity-60">${p.sold}/${p.plots} Sold</p></div></div><i class="ph-bold ph-caret-right opacity-40"></i>
+                </div>
+            `).join('');
+            renderCustomers(customers, 'global-customer-list');
+            
+            const totalRev = projects.reduce((sum, p) => sum + p.revenue, 0);
+            const monthlyRev = totalRev * 0.08;
+            const todayRev = totalRev * 0.005;
+
+            document.getElementById('dash-total-val').innerText = "₹ " + (totalRev / 10000000).toFixed(2) + " Cr";
+            document.getElementById('dash-monthly-val').innerText = "+ ₹ " + (monthlyRev / 100000).toFixed(1) + " L";
+            document.getElementById('dash-today-val').innerText = "+ ₹ " + (todayRev / 1000).toFixed(1) + " k";
+
+            if(typeof Chart !== 'undefined') initDashCharts();
+        }
+
+        function initDashCharts() {
+            const sold = projects.reduce((a,b)=>a+b.sold,0);
+            const unsold = projects.reduce((a,b)=>a+(b.plots-b.sold),0);
+            document.getElementById('stat-sold').innerText = sold;
+            document.getElementById('stat-unsold').innerText = unsold;
+            const common = { responsive: true, maintainAspectRatio: false, plugins: {legend:{display:false}} };
+            new Chart(document.getElementById('pieChart').getContext('2d'), { type: 'doughnut', data: { datasets: [{ data: [sold, unsold], backgroundColor: ['#10b981', '#334155'], borderWidth:0 }] }, options: common });
+            
+            new Chart(document.getElementById('barChart').getContext('2d'), { 
+                type: 'bar', 
+                data: { 
+                    labels: projects.map(p=>p.name.split(' ')[0]), 
+                    datasets: [{ 
+                        label: 'Revenue (Cr)',
+                        data: projects.map(p => (p.revenue / 10000000).toFixed(2)), 
+                        backgroundColor: '#3b82f6', 
+                        borderRadius:4 
+                    }] 
+                }, 
+                options: {
+                    ...common,
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: '#94a3b8', callback: function(value) { return '₹' + value + ' Cr'; } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        x: { display: true, grid: { display: false }, ticks: { color: '#94a3b8' } }
+                    }
+                } 
+            });
+        }
+
+        window.loadProject = function(id) {
+            const p = projects.find(x => x.id === id);
+            document.getElementById('project-title').innerText = p.name;
+            document.getElementById('project-revenue').innerText = "₹ " + (p.revenue/10000000).toFixed(2) + " Cr";
+            setTimeout(() => { drawProjectCanvas(); syncRealTimeMap(); }, 100);
+            renderCustomers(customers, 'project-customer-list');
+        }
+
+        function drawProjectCanvas() {
+            const cvs = document.getElementById('projectCanvas');
+            const ctx = cvs.getContext('2d');
+            cvs.width = cvs.parentElement.clientWidth; cvs.height = cvs.parentElement.clientHeight;
+            const rows=4, cols=6, gap=4;
+            const w = (cvs.width-(cols*gap))/cols; const h = (cvs.height-(rows*gap))/rows;
+
+            plotsData.forEach((p, i) => {
+                const r = Math.floor(i/cols); const c = i%cols;
+                const x = c*(w+gap); const y = r*(h+gap);
+                p.x = x; p.y = y; p.w = w; p.h = h;
+
+                ctx.fillStyle = p.status===2 ? '#10b981' : (p.status===1 ? '#eab308' : '#334155');
+                ctx.beginPath(); ctx.roundRect(x, y, w, h, 4); ctx.fill();
+                ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.font = "bold 10px Inter"; ctx.textAlign = "center";
+                ctx.fillText(p.id, x + w/2, y + h/2 + 3);
+            });
+        }
+
+        function syncRealTimeMap() {
+            document.querySelectorAll('.svg-plot').forEach(el => {
+                const id = el.getAttribute('data-id');
+                const p = plotsData.find(x => x.id === id);
+                if(p) {
+                    el.classList.remove('status-sold', 'status-booked', 'status-open');
+                    if(p.status === 2) el.classList.add('status-sold');
+                    else if(p.status === 1) el.classList.add('status-booked');
+                    else el.classList.add('status-open');
+                }
+            });
+        }
+
+        document.getElementById('projectCanvas').addEventListener('click', (e) => {
+            const rect = e.target.getBoundingClientRect();
+            const x = e.clientX - rect.left; const y = e.clientY - rect.top;
+            const hit = plotsData.find(p => x>=p.x && x<=p.x+p.w && y>=p.y && y<=p.y+p.h);
+            if(hit) openModal(hit, 'plot');
+        });
+
+        window.addEventListener('load', () => {
+            document.querySelectorAll('.svg-plot').forEach(el => {
+                el.addEventListener('click', () => {
+                    const id = el.getAttribute('data-id');
+                    const p = plotsData.find(x => x.id === id);
+                    if(p) openModal(p, 'plot');
+                });
+            });
+        });
+
+        function renderCustomers(list, id) {
+            document.getElementById(id).innerHTML = list.map(c => `
+                <div onclick="openModal(${c.id}, 'cust')" class="glass-card p-3 flex justify-between items-center cursor-pointer hover:bg-white/5">
+                    <div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-gradient-to-r from-purple-500 to-pink-600 flex items-center justify-center text-xs font-bold">${c.name.charAt(0)}</div><div><p class="text-sm font-bold">${c.name}</p></div></div><i class="ph-bold ph-info text-blue-500"></i>
+                </div>
+            `).join('');
+        }
+
+        window.openModal = function(data, type) {
+            if(navigator.vibrate) navigator.vibrate(10);
+            
+            document.getElementById('modal-owner-section').classList.add('hidden-section');
+            document.getElementById('modal-portfolio-section').classList.add('hidden-section');
+            document.getElementById('modal-calendar-section').classList.add('hidden-section');
+
+            if(type === 'plot') {
+                document.getElementById('modal-icon').innerText = "P";
+                document.getElementById('modal-title').innerText = "Plot " + data.id;
+                
+                if(data.status === 2) {
+                    const owner = customers.find(c => c.id === data.ownerId) || customers[0];
+                    document.getElementById('modal-subtitle').innerText = "Status: Sold";
+                    document.getElementById('plot-owner-name').innerText = owner.name;
+                    document.getElementById('plot-owner-contact').innerText = owner.phone;
+                    document.getElementById('plot-saved-val').innerText = "₹ " + data.saved.toLocaleString();
+
+                    document.getElementById('modal-owner-section').classList.remove('hidden-section');
+                    document.getElementById('modal-calendar-section').classList.remove('hidden-section');
+                    selectedSeed = data.id.length; 
+                    renderCalendar();
+                } else {
+                    document.getElementById('modal-subtitle').innerText = data.status === 1 ? "Status: Booked" : "Status: Available";
+                }
+
+            } else {
+                const c = typeof data === 'number' ? customers.find(x => x.id === data) : data;
+                document.getElementById('modal-icon').innerText = c.name.charAt(0);
+                document.getElementById('modal-title').innerText = c.name;
+                document.getElementById('modal-subtitle').innerText = c.phone;
+                document.getElementById('modal-portfolio-list').innerHTML = c.plots.map(p => `
+                    <div class="glass-card p-3 border-l-4 border-blue-500 flex justify-between items-center">
+                        <div><p class="text-xs font-bold text-blue-400">${p.proj}</p><p class="text-sm font-bold">Plot ${p.pid}</p></div>
+                        <span class="text-xs font-bold opacity-60">Val: ${p.val}</span>
+                    </div>
+                `).join('');
+                document.getElementById('modal-portfolio-section').classList.remove('hidden-section');
+            }
+
+            const modal = document.getElementById('modal-backdrop');
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('open'), 10);
+        }
+
+        window.closeModal = function() {
+            document.getElementById('modal-backdrop').classList.remove('open');
+            setTimeout(() => document.getElementById('modal-backdrop').style.display = 'none', 300);
+        }
+
+        function changeMonth(delta) {
+            currentMonth.setMonth(currentMonth.getMonth() + delta);
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const year = currentMonth.getFullYear();
+            const month = currentMonth.getMonth();
+            document.getElementById('cal-month-name').innerText = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const grid = document.getElementById('modal-calendar');
+            grid.innerHTML = '';
+
+            for(let i=0; i<firstDay; i++) grid.appendChild(document.createElement('div'));
+
+            for(let d=1; d<=daysInMonth; d++) {
+                const el = document.createElement('div');
+                el.className = "cal-day bg-white/5 rounded text-white/70";
+                el.innerText = d;
+
+                const isPay = (d + selectedSeed) % 6 === 0;
+                if(isPay) el.classList.add('has-pay');
+
+                el.onclick = () => {
+                    document.querySelectorAll('.cal-day').forEach(x => x.classList.remove('active'));
+                    el.classList.add('active');
+                    const details = document.getElementById('date-details');
+                    if(isPay) details.innerHTML = `<p class="text-sm font-bold text-green-500">₹ ${(Math.random()*20000+5000).toFixed(0)} Saved</p><p class="text-[10px] opacity-60">${d} ${currentMonth.toLocaleString('default',{month:'short'})} • Verified</p>`;
+                    else details.innerHTML = `<p class="text-xs opacity-50">No transaction on this date.</p>`;
+                }
+                grid.appendChild(el);
+            }
+        }
+
+        let isDark = true;
+        window.toggleTheme = function() {
+            isDark = !isDark;
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        }
+    </script>
+</body>
+</html>

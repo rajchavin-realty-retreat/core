@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal | Rajchavin RaaS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { 
+                extend: { 
+                    colors: { 
+                        brand: '#3b82f6', 
+                        bg: '#09090b', 
+                        surface: '#18181b', 
+                        border: '#27272a' 
+                    }, 
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'], 
+                        mono: ['JetBrains Mono', 'monospace'] 
+                    } 
+                } 
+            }
+        }
+        window.router = (v) => { 
+            document.querySelectorAll('.app-view').forEach(e => e.classList.add('hidden')); 
+            document.getElementById(`view-${v}`).classList.remove('hidden');
+            document.querySelectorAll('.nav-item').forEach(e => {
+                e.classList.remove('bg-brand', 'text-white');
+                e.classList.add('text-gray-400', 'hover:bg-white/5');
+            });
+            document.getElementById(`nav-${v}`).classList.add('bg-brand', 'text-white');
+            document.getElementById(`nav-${v}`).classList.remove('text-gray-400', 'hover:bg-white/5');
+        };
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400&display=swap');
+        body { background-color: #09090b; color: white; font-family: 'Inter', sans-serif; }
+        .glass-panel { background: rgba(24, 24, 27, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; }
+        .glass-sidebar { background: #121214; border-right: 1px solid #27272a; }
+        .form-input { width: 100%; background: #18181b; border: 1px solid #27272a; padding: 10px 12px; border-radius: 8px; font-size: 13px; outline: none; color: white; transition: 0.2s; }
+        .form-input:focus { border-color: #3b82f6; }
+        .toggle-checkbox { appearance: none; width: 36px; height: 20px; background: #27272a; border-radius: 20px; position: relative; cursor: pointer; transition: 0.3s; }
+        .toggle-checkbox::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: white; border-radius: 50%; transition: 0.3s; }
+        .toggle-checkbox:checked { background: #3b82f6; }
+        .toggle-checkbox:checked::after { transform: translateX(16px); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden selection:bg-brand/30">
+
+    <aside class="w-64 glass-sidebar flex flex-col justify-between z-20">
+        <div>
+            <div class="h-16 flex items-center px-6 border-b border-border gap-3">
+                <div class="w-8 h-8 bg-brand rounded flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-500/20">R</div>
+                <div>
+                    <span class="font-bold text-sm tracking-wide block">RAJCHAVIN</span>
+                    <span class="text-[10px] text-gray-500 font-mono">ADMIN CONSOLE</span>
+                </div>
+            </div>
+            <nav class="p-4 space-y-1">
+                <button onclick="router('developers')" id="nav-developers" class="nav-item bg-brand text-white w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition font-medium">
+                    <i class="ph-bold ph-users text-lg"></i> Developers
+                </button>
+                <button onclick="router('plans')" id="nav-plans" class="nav-item text-gray-400 hover:bg-white/5 w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition font-medium">
+                    <i class="ph-bold ph-crown text-lg"></i> Plans & Pricing
+                </button>
+            </nav>
+        </div>
+        <div class="p-4 border-t border-border">
+            <button onclick="logout()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs text-red-400 hover:bg-red-500/10 transition font-bold">
+                <i class="ph-bold ph-sign-out"></i> Logout System
+            </button>
+        </div>
+    </aside>
+
+    <main class="flex-1 relative overflow-hidden bg-bg flex flex-col">
+        
+        <header class="h-16 border-b border-border flex justify-between items-center px-8 bg-bg/80 backdrop-blur z-10">
+            <div class="flex items-center gap-2 text-sm text-gray-500">
+                <i class="ph-fill ph-circles-four"></i><span>/</span><span class="text-white font-medium">Overview</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+                <span class="text-xs font-mono text-gray-400">SECURE CONNECTION</span>
+            </div>
+        </header>
+
+        <div id="view-developers" class="app-view flex-1 overflow-y-auto p-8">
+            <div class="flex justify-between items-end mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-white">Developer Management</h1>
+                    <p class="text-sm text-gray-500 mt-1">Manage accounts, renew licenses, and assign plans.</p>
+                </div>
+                <div class="flex gap-3">
+                    <div class="relative w-64">
+                        <i class="ph-bold ph-magnifying-glass absolute left-3 top-2.5 text-gray-500"></i>
+                        <input type="text" onkeyup="filterDevs(this.value)" placeholder="Search developers..." class="w-full bg-[#18181b] border border-white/10 rounded-lg pl-9 pr-3 py-2 text-xs text-white focus:border-brand outline-none transition">
+                    </div>
+                    <button onclick="document.getElementById('modal-developer').classList.remove('hidden')" class="bg-white text-black hover:bg-gray-200 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition shadow-lg">
+                        <i class="ph-bold ph-user-plus"></i> Onboard
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-4 gap-4 mb-8">
+                <div class="glass-panel p-4 border-l-2 border-brand">
+                    <p class="text-[10px] font-bold text-gray-500 uppercase">Total Developers</p>
+                    <h3 class="text-2xl font-bold text-white mt-1" id="stat-total-devs">0</h3>
+                </div>
+                <div class="glass-panel p-4 border-l-2 border-green-500">
+                    <p class="text-[10px] font-bold text-gray-500 uppercase">Active Licenses</p>
+                    <h3 class="text-2xl font-bold text-white mt-1" id="stat-active-licenses">0</h3>
+                </div>
+            </div>
+
+            <div class="glass-panel overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-surface border-b border-border text-[10px] uppercase text-gray-500">
+                            <th class="px-6 py-4 font-bold">Company / Name</th>
+                            <th class="px-6 py-4 font-bold">Plan</th>
+                            <th class="px-6 py-4 font-bold">Status</th>
+                            <th class="px-6 py-4 font-bold">Limits</th>
+                            <th class="px-6 py-4 font-bold text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dev-table-body" class="text-sm text-gray-300"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="view-plans" class="app-view hidden flex-1 overflow-y-auto p-8">
+            <div class="flex justify-between items-end mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-white">Subscription Plans</h1>
+                    <p class="text-sm text-gray-500 mt-1">Define feature sets and limits for your customers.</p>
+                </div>
+                <button onclick="openPlanModal()" class="bg-brand hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition shadow-lg shadow-blue-900/20">
+                    <i class="ph-bold ph-plus"></i> Create Plan
+                </button>
+            </div>
+
+            <div id="plans-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                </div>
+        </div>
+
+    </main>
+
+    <div id="modal-developer" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden">
+        <div class="glass-panel w-full max-w-md p-6 bg-[#121214] m-4 animate-in fade-in zoom-in-95 duration-200">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-lg font-bold text-white">Onboard Developer</h2>
+                <button onclick="document.getElementById('modal-developer').classList.add('hidden')" class="text-gray-500 hover:text-white"><i class="ph-bold ph-x text-lg"></i></button>
+            </div>
+            
+            <div class="space-y-4">
+                <input type="text" id="dev-name" class="form-input" placeholder="Company Name">
+                <input type="email" id="dev-email" class="form-input" placeholder="Login Email">
+                <input type="text" id="dev-pass" class="form-input font-mono text-brand" value="123456" placeholder="Password">
+                <div>
+                    <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Assign Plan</label>
+                    <select id="dev-plan-select" class="form-input bg-[#18181b]"><option value="">Loading Plans...</option></select>
+                </div>
+                <button onclick="createDev()" class="w-full bg-brand hover:bg-blue-600 text-white font-bold py-3 rounded-lg text-sm shadow-lg mt-2">Create Account</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-edit-dev" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden">
+        <div class="glass-panel w-full max-w-md p-6 bg-[#121214] m-4 animate-in fade-in zoom-in-95 duration-200">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-lg font-bold text-white">Renew / Edit License</h2>
+                <button onclick="document.getElementById('modal-edit-dev').classList.add('hidden')" class="text-gray-500 hover:text-white"><i class="ph-bold ph-x text-lg"></i></button>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="p-3 bg-white/5 rounded-lg border border-white/5">
+                    <p class="text-[10px] text-gray-500 uppercase font-bold mb-1">Developer</p>
+                    <h3 id="edit-dev-title" class="font-bold text-white">Name</h3>
+                    <p id="edit-dev-subtitle" class="text-xs text-gray-400">email</p>
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Change Plan</label>
+                    <select id="edit-dev-plan" class="form-input bg-[#18181b]"></select>
+                    <p class="text-[10px] text-gray-500 mt-1">*Updating plan will reset limits to new plan defaults.</p>
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Subscription Expiry</label>
+                    <input type="date" id="edit-dev-expiry" class="form-input text-white bg-[#18181b]">
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button onclick="document.getElementById('modal-edit-dev').classList.add('hidden')" class="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 font-bold py-3 rounded-lg text-xs">Cancel</button>
+                    <button onclick="saveDevChanges()" class="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-lg text-xs shadow-lg">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-plan" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden">
+        <div class="glass-panel w-full max-w-lg p-6 bg-[#121214] m-4 animate-in fade-in zoom-in-95 duration-200">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-lg font-bold text-white">Create Subscription Plan</h2>
+                <button onclick="document.getElementById('modal-plan').classList.add('hidden')" class="text-gray-500 hover:text-white"><i class="ph-bold ph-x text-lg"></i></button>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2"><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Plan Name</label><input type="text" id="plan-name" class="form-input" placeholder="e.g. Gold Tier"></div>
+                    <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Validity (Days)</label><input type="number" id="plan-validity" class="form-input" placeholder="365"></div>
+                    <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Max Logins</label><input type="number" id="plan-logins" class="form-input" placeholder="3"></div>
+                </div>
+
+                <div class="p-3 bg-white/5 rounded-xl border border-white/5">
+                    <p class="text-[10px] font-bold text-brand uppercase mb-3">Resource Limits</p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="text-[10px] text-gray-400 block mb-1">Max Layouts</label><input type="number" id="plan-max-layouts" class="form-input" placeholder="5"></div>
+                        <div><label class="text-[10px] text-gray-400 block mb-1">Max Plots (Global)</label><input type="number" id="plan-max-plots" class="form-input" placeholder="500"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-3 pt-2">
+                    <p class="text-[10px] font-bold text-gray-500 uppercase">Features Enabled</p>
+                    <div class="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition"><span class="text-sm">Interactive Layout (Draw)</span><input type="checkbox" id="feat-interactive" class="toggle-checkbox"></div>
+                    <div class="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition"><span class="text-sm">Grid View</span><input type="checkbox" id="feat-grid" class="toggle-checkbox"></div>
+                    <div class="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition"><span class="text-sm">Upload Map Image</span><input type="checkbox" id="feat-upload" class="toggle-checkbox"></div>
+                </div>
+
+                <button onclick="savePlan()" class="w-full bg-white text-black hover:bg-gray-200 font-bold py-3 rounded-lg text-sm shadow-lg mt-2">Save Plan</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, where, deleteDoc, doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAd8kVZEt919GfWvhhstgebLWxgwaunT5o",
+            authDomain: "rajchavin-raas.firebaseapp.com",
+            projectId: "rajchavin-raas",
+            storageBucket: "rajchavin-raas.firebasestorage.app",
+            messagingSenderId: "14499629170",
+            appId: "1:14499629170:web:1cd21aa2434df98afcdaeb"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- SESSION MONITORING ---
+        async function startSessionMonitor() {
+            const session = JSON.parse(localStorage.getItem('rajchavin_user'));
+            if(!session || session.role !== 'admin') window.location.href = 'login.html';
+            
+            if(session.sessionId && session.sessionId !== 'master') {
+                onSnapshot(doc(db, "sessions", session.sessionId), (snap) => {
+                    if(!snap.exists()) { alert("Session Revoked"); window.location.href='login.html'; }
+                });
+            }
+        }
+        startSessionMonitor();
+
+        let allPlans = [];
+        let allDevs = [];
+        let editingDevId = null;
+
+        // --- PLANS ---
+        onSnapshot(collection(db, "plans"), (snap) => {
+            allPlans = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            renderPlans();
+            updatePlanSelects();
+        });
+
+        function renderPlans() {
+            const grid = document.getElementById('plans-grid');
+            if(allPlans.length === 0) { grid.innerHTML = '<p class="text-gray-500 text-sm col-span-3 text-center py-10">No plans defined.</p>'; return; }
+            grid.innerHTML = allPlans.map(p => `
+                <div class="glass-card p-6 relative group hover:border-brand/50">
+                    <div class="flex justify-between items-start mb-4">
+                        <div><h3 class="font-bold text-lg text-white">${p.name}</h3><p class="text-xs text-gray-500 font-mono">${p.validity} Days Validity</p></div>
+                        <div class="w-8 h-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center font-bold text-xs">${p.name[0]}</div>
+                    </div>
+                    <div class="space-y-2 mb-6">
+                        <div class="flex justify-between text-xs text-gray-300 border-b border-white/5 pb-2"><span>Max Logins</span><span class="font-mono">${p.maxLogins}</span></div>
+                        <div class="flex justify-between text-xs text-gray-300 border-b border-white/5 pb-2"><span>Max Layouts</span><span class="font-mono">${p.maxLayouts}</span></div>
+                        <div class="flex justify-between text-xs text-gray-300 border-b border-white/5 pb-2"><span>Max Plots</span><span class="font-mono">${p.maxPlots}</span></div>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mb-4">${p.features.map(f => `<span class="px-2 py-1 rounded bg-white/5 text-[10px] text-gray-400 border border-white/5">${f}</span>`).join('')}</div>
+                    <button onclick="deletePlan('${p.id}')" class="absolute top-4 right-4 text-red-500 opacity-0 group-hover:opacity-100 transition hover:bg-red-500/10 p-2 rounded"><i class="ph-bold ph-trash"></i></button>
+                </div>`).join('');
+        }
+
+        function updatePlanSelects() {
+            const html = '<option value="">Select Plan...</option>' + allPlans.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            document.getElementById('dev-plan-select').innerHTML = html;
+            document.getElementById('edit-dev-plan').innerHTML = html;
+        }
+
+        window.openPlanModal = () => document.getElementById('modal-plan').classList.remove('hidden');
+
+        window.savePlan = async () => {
+            const name = document.getElementById('plan-name').value;
+            if(!name) return alert("Name Required");
+            const planData = {
+                name: name,
+                validity: parseInt(document.getElementById('plan-validity').value) || 365,
+                maxLogins: parseInt(document.getElementById('plan-logins').value) || 1,
+                maxLayouts: parseInt(document.getElementById('plan-max-layouts').value) || 1,
+                maxPlots: parseInt(document.getElementById('plan-max-plots').value) || 100,
+                features: [], createdAt: new Date()
+            };
+            if(document.getElementById('feat-interactive').checked) planData.features.push('Interactive Layout');
+            if(document.getElementById('feat-grid').checked) planData.features.push('Grid View');
+            if(document.getElementById('feat-upload').checked) planData.features.push('Map Upload');
+
+            await addDoc(collection(db, "plans"), planData);
+            document.getElementById('modal-plan').classList.add('hidden');
+        };
+
+        window.deletePlan = async (id) => { if(confirm("Delete plan?")) await deleteDoc(doc(db, "plans", id)); };
+
+        // --- DEVELOPERS ---
+        onSnapshot(query(collection(db, "users"), where("role", "==", "developer")), (snap) => {
+            allDevs = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            renderDevList();
+        });
+
+        window.filterDevs = (val) => { renderDevList(val.toLowerCase()); };
+
+        function renderDevList(filter = "") {
+            const tbody = document.getElementById('dev-table-body');
+            const filtered = allDevs.filter(d => d.name.toLowerCase().includes(filter) || d.email.toLowerCase().includes(filter));
+            document.getElementById('stat-total-devs').innerText = allDevs.length;
+            
+            let activeCount = 0;
+            if(filtered.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 opacity-50">No developers found.</td></tr>'; return; }
+
+            tbody.innerHTML = filtered.map(u => {
+                const now = new Date();
+                const expiry = u.subscriptionEnd ? new Date(u.subscriptionEnd.seconds * 1000) : now;
+                const daysLeft = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
+                const isActive = daysLeft > 0;
+                if(isActive) activeCount++;
+
+                return `
+                <tr class="hover:bg-white/5 transition border-b border-border">
+                    <td class="px-6 py-4"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded bg-gradient-to-br from-gray-700 to-black border border-white/10 flex items-center justify-center text-xs font-bold">${u.name[0]}</div><div><div class="font-bold text-white">${u.name}</div><div class="text-xs text-gray-500 font-mono">${u.email}</div></div></div></td>
+                    <td class="px-6 py-4"><span class="bg-brand/10 text-brand border border-brand/20 px-2 py-1 rounded text-xs font-bold">${u.planName || 'Custom'}</span></td>
+                    <td class="px-6 py-4"><span class="${isActive ? 'text-green-500' : 'text-red-500'} text-xs font-bold flex items-center gap-1"><i class="ph-fill ph-circle"></i> ${isActive ? 'Active' : 'Expired'}</span><div class="text-[10px] text-gray-500 mt-0.5">${daysLeft} days left</div></td>
+                    <td class="px-6 py-4 font-mono text-gray-400">${u.limits?.maxLayouts || 0} / ${u.limits?.maxPlots || 0}</td>
+                    <td class="px-6 py-4 text-right flex gap-2 justify-end">
+                        <button onclick="openEditDev('${u.id}')" class="text-brand bg-brand/10 hover:bg-brand/20 p-2 rounded transition" title="Renew / Edit"><i class="ph-bold ph-pencil-simple"></i></button>
+                        <button onclick="deleteDev('${u.id}')" class="text-red-500 bg-red-500/10 hover:bg-red-500/20 p-2 rounded transition" title="Revoke"><i class="ph-bold ph-trash"></i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+            document.getElementById('stat-active-licenses').innerText = activeCount;
+        }
+
+        window.createDev = async () => {
+            const name = document.getElementById('dev-name').value;
+            const email = document.getElementById('dev-email').value;
+            const password = document.getElementById('dev-pass').value;
+            const planId = document.getElementById('dev-plan-select').value;
+            if(!name || !email || !password || !planId) return alert("Fill all fields");
+
+            const plan = allPlans.find(p => p.id === planId);
+            const now = new Date();
+            const expiry = new Date(); expiry.setDate(now.getDate() + (plan.validity || 30));
+
+            await addDoc(collection(db, "users"), {
+                name, email, password, role: 'developer',
+                planId: plan.id, planName: plan.name,
+                limits: { maxLogins: plan.maxLogins, maxLayouts: plan.maxLayouts, maxPlots: plan.maxPlots, features: plan.features },
+                subscriptionStart: now, subscriptionEnd: expiry, createdAt: now
+            });
+            document.getElementById('modal-developer').classList.add('hidden');
+        };
+
+        window.deleteDev = async (id) => { if(confirm("Revoke license?")) await deleteDoc(doc(db, "users", id)); };
+
+        // --- RENEW / EDIT DEVELOPER ---
+        window.openEditDev = (id) => {
+            const dev = allDevs.find(d => d.id === id);
+            editingDevId = id;
+            document.getElementById('edit-dev-title').innerText = dev.name;
+            document.getElementById('edit-dev-subtitle').innerText = dev.email;
+            document.getElementById('edit-dev-plan').value = dev.planId;
+            
+            // Format Date for Input
+            const date = dev.subscriptionEnd ? new Date(dev.subscriptionEnd.seconds * 1000) : new Date();
+            document.getElementById('edit-dev-expiry').value = date.toISOString().split('T')[0];
+            
+            document.getElementById('modal-edit-dev').classList.remove('hidden');
+        };
+
+        window.saveDevChanges = async () => {
+            const newPlanId = document.getElementById('edit-dev-plan').value;
+            const newExpiryStr = document.getElementById('edit-dev-expiry').value;
+            
+            const updates = {};
+            
+            // If plan changed, update limits
+            const currentDev = allDevs.find(d => d.id === editingDevId);
+            if(newPlanId !== currentDev.planId) {
+                const p = allPlans.find(x => x.id === newPlanId);
+                updates.planId = p.id;
+                updates.planName = p.name;
+                updates.limits = { maxLogins: p.maxLogins, maxLayouts: p.maxLayouts, maxPlots: p.maxPlots, features: p.features };
+            }
+
+            // Update Expiry
+            if(newExpiryStr) {
+                updates.subscriptionEnd = new Date(newExpiryStr);
+            }
+
+            await updateDoc(doc(db, "users", editingDevId), updates);
+            document.getElementById('modal-edit-dev').classList.add('hidden');
+        };
+
+        // --- SECURE LOGOUT ---
+        window.logout = async () => {
+            const session = JSON.parse(localStorage.getItem('rajchavin_user'));
+            if(session?.sessionId && session.sessionId !== 'master') {
+                try { await deleteDoc(doc(db, "sessions", session.sessionId)); } catch(e){}
+            }
+            localStorage.removeItem('rajchavin_user');
+            window.location.href = 'login.html';
+        };
+    </script>
+</body>
+</html>

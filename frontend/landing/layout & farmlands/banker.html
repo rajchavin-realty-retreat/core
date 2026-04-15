@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Rajchavin | Banker Console</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { brand: '#8b5cf6', dark: '#09090b' } } }
+        }
+    </script>
+
+    <style>
+        :root { --bg: #09090b; --text: #ffffff; --glass: rgba(24, 24, 27, 0.95); --border: rgba(255, 255, 255, 0.1); --card-bg: rgba(24, 24, 27, 0.6); }
+        body { background-color: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overflow: hidden; }
+        .app-view { height: 100vh; overflow-y: auto; padding-bottom: 80px; }
+        .glass-panel { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: 20px; }
+        .glass-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; transition: 0.2s; }
+        .glass-card:active { transform: scale(0.98); background: rgba(255,255,255,0.05); }
+        #modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 200; display: none; align-items: flex-end; justify-content: center; }
+        #modal-content { width: 100%; background: #121214; border-top: 1px solid var(--border); border-radius: 24px 24px 0 0; padding: 24px; max-height: 90vh; overflow-y: auto; transition: 0.3s; }
+        @media (min-width: 1024px) { #modal-backdrop { align-items: center; } #modal-content { max-width: 450px; border-radius: 24px; border: 1px solid var(--border); } }
+        .progress-bar { transition: width 1s ease-in-out; }
+        .hidden-section { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="view-dashboard" class="app-view">
+        <nav class="sticky top-0 z-40 glass-panel border-b-0 rounded-none border-b border-white/10 flex justify-between items-center px-6 py-4 mb-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">RB</div>
+                <div><h2 class="text-sm font-bold" id="banker-name-display">Banker</h2><p class="text-[10px] opacity-60">Collections Agent</p></div>
+            </div>
+            <button onclick="logout()" class="text-xs bg-red-500/10 text-red-500 px-3 py-1.5 rounded hover:bg-red-500/20 font-bold transition">Logout</button>
+        </nav>
+
+        <main class="px-4 pb-20 max-w-xl mx-auto w-full">
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="glass-card p-4">
+                    <p class="text-[10px] uppercase opacity-50 font-bold">Active Clients</p>
+                    <h3 class="text-2xl font-bold text-white" id="stats-clients">0</h3>
+                </div>
+                <div class="glass-card p-4">
+                    <p class="text-[10px] uppercase opacity-50 font-bold">Total Collected</p>
+                    <h3 class="text-2xl font-bold text-purple-400" id="stats-total">₹ 0</h3>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-end mb-3">
+                <h3 class="text-xs font-bold uppercase tracking-widest opacity-60">Client Directory</h3>
+            </div>
+            <div id="customer-list" class="space-y-3"></div>
+        </main>
+    </div>
+
+    <div id="modal-backdrop" onclick="closeModal()">
+        <div id="modal-content" onclick="event.stopPropagation()">
+            <div id="modal-stage-list">
+                <div class="flex justify-between items-center mb-6">
+                    <div><h2 class="text-xl font-bold" id="portfolio-name">Customer</h2><p class="text-xs opacity-60">Select a property to manage</p></div>
+                    <button onclick="closeModal()" class="bg-white/10 p-2 rounded-full"><i class="ph-bold ph-x"></i></button>
+                </div>
+                <div id="portfolio-list" class="space-y-3"></div>
+            </div>
+            <div id="modal-stage-pay" class="hidden-section">
+                <button onclick="backToPortfolio()" class="flex items-center gap-2 text-xs font-bold opacity-60 mb-4 hover:opacity-100"><i class="ph-bold ph-arrow-left"></i> Back to Properties</button>
+                <div class="flex justify-between items-start mb-6">
+                    <div><h2 class="text-xl font-bold" id="pay-plot-id">Plot ID</h2><p class="text-xs opacity-60" id="pay-layout-name">Layout Name</p></div>
+                    <div class="text-right"><p class="text-xs opacity-50">Total Value</p><p class="font-mono font-bold text-lg" id="pay-total-val">₹ 0</p></div>
+                </div>
+                <div class="bg-white/5 rounded-xl p-4 mb-6">
+                    <div class="flex justify-between text-xs mb-2"><span class="opacity-60">Paid Amount</span><span class="font-bold text-green-400" id="pay-paid-display">₹ 0</span></div>
+                    <div class="w-full h-2 bg-black rounded-full overflow-hidden mb-2"><div id="pay-progress-bar" class="h-full bg-green-500 progress-bar" style="width: 0%"></div></div>
+                    <div class="flex justify-between text-xs"><span class="opacity-60">Balance</span><span class="font-bold text-red-400" id="pay-balance-display">₹ 0</span></div>
+                </div>
+                <div class="space-y-4">
+                    <div><label class="text-xs font-bold uppercase opacity-50 ml-1">Payment Amount (₹)</label><input type="number" id="tx-amount" class="w-full bg-white/10 border border-white/10 rounded-xl p-4 text-xl font-bold outline-none focus:border-green-500 text-green-400 mt-1" placeholder="0"></div>
+                    <div><label class="text-xs font-bold uppercase opacity-50 ml-1">Banker PIN (Confirmation)</label><input type="password" id="tx-pin" class="w-full bg-white/10 border border-white/10 rounded-xl p-3 text-sm font-mono outline-none focus:border-red-500 mt-1" placeholder="Enter your login password"></div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="setTxType('cash')" id="btn-cash" class="py-3 rounded-lg border border-white/10 text-xs font-bold hover:bg-white/10 transition bg-white/20 text-white">CASH</button>
+                        <button onclick="setTxType('online')" id="btn-online" class="py-3 rounded-lg border border-white/10 text-xs font-bold hover:bg-white/10 transition text-gray-400">ONLINE / UPI</button>
+                    </div>
+                    <button onclick="submitPayment()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2"><i class="ph-bold ph-check-circle text-xl"></i> Authorize & Pay</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, query, where, getDocs, addDoc, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // --- PASTE KEYS HERE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDHHQXki7JAzDsnsKH6LoLNRYlySfnxW7Y",
+            authDomain: "rajchavin-live.firebaseapp.com",
+            projectId: "rajchavin-live",
+            storageBucket: "rajchavin-live.firebasestorage.app",
+            messagingSenderId: "626552794688",
+            appId: "1:626552794688:web:92988d178bde6c8e6439a5"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- AUTH CHECK ---
+        const session = JSON.parse(localStorage.getItem('rajchavin_user'));
+        if(!session || session.role !== 'banker') {
+            window.location.href = 'login.html';
+        } else {
+            window.appState = { currentUser: session, assignments: [], transactions: [], activeAssignment: null, txType: 'cash' };
+            document.getElementById('banker-name-display').innerText = session.name;
+            initData();
+        }
+
+        window.logout = () => {
+            localStorage.removeItem('rajchavin_user');
+            window.location.href = 'login.html';
+        }
+
+        // --- UTILS ---
+        window.formatVal = (num) => !num ? '0' : Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(num);
+        window.formatCurr = (num) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(num);
+
+        // --- DATA ---
+        function initData() {
+            const qAssign = query(collection(db, "assignments"), where("bankerName", "==", window.appState.currentUser.name));
+            onSnapshot(qAssign, (snap) => {
+                window.appState.assignments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                fetchTransactions();
+            });
+        }
+
+        function fetchTransactions() {
+            onSnapshot(collection(db, "transactions"), (snap) => {
+                const allTx = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                const myAssignIds = window.appState.assignments.map(a => a.id);
+                window.appState.transactions = allTx.filter(t => myAssignIds.includes(t.assignmentId));
+                renderDashboard();
+            });
+        }
+
+        // --- DASHBOARD ---
+        function renderDashboard() {
+            let totalCollected = 0;
+            const grouped = {};
+            window.appState.assignments.forEach(a => {
+                if(!grouped[a.saverName]) grouped[a.saverName] = [];
+                grouped[a.saverName].push(a);
+            });
+
+            window.appState.transactions.forEach(t => totalCollected += Number(t.amount));
+
+            const listHtml = Object.keys(grouped).map(name => {
+                const plots = grouped[name];
+                return `
+                <div onclick="openPortfolioModal('${name}')" class="glass-card p-4 cursor-pointer hover:bg-white/5 border-l-4 border-purple-500 flex justify-between items-center transition">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 text-white flex items-center justify-center font-bold">${name[0]}</div>
+                        <div><h3 class="font-bold text-lg">${name}</h3><p class="text-xs opacity-60 font-mono">${plots.length} Active Loans</p></div>
+                    </div>
+                    <div class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center"><i class="ph-bold ph-caret-right opacity-50"></i></div>
+                </div>`;
+            }).join('');
+
+            document.getElementById('customer-list').innerHTML = listHtml;
+            document.getElementById('stats-clients').innerText = Object.keys(grouped).length;
+            document.getElementById('stats-total').innerText = window.formatVal(totalCollected);
+        }
+
+        // --- MODAL LOGIC (UNCHANGED) ---
+        window.openPortfolioModal = (saverName) => {
+            const plots = window.appState.assignments.filter(a => a.saverName === saverName);
+            document.getElementById('portfolio-name').innerText = saverName;
+            document.getElementById('portfolio-list').innerHTML = plots.map(p => {
+                const paid = window.appState.transactions.filter(t => t.assignmentId === p.id).reduce((s, t) => s + Number(t.amount), 0);
+                const percent = Math.min(100, (paid/Number(p.value))*100).toFixed(0);
+                return `<div onclick="openPaymentForm('${p.id}')" class="glass-card p-3 cursor-pointer hover:bg-white/10 transition"><div class="flex justify-between mb-2"><span class="font-bold text-sm">${p.layoutName}</span><span class="bg-purple-500/20 text-purple-300 text-[10px] px-2 py-0.5 rounded font-mono">${p.plotId}</span></div><div class="w-full h-1 bg-black rounded-full overflow-hidden mb-1"><div class="h-full bg-green-500" style="width:${percent}%"></div></div><div class="flex justify-between text-[10px] opacity-60"><span>Paid: ₹${window.formatVal(paid)}</span><span>${percent}%</span></div></div>`;
+            }).join('');
+            document.getElementById('modal-stage-list').classList.remove('hidden-section');
+            document.getElementById('modal-stage-pay').classList.add('hidden-section');
+            document.getElementById('modal-backdrop').style.display = 'flex';
+        };
+
+        window.openPaymentForm = (assignId) => {
+            const assign = window.appState.assignments.find(a => a.id === assignId);
+            window.appState.activeAssignment = assign;
+            const txs = window.appState.transactions.filter(t => t.assignmentId === assignId);
+            const paid = txs.reduce((sum, t) => sum + Number(t.amount), 0);
+            const total = Number(assign.value);
+            const balance = total - paid;
+            const percent = (paid/total)*100;
+
+            document.getElementById('pay-plot-id').innerText = assign.plotId;
+            document.getElementById('pay-layout-name').innerText = assign.layoutName;
+            document.getElementById('pay-total-val').innerText = window.formatVal(total);
+            document.getElementById('pay-paid-display').innerText = window.formatCurr(paid);
+            document.getElementById('pay-balance-display').innerText = window.formatCurr(balance);
+            document.getElementById('pay-progress-bar').style.width = `${percent}%`;
+            document.getElementById('tx-amount').value = '';
+            document.getElementById('tx-pin').value = '';
+            
+            document.getElementById('modal-stage-list').classList.add('hidden-section');
+            document.getElementById('modal-stage-pay').classList.remove('hidden-section');
+        };
+
+        window.backToPortfolio = () => {
+            document.getElementById('modal-stage-list').classList.remove('hidden-section');
+            document.getElementById('modal-stage-pay').classList.add('hidden-section');
+        };
+
+        window.setTxType = (type) => {
+            window.appState.txType = type;
+            document.getElementById('btn-cash').className = type === 'cash' ? "py-3 rounded-lg border border-purple-500/50 text-xs font-bold bg-purple-600 text-white transition shadow-lg" : "py-3 rounded-lg border border-white/10 text-xs font-bold hover:bg-white/10 transition text-gray-400";
+            document.getElementById('btn-online').className = type === 'online' ? "py-3 rounded-lg border border-purple-500/50 text-xs font-bold bg-purple-600 text-white transition shadow-lg" : "py-3 rounded-lg border border-white/10 text-xs font-bold hover:bg-white/10 transition text-gray-400";
+        };
+
+        window.submitPayment = async () => {
+            const amt = document.getElementById('tx-amount').value;
+            const pin = document.getElementById('tx-pin').value;
+            if(!amt || amt <= 0) return alert("Enter valid amount");
+            if(pin !== window.appState.currentUser.password) return alert("AUTHENTICATION FAILED: Incorrect PIN");
+
+            await addDoc(collection(db, "transactions"), {
+                assignmentId: window.appState.activeAssignment.id,
+                amount: Number(amt),
+                method: window.appState.txType,
+                date: new Date(),
+                bankerId: window.appState.currentUser.id
+            });
+
+            alert("Payment Verified & Recorded!");
+            window.backToPortfolio();
+            window.openPortfolioModal(window.appState.activeAssignment.saverName);
+        };
+
+        window.closeModal = () => { document.getElementById('modal-backdrop').style.display = 'none'; window.appState.activeAssignment = null; };
+        window.setTxType('cash');
+    </script>
+</body>
+</html>

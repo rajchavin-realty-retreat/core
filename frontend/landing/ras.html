@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rajchavin OS | The Future of PropTech</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: { 
+                    colors: { brand: '#3b82f6', darkBg: '#050505', lightBg: '#f8fafc' },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'glow': 'glow 4s ease-in-out infinite alternate',
+                    },
+                    keyframes: {
+                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-20px)' } },
+                        glow: { '0%': { opacity: 0.5 }, '100%': { opacity: 1 } }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; overflow-x: hidden; transition: background-color 0.3s, color 0.3s; }
+        
+        /* Glass Effect - Dark Mode */
+        .dark .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .dark .glass:hover { border-color: rgba(59, 130, 246, 0.3); background: rgba(255, 255, 255, 0.05); }
+
+        /* Glass Effect - Light Mode */
+        .glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(0, 0, 0, 0.05); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .glass:hover { border-color: rgba(59, 130, 246, 0.5); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        
+        /* Text Gradients */
+        .text-gradient-brand { background: linear-gradient(to right, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        /* Grid Pattern Background */
+        .dark .grid-bg { background-size: 40px 40px; background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px); background-color: #050505; }
+        .grid-bg { background-size: 40px 40px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px); background-color: #f8fafc; }
+        
+        /* Card Hover Effects */
+        .bento-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .bento-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px -10px rgba(59, 130, 246, 0.15); }
+    </style>
+
+    <script>
+        // Initialize Theme
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+</head>
+<body class="grid-bg text-gray-900 dark:text-white">
+
+    <nav class="fixed w-full z-50 top-0 border-b border-gray-200 dark:border-white/5 bg-white/80 dark:bg-darkBg/80 backdrop-blur-md transition-colors">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            
+            <div class="flex items-center gap-3">
+                <a href="index.html"><img src="rajchavin-removebg-preview.png" alt="Rajchavin OS Logo" class="h-8 w-auto"> </a>
+            </div>
+
+            <div class="hidden md:flex gap-8 text-sm font-medium text-gray-600 dark:text-gray-400">
+                <a href="raasfeat.html" class="hover:text-brand dark:hover:text-white transition">Features</a>
+                <a href="#tech" class="hover:text-brand dark:hover:text-white transition">Solutions</a>
+                <a href="#security" class="hover:text-brand dark:hover:text-white transition">Security</a>
+                <a href="raaspricing.html" class="hover:text-brand dark:hover:text-white transition">Pricing</a>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <button id="theme-toggle" class="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center hover:scale-110 transition text-gray-700 dark:text-yellow-400">
+                    <i class="ph-fill ph-sun hidden dark:block"></i>
+                    <i class="ph-fill ph-moon block dark:hidden"></i>
+                </button>
+
+                <button onclick="window.location.href='https://raas.rajchavin.com'" class="hidden md:block px-5 py-2 rounded-full bg-gray-900 dark:bg-white text-white dark:text-black font-bold text-sm hover:opacity-90 transition">Login</button>
+                                <button onclick="window.location.href='index.html'" class="hidden md:block px-5 py-2 rounded-full bg-gray-900 dark:bg-white text-white dark:text-black font-bold text-sm hover:opacity-90 transition">Return Home</button>
+
+                <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="md:hidden text-2xl text-gray-700 dark:text-white">
+                    <i class="ph ph-list"></i>
+                </button>
+            </div>
+        </div>
+
+        <div id="mobile-menu" class="hidden md:hidden absolute w-full bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-white/10 shadow-xl">
+            <div class="flex flex-col p-4 space-y-4 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <a href="raasfeat.html" class="block p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded">Features</a>
+                <a href="#tech" class="block p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded">Solutions</a>
+                <a href="#security" class="block p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded">Security</a>
+                <a href="raaspricing.html" class="block p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded">Pricing</a>
+                <button onclick="window.location.href='https://raas.rajchavin.com'" class="w-full py-3 rounded-lg bg-brand text-white font-bold">Login</button>
+                <button onclick="window.location.href='index.html'" class="w-full py-3 rounded-lg bg-brand text-white font-bold">Return Home</button>
+            </div>
+        </div>
+    </nav>
+
+    <section class="relative pt-32 pb-20 md:pt-40 md:pb-32 px-6 overflow-hidden">
+        <div class="absolute top-20 left-1/2 -translate-x-1/2 w-[300px] md:w-[600px] h-[300px] md:h-[600px] bg-brand/20 rounded-full blur-[80px] md:blur-[120px] animate-glow -z-10"></div>
+
+        <div class="max-w-4xl mx-auto text-center">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand/30 bg-brand/10 text-brand text-xs font-bold uppercase tracking-widest mb-6">
+                <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-brand"></span></span>
+                Trusted By Growing Developers  
+            </div>
+            <h1 class="text-4xl md:text-8xl font-black mb-6 leading-tight tracking-tight text-gray-900 dark:text-white">
+                The Operating System for <br> <span class="text-gradient-brand">Modern Real Estate Developers.</span>
+            </h1>
+            <p class="text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+            Rajchavin OS Centralizes <strong>Projects, Construction, Collections, Inventory </strong> and <strong>Sales </strong> into a Secure, Real-time Cloud Platform — empowering Developers with Operational control, Financial visibility and Scalable Growth.            </p>
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <button onclick="window.location.href='login.html'" class="px-8 py-4 rounded-xl bg-brand text-white font-bold text-lg shadow-lg shadow-brand/25 hover:scale-105 transition">View Platform</button>
+                <a href="raasfeat.html" class="px-8 py-4 rounded-xl glass text-gray-900 dark:text-white font-bold text-lg hover:bg-gray-100 dark:hover:bg-white/10 transition">Explore Features</a>
+                <a href="tel:+919071188118" class="px-8 py-4 rounded-xl bg-brand text-white font-bold text-lg shadow-lg shadow-brand/25 hover:scale-105 transition">Request Demo</a>
+
+            </div>
+        </div>
+
+       <!-- <div class="mt-16 md:mt-20 max-w-6xl mx-auto glass rounded-2xl border border-gray-200 dark:border-white/10 p-2 shadow-2xl animate-float">
+            <img src="https://images.unsplash.com/photo-1661956602116-aa6865609028?q=80&w=2564&auto=format&fit=crop" class="rounded-xl opacity-90 dark:opacity-80 w-full h-[250px] md:h-[400px] object-cover object-top" alt="Dashboard Preview" style="mask-image: linear-gradient(to bottom, black 50%, transparent 100%);">
+            <div class="absolute bottom-0 left-0 w-full h-40 bg-gradient-to-t from-[#f8fafc] dark:from-[#050505] to-transparent"></div>
+        </div> -->
+    </section>
+
+    <section id="suite" class="py-20 px-6 max-w-7xl mx-auto">
+        <div class="mb-16 text-center md:text-left">
+            <h2 class="text-3xl md:text-5xl font-bold mb-4 text-gray-900 dark:text-white">One Unified Platform.<br><span class="text-gray-500">Three Core Systems Powering Modern Developers.</span></h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <div class="md:col-span-2 glass rounded-3xl p-8 relative overflow-hidden group bento-card flex flex-col justify-between h-[350px] md:h-[450px]">
+                <div class="relative z-10">
+                    <div class="w-12 h-12 rounded-xl bg-blue-600/20 text-blue-500 flex items-center justify-center text-2xl mb-4"><i class="ph-fill ph-buildings"></i></div>
+                    <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Developer Command Center</h3>
+                    <p class="text-gray-600 dark:text-gray-400 max-w-md">Centralize project planning, live inventory tracking, and revenue intelligence in one powerful interface. Gain real-time visibility across layouts, phases, and performance metrics. <br> Role-based access control, tenant-level data isolation, encrypted infrastructure, and complete activity logs — built for institutional-grade compliance.</p>
+                </div>
+                <div class="absolute right-0 bottom-0 w-2/3 h-2/3 bg-gradient-to-tl from-blue-500/10 to-transparent rounded-tl-full opacity-50 group-hover:scale-110 transition duration-700"></div>
+                <div class="absolute bottom-8 right-8 flex flex-col md:flex-row gap-3">
+                    <div class="glass px-4 py-2 rounded-lg text-xs font-mono text-green-600 dark:text-green-400 border-green-500/20 bg-white/50 dark:bg-black/20">₹ 4.5 Cr Sales</div>
+                    <div class="glass px-4 py-2 rounded-lg text-xs font-mono text-blue-600 dark:text-blue-400 border-blue-500/20 bg-white/50 dark:bg-black/20">85% Sold</div>
+                </div>
+            </div>
+
+            <div class="glass rounded-3xl p-8 relative overflow-hidden group bento-card h-[350px] md:h-[450px]">
+                <div class="w-12 h-12 rounded-xl bg-purple-600/20 text-purple-500 flex items-center justify-center text-2xl mb-4"><i class="ph-fill ph-bank"></i></div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Secure Collections</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Automate installment tracking, verify payments securely, and generate instant receipts — ensuring financial transparency and audit-ready records.</p>
+                <div class="w-full bg-gray-50 dark:bg-white/5 rounded-xl p-3 border border-gray-200 dark:border-white/5 flex items-center justify-between shadow-inner">
+                    <div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-green-500"></div><span class="text-xs font-mono">Payment</span></div>
+                    <span class="text-xs font-bold text-gray-900 dark:text-white">Verified <i class="ph-bold ph-check-circle text-green-500"></i></span>
+                </div>
+            </div>
+
+            <div class="md:col-span-3 glass rounded-3xl p-8 relative overflow-hidden group bento-card flex flex-col md:flex-row items-center gap-8">
+                <div class="flex-1">
+                    <div class="w-12 h-12 rounded-xl bg-green-600/20 text-green-500 flex items-center justify-center text-2xl mb-4"><i class="ph-fill ph-plant"></i></div>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Wealth Portfolio</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Enable customers to track plot ownership progress, payment milestones and asset appreciation — strengthening trust and long-term engagement.</p>
+                </div>
+                <div class="flex-1 w-full">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-xs font-bold text-gray-500 uppercase">Plot Ownership</span>
+                        <span class="text-xs font-bold text-green-500 ml-auto">70% Paid</span>
+                    </div>
+                    <div class="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"><div class="h-full bg-green-500 w-[70%]"></div></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="security" class="py-24 bg-white dark:bg-surface border-y border-gray-200 dark:border-white/5 transition-colors">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 text-center md:text-left">
+                <div>
+                    <h4 class="text-brand font-bold uppercase tracking-widest text-xs mb-2">Cloud Infrastructure</h4>
+                    <p class="text-2xl font-bold text-gray-900 dark:text">Google Firebase</p>
+                    <p class="text-sm text-gray-500 mt-1">99.9% Uptime SLA & Scalable Cloud Hosting</p>
+                </div>
+                <div>
+                    <h4 class="text-brand font-bold uppercase tracking-widest text-xs mb-2">Security</h4>
+                    <p class="text-2xl font-bold text-gray-900 dark:text">Role-Based Access</p>
+                    <p class="text-sm text-gray-500 mt-1">Tenant-Level Data Isolation & Encrypted Infrastructure.</p>
+                </div>
+                <div>
+                    <h4 class="text-brand font-bold uppercase tracking-widest text-xs mb-2">Performance</h4>
+                    <p class="text-2xl font-bold text-gray-900 dark:text">Real-Time Data Sync</p>
+                    <p class="text-sm text-gray-500 mt-1">Instant Dashboard Updates & Scalable Infrastructure</p>
+                </div>
+                <div>
+                    <h4 class="text-brand font-bold uppercase tracking-widest text-xs mb-2">Architecture</h4>
+                    <p class="text-2xl font-bold text-gray-900 dark:text">Modern Scalable Architecture</p>
+                    <p class="text-sm text-gray-500 mt-1">Cloud-Native • Modular • Future-Ready</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-32 text-center px-6">
+        <h2 class="text-4xl md:text-6xl font-black mb-6 text-gray-900 dark:text-white">Ready to upgrade?</h2>
+        <p class="text-gray-600 dark:text-gray-400 mb-10 max-w-xl mx-auto">Deploy Rajchavin OS today and transform how you manage your real estate empire.</p>
+        <button onclick="window.location.href='https://raas.rajchavin.com'" class="px-10 py-5 rounded-full bg-black dark:bg-white text-white dark:text-black font-bold text-xl hover:scale-105 transition shadow-2xl">
+            Launch Application
+        </button>
+    </section>
+
+    <footer class="bg-lightBg dark:bg-darkBg border-t border-gray-200 dark:border-white/10 pt-16 pb-8">
+        <div class="max-w-7xl mx-auto px-6">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
+                
+                <div>
+                    <div class="flex items-center gap-3 mb-6">
+                        <img src="rajchavin-removebg-preview.png" alt="Rajchavin OS Logo" class="h-10 w-auto">
+                    </div>
+
+                    <p class="text-gray-600 dark:text-gray-400 leading-relaxed mb-8 max-w-lg">
+Rajchavin Technologies. Built for Industry Leaders. Powered by Raas™ — the operating system for real estate developers who demand operational clarity, financial control and scalable growth.                    
+                    <div class="flex gap-4">
+                        <a href="#" class="w-10 h-10 rounded-full border border-gray-300 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:border-brand hover:text-brand dark:hover:border-brand dark:hover:text-brand transition">
+                            <i class="ph ph-instagram-logo text-lg"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 rounded-full border border-gray-300 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:border-brand hover:text-brand dark:hover:border-brand dark:hover:text-brand transition">
+                            <i class="ph ph-facebook-logo text-lg"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 rounded-full border border-gray-300 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:border-brand hover:text-brand dark:hover:border-brand dark:hover:text-brand transition">
+                            <i class="ph ph-linkedin-logo text-lg"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 rounded-full border border-gray-300 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:border-brand hover:text-brand dark:hover:border-brand dark:hover:text-brand transition">
+                            <i class="ph ph-twitter-logo text-lg"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="flex flex-col md:items-end text-left md:text-right">
+                    <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Contact Us</h3>
+                    
+                    <div class="flex flex-col gap-6 text-gray-600 dark:text-gray-400">
+                        
+                        <div class="flex items-start md:justify-end gap-4">
+                            <div class="order-last md:order-first">
+                                <p class="text-gray-900 dark:text-gray-300 font-medium mb-1">RAJCHAVIN REALTY RETREAT</p>
+                                <p>RAJCHAVIN REALTY RETREAT Shop No. 1, Survey No. 391, Tirlapur’s Premise, Basaveshwar Nagar, Shahapur Peth, Opp. Someshwara Temple, Ward No. 15.</p>
+                                <p>Gadag – 582101, Karnataka, India</p>
+                            </div>
+                            <i class="ph-fill ph-map-pin text-[#3b82f6] text-xl mt-1 md:order-last"></i>
+                        </div>
+
+                        <div class="flex items-center md:justify-end gap-4">
+                            <a href="tel:+919071188118"><p class="font-bold tracking-wide text-gray-900 dark:text-gray-300 order-last md:order-first">+91 907 1188 118</p></a>
+                            <a href="tel:+918006800270"><p class="font-bold tracking-wide text-gray-900 dark:text-gray-300 order-last md:order-first">+91 8006 8002 70</p></a>
+                            <i class="ph-fill ph-phone text-[#3b82f6] text-xl md:order-last"></i>
+                        </div>
+
+                        <div class="flex items-center md:justify-end gap-4">
+                            <p class="order-last md:order-first">contact@rajchavin.com</p>
+                            <i class="ph-fill ph-envelope text-[#3b82f6] text-xl md:order-last"></i>
+                        </div>
+
+                    </div>
+                </div>
+                
+            </div>
+
+            <div class="border-t border-gray-200 dark:border-white/10 pt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                <p>&copy; 2026 Raj Chavin Realty Retreat. All rights reserved.</p>
+                
+                <div class="flex flex-wrap justify-center gap-6">
+                    <a href="#" class="hover:text-brand dark:hover:text-white transition">Terms of Service</a>
+                    <a href="#" class="hover:text-brand dark:hover:text-white transition">Privacy Policy</a>
+                    <a href="#" class="hover:text-brand dark:hover:text-white transition">Sitemap</a>
+                </div>
+            </div>
+
+        </div>
+    </footer>
+
+    <script>
+        const themeBtn = document.getElementById('theme-toggle');
+        const html = document.documentElement;
+
+        themeBtn.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            localStorage.theme = html.classList.contains('dark') ? 'dark' : 'light';
+        });
+    </script>
+
+</body>
+</html>

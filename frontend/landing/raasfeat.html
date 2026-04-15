@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Features | Rajchavin OS</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: { 
+                    colors: { brand: '#3b82f6', darkBg: '#050505', lightBg: '#f8fafc' },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    animation: {
+                        'glow': 'glow 4s ease-in-out infinite alternate',
+                    },
+                    keyframes: {
+                        glow: { '0%': { opacity: 0.5 }, '100%': { opacity: 1 } }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; overflow-x: hidden; transition: background-color 0.3s, color 0.3s; }
+        
+        /* Glass Effect */
+        .dark .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .dark .glass:hover { border-color: rgba(59, 130, 246, 0.3); background: rgba(255, 255, 255, 0.05); }
+        .glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(0, 0, 0, 0.05); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .glass:hover { border-color: rgba(59, 130, 246, 0.5); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        
+        /* Text Gradients & Backgrounds */
+        .text-gradient-brand { background: linear-gradient(to right, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .dark .grid-bg { background-size: 40px 40px; background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px); background-color: #050505; }
+        .grid-bg { background-size: 40px 40px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px); background-color: #f8fafc; }
+        
+        /* Hover Effects */
+        .bento-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .bento-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px -10px rgba(59, 130, 246, 0.15); }
+    </style>
+
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+</head>
+<body class="grid-bg text-gray-900 dark:text-white">
+
+    <nav class="fixed w-full z-50 top-0 border-b border-gray-200 dark:border-white/5 bg-white/80 dark:bg-darkBg/80 backdrop-blur-md transition-colors">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            
+            <div class="flex items-center gap-3">
+                <img src="rajchavin-removebg-preview.png" alt="Rajchavin OS Logo" class="h-8 w-auto"> 
+            </div>
+
+            <div class="hidden md:flex gap-8 text-sm font-medium text-gray-600 dark:text-gray-400">
+                <a href="index.html#suite" class="hover:text-brand dark:hover:text-white transition">Features</a>
+                <a href="index.html#tech" class="hover:text-brand dark:hover:text-white transition">Solutions</a>
+                <a href="index.html#security" class="hover:text-brand dark:hover:text-white transition">Security</a>
+                <a href="index.html#tech" class="hover:text-brand dark:hover:text-white transition">Pricing</a>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <button id="theme-toggle" class="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center hover:scale-110 transition text-gray-700 dark:text-yellow-400">
+                    <i class="ph-fill ph-sun hidden dark:block"></i>
+                    <i class="ph-fill ph-moon block dark:hidden"></i>
+                </button>
+                <button onclick="window.location.href='index.html'" class="hidden md:block px-5 py-2 rounded-full glass text-gray-900 dark:text-white font-bold text-sm hover:opacity-90 transition">Return Home</button>
+                <button onclick="window.location.href='https://marketplace.rajchavin.com'" class="hidden md:block px-5 py-2 rounded-full bg-brand text-white font-bold text-sm hover:opacity-90 transition shadow-lg shadow-brand/20">Login</button>
+
+                <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="md:hidden text-2xl text-gray-700 dark:text-white">
+                    <i class="ph ph-list"></i>
+                </button>
+            </div>
+        </div>
+
+        <div id="mobile-menu" class="hidden md:hidden absolute w-full bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-white/10 shadow-xl">
+            <div class="flex flex-col p-4 space-y-4 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <a href="index.html" class="block p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded">Home</a>
+                <a href="#features" class="block p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded">All Features</a>
+                <button onclick="window.location.href='https://raas.rajchavin.com'" class="w-full py-3 rounded-lg bg-brand text-white font-bold">Login</button>
+            </div>
+        </div>
+    </nav>
+
+    <section class="relative pt-32 pb-16 md:pt-40 md:pb-20 px-6 overflow-hidden">
+        <div class="absolute top-10 left-1/2 -translate-x-1/2 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-brand/10 rounded-full blur-[100px] animate-glow -z-10"></div>
+        <div class="max-w-4xl mx-auto text-center">
+            <h1 class="text-4xl md:text-6xl font-black mb-6 leading-tight tracking-tight text-gray-900 dark:text-white">
+                Everything You Need to <br> <span class="text-gradient-brand">Build, Sell, and Scale.</span>
+            </h1>
+            <p class="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
+                Explore the complete suite of tools powering modern real estate developers. From visual inventory mapping to enterprise-grade compliance.
+            </p>
+        </div>
+    </section>
+
+    <section id="features" class="py-10 px-6 max-w-7xl mx-auto mb-20">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+            <div class="glass rounded-3xl p-8 group bento-card">
+                <div class="w-12 h-12 rounded-xl bg-blue-600/20 text-blue-500 flex items-center justify-center text-2xl mb-4"><i class="ph-fill ph-presentation-chart"></i></div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Developer Command Center</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">The core operational dashboard for layout developers.</p>
+                <ul class="space-y-3">
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Centralized Project Control:</strong> Manage layouts, phases, and status tracking in real-time.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Intelligent KPI Dashboard:</strong> Track total sales, secured revenue, overdue payments, and conversion rates.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Multi-Project Overview:</strong> Compare performance and revenue across all your active layouts.</span></li>
+                </ul>
+            </div>
+
+            <div class="glass rounded-3xl p-8 group bento-card">
+                <div class="w-12 h-12 rounded-xl bg-emerald-600/20 text-emerald-500 flex items-center justify-center text-2xl mb-4"><i class="ph-fill ph-map-trifold"></i></div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Plot & Inventory Management</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Built specifically for plotting and layout businesses.</p>
+                <ul class="space-y-3">
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Visual Plot Mapping:</strong> Interactive grid with real-time color-coded availability.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Detailed Configuration:</strong> Manage dimensions, area, facing, PLC, and dynamic pricing.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Bulk Operations:</strong> Excel-based import, bulk pricing adjustments, and phase allocations.</span></li>
+                </ul>
+            </div>
+
+            <div class="glass rounded-3xl p-8 group bento-card">
+                <div class="w-12 h-12 rounded-xl bg-purple-600/20 text-purple-500 flex items-center justify-center text-2xl mb-4"><i class="ph-fill ph-wallet"></i></div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Secure Collections Engine</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Designed to improve financial control and transparency.</p>
+                <ul class="space-y-3">
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Installment Tracking:</strong> Flexible schedules, EMIs, and milestone-based plans.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Real-Time Payments:</strong> Secure entries, partial payments, and instant receipts.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Overdue Management:</strong> Automated alerts and collection efficiency monitoring.</span></li>
+                </ul>
+            </div>
+
+            <div class="glass rounded-3xl p-8 group bento-card">
+                <div class="w-12 h-12 rounded-xl bg-orange-600/20 text-orange-500 flex items-center justify-center text-2xl mb-4"><i class="ph-fill ph-users-three"></i></div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Sales & Lead Management</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Helps developers improve conversion performance.</p>
+                <ul class="space-y-3">
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Lead Capture:</strong> Inquiry registration, source tracking, and stage pipelines.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Follow-Up Management:</strong> Scheduled reminders, activity logs, and conversion tracking.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Executive Performance:</strong> Track sales, revenue contribution, and commissions via leaderboards.</span></li>
+                </ul>
+            </div>
+
+            <div class="glass rounded-3xl p-8 group bento-card">
+                <div class="w-12 h-12 rounded-xl bg-green-600/20 text-green-500 flex items-center justify-center text-2xl mb-4"><i class="ph-fill ph-plant"></i></div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Customer Wealth Portfolio</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Enhances customer trust and post-sale transparency.</p>
+                <ul class="space-y-3">
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Ownership Tracking:</strong> Payment progress and plot ownership percentages.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Asset Performance:</strong> Track appreciation, project milestones, and digital agreements.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>CX Layer:</strong> Transparent financial history and structured communication records.</span></li>
+                </ul>
+            </div>
+
+            <div class="glass rounded-3xl p-8 group bento-card">
+                <div class="w-12 h-12 rounded-xl bg-red-600/20 text-red-500 flex items-center justify-center text-2xl mb-4"><i class="ph-fill ph-shield-check"></i></div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Role-Based Access (RBAC)</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Enterprise-grade internal security framework.</p>
+                <ul class="space-y-3">
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Multi-Level Roles:</strong> Profiles for Owner, Admin, Sales Manager, Execs, and Accountants.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Permission Control:</strong> Restrict financial visibility, module access, and edit/delete rights.</span></li>
+                </ul>
+            </div>
+
+            <div class="glass rounded-3xl p-8 group bento-card">
+                <div class="w-12 h-12 rounded-xl bg-indigo-600/20 text-indigo-500 flex items-center justify-center text-2xl mb-4"><i class="ph-fill ph-database"></i></div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Multi-Tenant Architecture</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Built specifically for B2B SaaS scalability.</p>
+                <ul class="space-y-3">
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Data Isolation:</strong> Tenant-level separation ensures your data is strictly siloed and secure.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Secure Authentication:</strong> Encrypted sessions, password protection, and optional 2FA.</span></li>
+                </ul>
+            </div>
+
+            <div class="glass rounded-3xl p-8 group bento-card">
+                <div class="w-12 h-12 rounded-xl bg-cyan-600/20 text-cyan-500 flex items-center justify-center text-2xl mb-4"><i class="ph-fill ph-chart-bar"></i></div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Real-Time Intelligence</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Transforms raw data into actionable business insights.</p>
+                <ul class="space-y-3">
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Revenue Intelligence:</strong> Project revenue, monthly collection trends, and pending vs secured ratios.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Inventory Analytics:</strong> Turnover ratio, aging inventory tracking, and sales visualization.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Executive View:</strong> High-level CEO dashboard with risk alerts.</span></li>
+                </ul>
+            </div>
+
+            <div class="glass rounded-3xl p-8 group bento-card">
+                <div class="w-12 h-12 rounded-xl bg-yellow-600/20 text-yellow-500 flex items-center justify-center text-2xl mb-4"><i class="ph-fill ph-bell-ringing"></i></div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Smart Alerts & Notifs</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Prevents operational blind spots before they happen.</p>
+                <ul class="space-y-3">
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span>Overdue payment alerts to ensure steady cash flow.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span>Low-performing project warnings for rapid course correction.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span>Booking finalization and subscription usage reminders.</span></li>
+                </ul>
+            </div>
+
+            <div class="glass rounded-3xl p-8 group bento-card">
+                <div class="w-12 h-12 rounded-xl bg-teal-600/20 text-teal-500 flex items-center justify-center text-2xl mb-4"><i class="ph-fill ph-list-magnifying-glass"></i></div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Audit & Governance</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Ensures absolute accountability and compliance.</p>
+                <ul class="space-y-3">
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Action History:</strong> Complete, un-editable logs of platform usage.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Financial Audits:</strong> Track all payment and pricing modification logs securely.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Booking Changes:</strong> Transparent history for plot re-allocations or cancellations.</span></li>
+                </ul>
+            </div>
+
+            <div class="glass rounded-3xl p-8 group bento-card">
+                <div class="w-12 h-12 rounded-xl bg-sky-600/20 text-sky-500 flex items-center justify-center text-2xl mb-4"><i class="ph-fill ph-cloud-check"></i></div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Cloud Infrastructure</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Enterprise reliability and global scalability.</p>
+                <ul class="space-y-3">
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>99.9% Uptime SLA:</strong> Dependable infrastructure that never sleeps.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Real-Time Sync:</strong> Data updates instantly across all user screens without refreshing.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Scalable Architecture:</strong> Built to grow alongside your expanding portfolio.</span></li>
+                </ul>
+            </div>
+
+            <div class="glass rounded-3xl p-8 group bento-card">
+                <div class="w-12 h-12 rounded-xl bg-slate-600/20 text-slate-500 flex items-center justify-center text-2xl mb-4"><i class="ph-fill ph-lock-key"></i></div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Security & Compliance</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Military-grade protection for your sensitive data.</p>
+                <ul class="space-y-3">
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Encryption Standard:</strong> Data encrypted securely both at rest and in transit.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Fraud-Resistant:</strong> Tamper-proof payment logging and activity tracking.</span></li>
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><i class="ph-bold ph-check text-brand mt-0.5"></i> <span><strong>Absolute Privacy:</strong> Tenant-level isolation guarantees no data cross-contamination.</span></li>
+                </ul>
+            </div>
+
+        </div>
+    </section>
+
+    <section class="py-24 text-center px-6 border-t border-gray-200 dark:border-white/5 bg-white dark:bg-surface">
+        <h2 class="text-4xl md:text-5xl font-black mb-6 text-gray-900 dark:text">Experience the full power of Rajchavin OS.</h2>
+        <p class="text-gray-600 dark:text-gray-400 mb-10 max-w-xl mx-auto">Stop managing your real estate portfolio in spreadsheets. Upgrade to a system built for clarity, control, and massive scale.</p>
+        <button onclick="window.location.href='raas/login.html'" class="px-10 py-5 rounded-full bg-brand text-white font-bold text-xl hover:scale-105 transition shadow-xl shadow-brand/25">
+            Launch Application Today
+        </button>
+    </section>
+
+    <footer class="bg-lightBg dark:bg-darkBg border-t border-gray-200 dark:border-white/10 pt-16 pb-8">
+        <div class="max-w-7xl mx-auto px-6">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
+                
+                <div>
+                    <div class="flex items-center gap-3 mb-6">
+                        <img src="rajchavin-removebg-preview.png" alt="Rajchavin OS Logo" class="h-10 w-auto">
+                    </div>
+                    
+                    <p class="text-gray-600 dark:text-gray-400 leading-relaxed mb-8 max-w-lg">
+Rajchavin Technologies. Built for Industry Leaders. Powered by Raas™ — the operating system for real estate developers who demand operational clarity, financial control, and scalable growth.                    
+                    </p>
+                    
+                    <div class="flex gap-4">
+                        <a href="#" class="w-10 h-10 rounded-full border border-gray-300 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:border-brand hover:text-brand dark:hover:border-brand dark:hover:text-brand transition">
+                            <i class="ph ph-instagram-logo text-lg"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 rounded-full border border-gray-300 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:border-brand hover:text-brand dark:hover:border-brand dark:hover:text-brand transition">
+                            <i class="ph ph-facebook-logo text-lg"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 rounded-full border border-gray-300 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:border-brand hover:text-brand dark:hover:border-brand dark:hover:text-brand transition">
+                            <i class="ph ph-linkedin-logo text-lg"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 rounded-full border border-gray-300 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:border-brand hover:text-brand dark:hover:border-brand dark:hover:text-brand transition">
+                            <i class="ph ph-twitter-logo text-lg"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="flex flex-col md:items-end text-left md:text-right">
+                    <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Contact Us</h3>
+                    
+                    <div class="flex flex-col gap-6 text-gray-600 dark:text-gray-400">
+                        
+                        <div class="flex items-start md:justify-end gap-4">
+                            <div class="order-last md:order-first">
+                                <p class="text-gray-900 dark:text-gray-300 font-medium mb-1">RAJCHAVIN REALTY RETREAT</p>
+                                <p>RAJCHAVIN REALTY RETREAT Shop No. 1, Survey No. 391, Tirlapur’s Premise, Basaveshwar Nagar, Shahapur Peth, Opp. Someshwara Temple, Ward No. 15.</p>
+                                <p>Gadag – 582101, Karnataka, India</p>
+                            </div>
+                            <i class="ph-fill ph-map-pin text-[#3b82f6] text-xl mt-1 md:order-last"></i>
+                        </div>
+
+                        <div class="flex items-center md:justify-end gap-4">
+                           <a href="tel:+919071188118"> <p class="font-bold tracking-wide text-gray-900 dark:text-gray-300 order-last md:order-first">+91 907 1188 118</p> </a>                            <a href="tel:+918006800270"> <p class="font-bold tracking-wide text-gray-900 dark:text-gray-300 order-last md:order-first">+91 8006 8002 70</p> </a>
+                            <i class="ph-fill ph-phone text-[#3b82f6] text-xl md:order-last"></i>
+                        </div>
+                        
+
+                        <div class="flex items-center md:justify-end gap-4">
+                            <p class="order-last md:order-first">contact@rajchavin.com</p>
+                            <i class="ph-fill ph-envelope text-[#3b82f6] text-xl md:order-last"></i>
+                        </div>
+
+                    </div>
+                </div>
+                
+            </div>
+
+            <div class="border-t border-gray-200 dark:border-white/10 pt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                <p>&copy; 2026 Raj Chavin Realty Retreat. All rights reserved.</p>
+                
+                <div class="flex flex-wrap justify-center gap-6">
+                    <a href="#" class="hover:text-brand dark:hover:text-white transition">Terms of Service</a>
+                    <a href="#" class="hover:text-brand dark:hover:text-white transition">Privacy Policy</a>
+                    <a href="#" class="hover:text-brand dark:hover:text-white transition">Sitemap</a>
+                </div>
+            </div>
+
+        </div>
+    </footer>
+
+    <script>
+        const themeBtn = document.getElementById('theme-toggle');
+        const html = document.documentElement;
+
+        themeBtn.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            localStorage.theme = html.classList.contains('dark') ? 'dark' : 'light';
+        });
+    </script>
+
+</body>
+</html>

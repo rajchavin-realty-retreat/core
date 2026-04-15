@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SECURE PROTOCOL</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { 
+                extend: { 
+                    colors: { dark: '#000000', glass: 'rgba(24, 24, 27, 0.95)' },
+                    fontFamily: { sans: ['Courier New', 'monospace'] } 
+                } 
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #000; color: #0f0; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; margin: 0; }
+        
+        .auth-input { background: #000; border: 1px solid #333; color: #0f0; padding: 15px; width: 100%; outline: none; font-size: 14px; margin-bottom: 10px; }
+        .auth-input:focus { border-color: #0f0; box-shadow: 0 0 10px rgba(0, 255, 0, 0.2); }
+        .auth-btn { background: #0f0; color: #000; font-weight: bold; padding: 15px; width: 100%; text-transform: uppercase; letter-spacing: 2px; cursor: pointer; transition: 0.2s; }
+        .auth-btn:hover { box-shadow: 0 0 20px rgba(0, 255, 0, 0.6); }
+
+        #panic-btn {
+            width: 250px; height: 250px; border-radius: 50%; 
+            border: 4px solid #3f3f46;
+            background: linear-gradient(145deg, #18181b, #000);
+            box-shadow: 0 0 0 10px rgba(0,0,0,1), 0 0 50px rgba(255,0,0,0.2);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            -webkit-tap-highlight-color: transparent; user-select: none;
+        }
+        
+        #panic-btn:active, .activated #panic-btn { 
+            transform: scale(0.95); 
+            border-color: #ef4444; 
+            background: #450a0a; 
+            box-shadow: 0 0 0 10px rgba(0,0,0,1), 0 0 100px rgba(239, 68, 68, 0.8); 
+        }
+        
+        #panic-btn i { color: #52525b; transition: 0.3s; font-size: 80px; }
+        #panic-btn:active i, .activated #panic-btn i { color: #ef4444; text-shadow: 0 0 20px rgba(239, 68, 68, 0.8); }
+
+        .scan-line { position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: rgba(0, 255, 0, 0.3); animation: scan 3s linear infinite; pointer-events: none; z-index: 50; }
+        @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
+        
+        .hidden { display: none !important; }
+
+        /* Game specific styling */
+        #game-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
+        canvas { background: #87CEEB; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); image-rendering: pixelated; width: 100%; max-width: 800px; }
+    </style>
+</head>
+<body>
+    <div class="scan-line" id="scanner"></div>
+
+    <div id="login-view" class="w-full max-w-sm p-8 hidden">
+        <div class="text-center mb-10">
+            <i class="ph-fill ph-lock-key text-4xl mb-4"></i>
+            <h1 class="text-xl tracking-widest border-b border-green-900 pb-2 inline-block">SYSTEM ACCESS</h1>
+        </div>
+        <input type="text" id="dev-id" class="auth-input" placeholder="Access ID">
+        <input type="password" id="dev-pass" class="auth-input" placeholder="Passphrase">
+        <button onclick="handleLogin()" class="auth-btn mt-4">AUTHENTICATE</button>
+        <p id="error-msg" class="text-red-500 text-xs mt-4 text-center hidden">ACCESS DENIED</p>
+    </div>
+
+    <div id="panic-view" class="flex flex-col items-center w-full h-full justify-center hidden">
+        <div class="absolute top-10 w-full text-center">
+            <p class="text-xs text-gray-500 tracking-[0.5em]">CONNECTION SECURE</p>
+            <p id="user-display" class="text-sm font-bold text-green-700 mt-1 uppercase"></p>
+        </div>
+
+        <div id="panic-btn" onclick="activateProtocol()">
+            <i class="ph-fill ph-warning-octagon"></i>
+        </div>
+        
+        <div class="mt-12 text-center space-y-2">
+            <h1 id="status-text" class="text-xl font-bold tracking-[0.2em] text-gray-500 uppercase">READY</h1>
+            <p class="text-[10px] text-gray-800">TAP TO MASK DATA GLOBALLY</p>
+        </div>
+
+        <div class="absolute bottom-10 w-64 border-t border-gray-900 pt-4">
+             <input type="text" id="dummy-client" value="Verified Client" class="bg-transparent border-b border-gray-900 text-[10px] text-gray-600 w-full text-center outline-none focus:text-green-500 transition" placeholder="Dummy Client Name">
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, query, where, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAd8kVZEt919GfWvhhstgebLWxgwaunT5o",
+            authDomain: "rajchavin-raas.firebaseapp.com",
+            projectId: "rajchavin-raas",
+            storageBucket: "rajchavin-raas.firebasestorage.app",
+            messagingSenderId: "14499629170",
+            appId: "1:14499629170:web:1cd21aa2434df98afcdaeb"
+        };        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let currentUser = null;
+
+        // 1. INITIAL LOAD CHECK
+        function init() {
+            try {
+                const stored = localStorage.getItem('rajchavin_user');
+                if (stored) {
+                    currentUser = JSON.parse(stored);
+                    showPanicView();
+                } else {
+                    document.getElementById('login-view').classList.remove('hidden');
+                }
+            } catch(e) {
+                document.getElementById('login-view').classList.remove('hidden');
+            }
+        }
+        init();
+
+        // 2. LOGIN LOGIC
+        window.handleLogin = async () => {
+            const id = document.getElementById('dev-id').value.trim();
+            const pass = document.getElementById('dev-pass').value.trim();
+            const btn = document.querySelector('.auth-btn');
+            const err = document.getElementById('error-msg');
+            
+            btn.innerText = "VERIFYING...";
+            err.classList.add('hidden');
+
+            try {
+                const q = query(collection(db, "users"), where("email", "==", id), where("password", "==", pass));
+                const snap = await getDocs(q);
+
+                if (!snap.empty) {
+                    const user = snap.docs[0].data();
+                    const userId = snap.docs[0].id; 
+                    
+                    currentUser = { id: userId, name: user.name || user.email, sessionId: 'panic-session' };
+                    localStorage.setItem('rajchavin_user', JSON.stringify(currentUser));
+                    showPanicView();
+                } else {
+                    err.innerText = "ACCESS DENIED";
+                    err.classList.remove('hidden');
+                    btn.innerText = "AUTHENTICATE";
+                }
+            } catch(e) {
+                console.error("Login Error:", e);
+                err.innerText = "NETWORK ERROR";
+                err.classList.remove('hidden');
+                btn.innerText = "AUTHENTICATE";
+            }
+        };
+
+        function showPanicView() {
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('panic-view').classList.remove('hidden');
+            document.getElementById('user-display').innerText = currentUser.name || "Authorized";
+        }
+
+        // 3. ACTIVATE PANIC
+        window.activateProtocol = async () => {
+            if(!currentUser) return;
+            
+            const btn = document.getElementById('panic-btn');
+            const status = document.getElementById('status-text');
+            const dummyName = document.getElementById('dummy-client').value || "Verified Client";
+            
+            document.body.classList.add('activated');
+            status.innerText = "EXECUTING...";
+            status.className = "text-xl font-bold tracking-[0.2em] text-red-500 uppercase animate-pulse";
+            
+            try {
+                // UPDATE USER SPECIFIC SETTINGS IN DB
+                const configRef = doc(db, "settings", currentUser.id);
+                await setDoc(configRef, { 
+                    panicMode: true,
+                    dummyRevenue: 150000, 
+                    dummyName: dummyName
+                }, { merge: true });
+
+                // Success State - Launch Game
+                setTimeout(() => {
+                    launchMiniGame();
+                }, 800);
+
+            } catch(e) {
+                alert("PROTOCOL FAILED: " + e.message);
+                document.body.classList.remove('activated');
+            }
+        };
+
+        // 4. THE MARIO-STYLE MINI GAME
+        function launchMiniGame() {
+            // Remove scanner and setup document for game
+            const scanner = document.getElementById('scanner');
+            if(scanner) scanner.remove();
+            
+            document.title = "404 Not Found"; // Innocent page title
+            document.body.style.backgroundColor = "#222";
+            
+            // Inject Canvas
+            document.body.innerHTML = `
+                <div id="game-container">
+                    <p class="text-gray-400 text-xs tracking-widest mb-4 uppercase">System Offline - Press Space or Tap to Jump</p>
+                    <canvas id="gameCanvas" width="800" height="300"></canvas>
+                    <p id="scoreBoard" class="text-white text-xl font-bold mt-4 font-mono">Score: 0</p>
+                </div>
+            `;
+
+            const canvas = document.getElementById("gameCanvas");
+            const ctx = canvas.getContext("2d");
+            
+            // Game Variables
+            let frames = 0;
+            let score = 0;
+            let gameOver = false;
+            let gameSpeed = 4;
+
+            // Player Entity (Red Block)
+            const player = {
+                x: 50, y: 150, width: 30, height: 30,
+                dy: 0, gravity: 0.6, jumpPower: -10, isGrounded: false,
+                draw() {
+                    ctx.fillStyle = "#ff0000"; // Mario Red
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    // Add a little "hat" detail
+                    ctx.fillStyle = "#8B0000";
+                    ctx.fillRect(this.x, this.y, this.width, 8);
+                },
+                update() {
+                    this.y += this.dy;
+                    this.dy += this.gravity;
+                    
+                    // Ground Collision
+                    if (this.y + this.height >= 250) {
+                        this.y = 250 - this.height;
+                        this.dy = 0;
+                        this.isGrounded = true;
+                    } else {
+                        this.isGrounded = false;
+                    }
+                },
+                jump() {
+                    if (this.isGrounded) {
+                        this.dy = this.jumpPower;
+                    }
+                }
+            };
+
+            // Obstacles Array (Green Pipes)
+            let obstacles = [];
+
+            function handleObstacles() {
+                // Generate Obstacles
+                if (frames % 100 === 0) {
+                    let height = 30 + Math.random() * 40; // Random pipe height
+                    obstacles.push({
+                        x: canvas.width,
+                        y: 250 - height,
+                        width: 40,
+                        height: height
+                    });
+                }
+
+                for (let i = 0; i < obstacles.length; i++) {
+                    let obs = obstacles[i];
+                    obs.x -= gameSpeed;
+
+                    // Draw Pipe
+                    ctx.fillStyle = "#00aa00"; // Pipe Green
+                    ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                    // Draw Pipe Cap
+                    ctx.fillStyle = "#008800";
+                    ctx.fillRect(obs.x - 4, obs.y, obs.width + 8, 15);
+
+                    // AABB Collision Detection
+                    if (player.x < obs.x + obs.width && 
+                        player.x + player.width > obs.x && 
+                        player.y < obs.y + obs.height && 
+                        player.y + player.height > obs.y) {
+                        gameOver = true;
+                    }
+
+                    // Score calculation
+                    if (obs.x === player.x) {
+                        score++;
+                        document.getElementById('scoreBoard').innerText = "Score: " + score;
+                        if(score % 5 === 0) gameSpeed += 0.5; // Increase speed over time
+                    }
+                }
+
+                // Remove off-screen obstacles
+                if (obstacles.length > 0 && obstacles[0].x < -50) {
+                    obstacles.shift();
+                }
+            }
+
+            function drawEnvironment() {
+                // Sky is drawn by canvas background color in CSS, but let's draw ground
+                ctx.fillStyle = "#8B4513"; // Dirt Brown
+                ctx.fillRect(0, 250, canvas.width, 50);
+                
+                ctx.fillStyle = "#228B22"; // Grass Green
+                ctx.fillRect(0, 250, canvas.width, 10);
+            }
+
+            // Controls
+            window.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' || e.code === 'ArrowUp') player.jump();
+            });
+            window.addEventListener('touchstart', () => player.jump(), {passive: true});
+            window.addEventListener('mousedown', () => player.jump());
+
+            // Main Game Loop
+            function animate() {
+                if (gameOver) {
+                    ctx.fillStyle = "rgba(0,0,0,0.7)";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = "white";
+                    ctx.font = "30px 'Courier New'";
+                    ctx.textAlign = "center";
+                    ctx.fillText("GAME OVER", canvas.width/2, canvas.height/2 - 20);
+                    ctx.font = "16px 'Courier New'";
+                    ctx.fillText("Click or Tap to restart", canvas.width/2, canvas.height/2 + 20);
+                    
+                    // Restart logic
+                    canvas.onclick = () => {
+                        obstacles = [];
+                        score = 0;
+                        gameSpeed = 4;
+                        frames = 0;
+                        gameOver = false;
+                        document.getElementById('scoreBoard').innerText = "Score: 0";
+                        canvas.onclick = null;
+                        animate();
+                    };
+                    return; // Stop animation loop
+                }
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                drawEnvironment();
+                player.update();
+                player.draw();
+                handleObstacles();
+                
+                frames++;
+                requestAnimationFrame(animate);
+            }
+
+            // Start the game loop
+            animate();
+        }
+    </script>
+</body>
+</html>

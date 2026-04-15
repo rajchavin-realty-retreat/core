@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supplier Portal | Raj Chavin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { dark: '#050505', gold: '#D4AF37' } } }
+        }
+    </script>
+    <style>
+        /* Light Mode Glass */
+        .glass-panel { 
+            background: rgba(255, 255, 255, 0.9); 
+            border: 1px solid rgba(0, 0, 0, 0.1); 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        /* Dark Mode Glass */
+        .dark .glass-panel { 
+            background: rgba(18, 18, 18, 0.8); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            box-shadow: none;
+        }
+        
+        /* Smooth Transition */
+        body { transition: background-color 0.3s, color 0.3s; }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #D4AF37; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-900 dark:bg-dark dark:text-white font-sans min-h-screen p-4 transition-colors duration-300">
+
+    <nav class="flex justify-between items-center mb-8 glass-panel p-4 rounded-xl">
+        <div class="font-bold text-lg md:text-xl">
+            <a href="../index.html"><img src="../Gemini_Generated_Image_hd7sbhd7sbhd7sbh-removebg-preview.png" alt="Raj Chavin Logo" class="h-8 md:h-10 w-auto object-contain inline-block mr-2"></a>
+            <span class="text-gold">Supplier</span> Console
+        </div>
+        <div class="flex items-center gap-3 md:gap-4">
+            <button id="theme-toggle" class="w-8 h-8 rounded-full bg-gray-200 dark:bg-white/10 flex items-center justify-center hover:scale-110 transition text-gray-700 dark:text-gold">
+                <i class="fas fa-sun hidden dark:block text-xs"></i>
+                <i class="fas fa-moon block dark:hidden text-xs"></i>
+            </button>
+
+            <span id="supplierGreeting" class="text-xs font-bold text-gold uppercase tracking-wider hidden sm:block"></span>
+
+            <button id="logoutBtn" class="text-xs uppercase font-bold hover:text-gold border-l border-gray-300 dark:border-white/20 pl-4 ml-2">Logout</button>
+        </div>
+    </nav>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+        
+        <div class="glass-panel p-6 rounded-xl h-fit order-1">
+            <h2 class="text-lg font-bold mb-4 text-gold" id="formTitle">Add Product</h2>
+            <form id="productForm" class="space-y-3">
+                <input type="hidden" id="editProductId">
+                <input id="pName" type="text" placeholder="Product Name" class="w-full bg-gray-100 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-lg p-2 text-sm outline-none focus:border-gold transition" required>
+                <select id="pCat" class="w-full bg-gray-100 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-lg p-2 text-sm outline-none focus:border-gold text-gray-700 dark:text-gray-300 transition">
+                    <option value="construction">Construction</option>
+                    <option value="electrical">Electrical</option>
+                    <option value="plumbing">Plumbing</option>
+                    <option value="interiors">Interiors</option>
+                    <option value="security">Security</option>
+                </select>
+                <input id="pPrice" type="number" placeholder="Price (₹)" class="w-full bg-gray-100 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-lg p-2 text-sm outline-none focus:border-gold transition" required>
+                
+                <textarea id="pDesc" rows="3" placeholder="Product Description" class="w-full bg-gray-100 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-lg p-2 text-sm outline-none focus:border-gold transition resize-none"></textarea>
+
+                <input id="pImg" type="url" placeholder="Image URL" class="w-full bg-gray-100 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-lg p-2 text-sm outline-none focus:border-gold transition" required>
+                <input id="pUnit" type="text" placeholder="Unit (e.g. ton, piece)" class="w-full bg-gray-100 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-lg p-2 text-sm outline-none focus:border-gold transition">
+                <div class="flex gap-2">
+                    <button type="submit" id="submitBtn" class="flex-1 bg-gold text-dark font-bold py-2 rounded-lg hover:bg-white transition">List Item</button>
+                    <button type="button" id="cancelEditBtn" class="hidden px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 text-xs text-white" onclick="resetForm()">Cancel</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="glass-panel p-6 rounded-xl order-2">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-gold">My Inventory</h2>
+            </div>
+            <input type="text" id="invSearch" onkeyup="filterInventory()" placeholder="Search products..." class="w-full bg-gray-100 dark:bg-black/20 border border-gray-300 dark:border-white/10 rounded p-2 text-xs mb-3 outline-none focus:border-gold transition">
+            <div id="inventoryList" class="space-y-3 max-h-[500px] overflow-y-auto pr-2"></div>
+        </div>
+
+        <div class="glass-panel p-6 rounded-xl order-3">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-gold">Orders</h2>
+                <select id="orderFilter" onchange="filterOrders()" class="bg-gray-100 dark:bg-black/20 border border-gray-300 dark:border-white/10 rounded text-[10px] p-1 outline-none text-gray-700 dark:text-white transition">
+                    <option value="all">All</option>
+                    <option value="pending">Pending</option>
+                    <option value="accepted">Accepted</option>
+                </select>
+            </div>
+            <div id="orderList" class="space-y-3 max-h-[500px] overflow-y-auto pr-2"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, db } from './firebase-config.js';
+        import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        let supplierId = null;
+        let allInventory = [], allOrders = [];
+
+        // --- THEME LOGIC ---
+        const themeBtn = document.getElementById('theme-toggle');
+        const html = document.documentElement;
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            html.classList.add('dark');
+        } else {
+            html.classList.remove('dark');
+        }
+        themeBtn.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            localStorage.theme = html.classList.contains('dark') ? 'dark' : 'light';
+        });
+
+        // --- AUTH & GREETING ---
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) window.location.href = 'store-login.html';
+            else { 
+                supplierId = user.uid;
+                const snap = await getDoc(doc(db, "users", user.uid));
+                
+                if(snap.exists()) {
+                    const userData = snap.data();
+                    if(userData.role !== 'supplier') {
+                        alert("Unauthorized"); window.location.href = 'store-login.html';
+                    } else {
+                        document.getElementById('supplierGreeting').innerText = `Hello, ${userData.name || 'Partner'}`;
+                        loadInventory(); loadOrders(); 
+                    }
+                }
+            }
+        });
+
+        // --- ADD/UPDATE PRODUCT ---
+        document.getElementById('productForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const editId = document.getElementById('editProductId').value;
+            const data = {
+                supplierId: supplierId,
+                name: document.getElementById('pName').value,
+                category: document.getElementById('pCat').value,
+                price: Number(document.getElementById('pPrice').value),
+                description: document.getElementById('pDesc').value, 
+                image: document.getElementById('pImg').value,
+                unit: document.getElementById('pUnit').value || 'pcs',
+                blocked: false
+            };
+            try {
+                if (editId) await updateDoc(doc(db, "products", editId), data);
+                else { data.createdAt = serverTimestamp(); await addDoc(collection(db, "products"), data); }
+                resetForm(); loadInventory();
+            } catch(err) { alert(err.message); }
+        });
+
+        async function loadInventory() {
+            const q = query(collection(db, "products"), where("supplierId", "==", supplierId));
+            const snap = await getDocs(q);
+            allInventory = [];
+            snap.forEach(d => allInventory.push({ id: d.id, ...d.data() }));
+            filterInventory();
+        }
+
+        window.filterInventory = () => {
+            const term = document.getElementById('invSearch').value.toLowerCase();
+            const list = document.getElementById('inventoryList');
+            const filtered = allInventory.filter(p => p.name.toLowerCase().includes(term));
+            
+            list.innerHTML = filtered.map(p => `
+                <div class="flex items-center gap-3 p-3 bg-gray-100 dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/5 group transition">
+                    <img src="${p.image}" class="w-10 h-10 rounded object-cover bg-gray-200 dark:bg-black">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-bold truncate text-gray-900 dark:text-white">${p.name}</p>
+                        <p class="text-[10px] text-gray-500 dark:text-gray-400 truncate">${p.description || ''}</p> 
+                        <p class="text-xs text-gold">₹${p.price}/${p.unit || 'pc'} ${p.blocked ? '<span class="text-red-500">[BLOCKED]</span>' : ''}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="editProduct('${p.id}')" class="text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-white"><i class="fas fa-edit"></i></button>
+                        <button onclick="del('${p.id}')" class="text-red-500 hover:text-red-700 dark:hover:text-white"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>`).join('');
+        };
+
+        window.editProduct = (id) => {
+            const p = allInventory.find(x => x.id === id);
+            document.getElementById('editProductId').value = id;
+            document.getElementById('pName').value = p.name;
+            document.getElementById('pCat').value = p.category;
+            document.getElementById('pPrice').value = p.price;
+            document.getElementById('pDesc').value = p.description || "";
+            document.getElementById('pImg').value = p.image;
+            document.getElementById('pUnit').value = p.unit || '';
+            document.getElementById('formTitle').innerText = "Edit Product";
+            document.getElementById('submitBtn').innerText = "Update";
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+        };
+
+        window.resetForm = () => {
+            document.getElementById('productForm').reset();
+            document.getElementById('editProductId').value = "";
+            document.getElementById('formTitle').innerText = "Add Product";
+            document.getElementById('submitBtn').innerText = "List Item";
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+        };
+
+        window.del = async (id) => { if(confirm("Delete?")) { await deleteDoc(doc(db, "products", id)); loadInventory(); } };
+
+        async function loadOrders() {
+            const snap = await getDocs(collection(db, "orders"));
+            allOrders = [];
+            snap.forEach(d => {
+                const o = d.data();
+                const myItems = o.items.filter(i => i.supplierId === supplierId);
+                if (myItems.length > 0) allOrders.push({ id: d.id, ...o, myItems });
+            });
+            filterOrders();
+        }
+
+        window.filterOrders = () => {
+            const status = document.getElementById('orderFilter').value;
+            const list = document.getElementById('orderList');
+            const filtered = allOrders.filter(o => status === 'all' || o.status === status);
+
+            list.innerHTML = filtered.map(o => {
+                const isAccepted = o.status === 'accepted' || o.status === 'completed';
+                const contactHtml = isAccepted 
+                    ? `<div class="mt-3 pt-3 border-t border-gray-200 dark:border-white/10">
+                        <p class="text-[10px] text-green-600 dark:text-green-400 font-bold mb-1">CUSTOMER DETAILS</p>
+                        <p class="text-sm font-bold text-gray-900 dark:text-white">${o.userName || o.userEmail}</p>
+                        <a href="tel:${o.userPhone}" class="text-sm text-gold hover:underline">${o.userPhone}</a>
+                       </div>`
+                    : `<div class="mt-3 pt-3 border-t border-gray-200 dark:border-white/10"><button onclick="acceptOrder('${o.id}')" class="w-full py-2 bg-gold text-dark font-bold rounded text-xs uppercase hover:bg-yellow-500 transition">Accept to View Details</button></div>`;
+
+                return `
+                    <div class="p-4 bg-gray-100 dark:bg-white/5 rounded-lg border-l-2 border-gold mb-3 transition">
+                        <div class="flex justify-between mb-2">
+                            <span class="text-xs text-gold font-bold">Order #${o.id.slice(0,5)}</span>
+                            <span class="text-xs bg-gray-200 dark:bg-white/10 px-2 rounded uppercase text-gray-700 dark:text-gray-300">${o.status}</span>
+                        </div>
+                        <div class="space-y-1">
+                            ${o.myItems.map(i => `<div class="flex justify-between text-sm text-gray-600 dark:text-gray-300"><span><span class="text-gold font-bold">${i.qty}x</span> ${i.name}</span><span class="font-bold text-gray-900 dark:text-white">₹${(i.price*i.qty).toLocaleString()}</span></div>`).join('')}
+                        </div>
+                        ${contactHtml}
+                    </div>`;
+            }).join('');
+        };
+
+        window.acceptOrder = async (id) => {
+            if(!confirm("Accept Order?")) return;
+            await updateDoc(doc(db, "orders", id), { status: 'accepted' });
+            loadOrders();
+        };
+
+        document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
+    </script>
+</body>
+</html>

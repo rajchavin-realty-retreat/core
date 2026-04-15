@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rajchavin | User Factory</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { fontFamily: { sans: ['Inter'], mono: ['JetBrains Mono'] }, extend: { colors: { bg: '#09090b', surface: '#18181b', border: '#27272a', brand: '#3b82f6' } } } }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; } ::-webkit-scrollbar-track { background: #18181b; } ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+        .glass-panel { background: rgba(24, 24, 27, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
+        .glass-sidebar { background: #18181b; border-right: 1px solid #27272a; }
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; opacity: 0; transform: translateY(5px); }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+        #user-detail-panel { position: fixed; top: 0; right: -500px; width: 450px; height: 100%; background: #09090b; border-left: 1px solid #27272a; z-index: 60; transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; }
+        #user-detail-panel.open { right: 0; }
+        tr.clickable-row:hover td { background: rgba(59, 130, 246, 0.1); cursor: pointer; color: white; }
+        th { font-size: 11px; text-transform: uppercase; color: #71717a; font-weight: 600; padding: 12px 16px; border-bottom: 1px solid #27272a; text-align: left; }
+        td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); color: #e4e4e7; font-size: 13px; }
+    </style>
+</head>
+<body class="bg-bg text-gray-200 h-screen w-full flex overflow-hidden">
+
+    <div id="user-detail-panel" class="shadow-2xl">
+        <div class="p-6 border-b border-white/10 flex justify-between items-center bg-surface">
+            <div>
+                <select id="edit-u-role" class="bg-black/30 text-[10px] font-bold text-brand uppercase border border-white/10 rounded px-2 py-1 outline-none mb-1">
+                    <option value="developer">Developer</option>
+                    <option value="banker">Banker</option>
+                    <option value="saver">Saver</option>
+                </select>
+                <h2 class="text-xl font-bold text-white" id="detail-name">User Name</h2>
+            </div>
+            <button onclick="closeUserDetail()" class="text-gray-400 hover:text-white"><i class="ph-bold ph-x text-xl"></i></button>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+            <div id="detail-info-box" class="hidden bg-black/40 p-4 rounded-lg border border-white/5 space-y-2">
+                <h3 class="text-xs font-bold text-gray-500 uppercase" id="info-box-title">Portfolio</h3>
+                <div id="info-box-content" class="text-sm text-gray-300 space-y-1"></div>
+            </div>
+
+            <div class="space-y-4">
+                <h3 class="text-xs font-bold text-gray-500 uppercase">Profile Settings</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="text-[10px] text-gray-500">Full Name</label><input id="edit-u-name" class="w-full bg-surface border border-white/10 rounded px-3 py-2 text-sm focus:border-brand outline-none"></div>
+                    <div><label class="text-[10px] text-gray-500">Contact</label><input id="edit-u-contact" class="w-full bg-surface border border-white/10 rounded px-3 py-2 text-sm focus:border-brand outline-none"></div>
+                </div>
+                <div><label class="text-[10px] text-gray-500">Email (ID)</label><input id="edit-u-email" class="w-full bg-surface border border-white/10 rounded px-3 py-2 text-sm focus:border-brand outline-none"></div>
+                <div><label class="text-[10px] text-gray-500">Password</label><div class="relative"><input id="edit-u-pass" class="w-full bg-surface border border-white/10 rounded px-3 py-2 text-sm font-mono text-brand focus:border-brand outline-none"><button onclick="generateEditPass()" class="absolute right-2 top-2 text-[10px] text-gray-500 hover:text-white">GEN</button></div></div>
+                <button onclick="saveUserEdits()" class="w-full bg-brand hover:bg-blue-600 text-white font-bold py-2 rounded text-sm transition">Save Profile Changes</button>
+            </div>
+
+            <div class="border-t border-white/10 pt-6">
+                <div class="flex justify-between items-end mb-3">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase">Document Vault</h3>
+                    <div class="relative">
+                        <input type="file" id="detail-doc-upload" class="hidden" onchange="uploadDocToUser(this)">
+                        <button onclick="document.getElementById('detail-doc-upload').click()" class="text-[10px] bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-white flex items-center gap-1 transition"><i class="ph-bold ph-plus"></i> Upload</button>
+                    </div>
+                </div>
+                <div id="detail-doc-list" class="space-y-2 bg-black/20 p-2 rounded-lg min-h-[100px]"></div>
+            </div>
+
+            <div class="border-t border-white/10 pt-6">
+                <button onclick="deleteUser()" class="w-full border border-red-900/50 text-red-500 hover:bg-red-900/20 font-bold py-2 rounded text-sm transition flex items-center justify-center gap-2"><i class="ph-bold ph-trash"></i> Delete Entity Permanently</button>
+            </div>
+        </div>
+    </div>
+
+    <aside class="w-64 glass-sidebar flex flex-col justify-between" id="sidebar">
+        <div>
+            <div class="h-16 flex items-center px-6 border-b border-border gap-3"><div class="w-6 h-6 bg-brand rounded flex items-center justify-center text-white font-bold text-xs">R</div><span class="font-bold text-sm tracking-wide">RAJCHAVIN <span class="text-gray-600 font-normal">OS</span></span></div>
+            <nav class="p-4 space-y-1">
+                <a href="admin_users.html" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm bg-brand text-white transition"><i class="ph-duotone ph-users text-lg"></i> User Factory</a>
+                <a href="admin_layouts.html" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition"><i class="ph-duotone ph-map-trifold text-lg"></i> Layout Architect</a>
+                <a href="admin_assign.html" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition"><i class="ph-duotone ph-git-merge text-lg"></i> Assignment Nexus</a>
+            </nav>
+        </div>
+    </aside>
+
+    <main class="flex-1 bg-bg relative overflow-hidden flex flex-col">
+        <header class="h-16 border-b border-border flex justify-between items-center px-8 bg-bg/80 backdrop-blur z-20"><div class="flex items-center gap-2 text-sm text-gray-500"><i class="ph-bold ph-house"></i><span>/</span><span class="text-white font-medium">User Factory</span></div></header>
+
+        <div class="flex-1 p-8 flex gap-8 overflow-hidden">
+            <div class="w-80 flex-shrink-0 fade-in overflow-y-auto">
+                <div class="glass-panel p-6 rounded-xl space-y-6">
+                    <h2 class="text-lg font-bold text-white">Create Entity</h2>
+                    <div class="grid grid-cols-3 bg-black/40 p-1 rounded-lg border border-white/5">
+                        <button onclick="setRole('developer')" class="role-btn active px-3 py-1.5 text-[10px] font-bold rounded bg-brand text-white">DEV</button>
+                        <button onclick="setRole('banker')" class="role-btn px-3 py-1.5 text-[10px] font-bold rounded text-gray-500">BANK</button>
+                        <button onclick="setRole('saver')" class="role-btn px-3 py-1.5 text-[10px] font-bold rounded text-gray-500">SAVER</button>
+                    </div>
+                    <div class="space-y-3">
+                        <input type="text" id="u-name" placeholder="Full Name" class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-brand">
+                        <input type="email" id="u-email" placeholder="Email" class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-brand">
+                        <div class="relative">
+                            <input type="text" id="u-password" placeholder="Set Password" class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm outline-none font-mono text-brand focus:border-brand">
+                            <button onclick="generatePass()" class="absolute right-2 top-2 text-[10px] font-bold bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded text-gray-400 hover:text-white transition">GEN</button>
+                        </div>
+                        <input type="text" id="u-contact" placeholder="Phone" class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-brand">
+                    </div>
+                    <div class="bg-black/30 p-3 rounded-lg border border-white/5">
+                        <label class="text-[10px] font-bold text-gray-500 uppercase mb-2 block">Upload Documents</label>
+                        <div class="flex gap-2 mb-2">
+                            <input type="file" id="u-doc-file" class="hidden" onchange="handleAddUserDoc(this)">
+                            <button onclick="document.getElementById('u-doc-file').click()" class="flex-1 bg-white/10 hover:bg-white/20 border border-white/10 text-gray-300 py-1.5 rounded text-xs font-bold transition flex items-center justify-center gap-2"><i class="ph-bold ph-upload-simple"></i> Select File</button>
+                        </div>
+                        <div id="u-doc-list-preview" class="mt-2 space-y-1 max-h-32 overflow-y-auto"></div>
+                    </div>
+                    <button onclick="createUser()" class="w-full bg-white hover:bg-gray-200 transition text-black font-bold py-2.5 rounded-lg text-sm">Create Entity</button>
+                </div>
+            </div>
+            
+            <div class="flex-1 glass-panel rounded-xl overflow-hidden flex flex-col fade-in">
+                <div class="p-4 border-b border-border bg-surface/50 flex justify-between items-center">
+                    <h3 class="text-sm font-bold text-gray-300">System Directory</h3>
+                    <div class="relative w-64"><i class="ph-bold ph-magnifying-glass absolute left-3 top-2.5 text-gray-500"></i><input type="text" onkeyup="filterUsers(this.value)" placeholder="Search users, emails..." class="w-full bg-black/30 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-xs outline-none focus:border-brand"></div>
+                </div>
+                <div class="flex-1 overflow-auto"><table class="w-full"><thead><tr class="bg-surface/80"><th>Name</th><th>Role</th><th>Credentials</th><th>Status</th></tr></thead><tbody id="user-table-body"></tbody></table></div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDHHQXki7JAzDsnsKH6LoLNRYlySfnxW7Y",
+            authDomain: "rajchavin-live.firebaseapp.com",
+            projectId: "rajchavin-live",
+            storageBucket: "rajchavin-live.firebasestorage.app",
+            messagingSenderId: "626552794688",
+            appId: "1:626552794688:web:92988d178bde6c8e6439a5"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.appState = { users: [], layouts: [], assignments: [], searchUser: '', currentRole: 'developer', tempDocs: [], selectedUserId: null };
+
+        // 1. Fetch Users
+        onSnapshot(collection(db, "users"), snap => {
+            window.appState.users = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            window.renderUserList();
+            if(window.appState.selectedUserId) window.openUserDetail(window.appState.selectedUserId);
+        });
+
+        // 2. Fetch Layouts
+        onSnapshot(collection(db, "layouts"), snap => {
+            window.appState.layouts = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            if(window.appState.selectedUserId) window.openUserDetail(window.appState.selectedUserId);
+        });
+
+        // 3. Fetch Assignments
+        onSnapshot(collection(db, "assignments"), snap => {
+            window.appState.assignments = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            if(window.appState.selectedUserId) window.openUserDetail(window.appState.selectedUserId);
+        });
+
+        window.renderUserList = () => { 
+            const filtered = window.appState.users.filter(u => u.name.toLowerCase().includes(window.appState.searchUser) || u.email.toLowerCase().includes(window.appState.searchUser));
+            document.getElementById('user-table-body').innerHTML = filtered.map(u => `
+                <tr class="clickable-row transition" onclick="openUserDetail('${u.id}')">
+                    <td><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center font-bold text-xs text-white uppercase">${u.name.charAt(0)}</div><span>${u.name}</span></div></td>
+                    <td><span class="text-[10px] uppercase font-bold px-2 py-1 rounded ${u.role === 'developer' ? 'bg-brand/20 text-brand' : 'bg-white/10 text-gray-300'}">${u.role}</span></td>
+                    <td class="text-xs text-gray-400"><div>${u.email}</div><div class="font-mono text-[10px] text-gray-600">Pass: ${u.password}</div></td>
+                    <td><span class="text-green-500 text-xs">● Active</span></td>
+                </tr>`).join(''); 
+        };
+
+        window.createUser = async () => {
+            const name = document.getElementById('u-name').value;
+            const email = document.getElementById('u-email').value;
+            const password = document.getElementById('u-password').value;
+            const contact = document.getElementById('u-contact').value;
+            if(!name || !email || !password) return alert("Fill required fields");
+            try {
+                await addDoc(collection(db, "users"), { name, email, password, contact, role: window.appState.currentRole, docs: window.appState.tempDocs, createdAt: new Date() });
+                alert("Entity Created Successfully");
+                window.appState.tempDocs = [];
+                document.getElementById('u-doc-list-preview').innerHTML = '';
+                ['u-name','u-email','u-password','u-contact'].forEach(id => document.getElementById(id).value = '');
+            } catch(e) { alert("Error creating user"); }
+        };
+
+        window.handleAddUserDoc = (input) => {
+            const file = input.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const docObj = { name: file.name, url: e.target.result, date: new Date().toLocaleDateString() };
+                window.appState.tempDocs.push(docObj);
+                document.getElementById('u-doc-list-preview').innerHTML = window.appState.tempDocs.map(d => 
+                    `<div class="text-[10px] bg-white/5 px-2 py-1.5 rounded flex justify-between items-center text-gray-300 border border-white/5">
+                        <span class="truncate w-32">${d.name}</span> <i class="ph-bold ph-check text-green-500"></i>
+                    </div>`
+                ).join('');
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.openUserDetail = (uid) => {
+            window.appState.selectedUserId = uid;
+            const user = window.appState.users.find(u => u.id === uid);
+            if(!user) return;
+
+            document.getElementById('edit-u-role').value = user.role;
+            document.getElementById('detail-name').innerText = user.name;
+            document.getElementById('edit-u-name').value = user.name;
+            document.getElementById('edit-u-email').value = user.email;
+            document.getElementById('edit-u-contact').value = user.contact || '';
+            document.getElementById('edit-u-pass').value = user.password;
+            
+            // --- NEW: Info Box Logic ---
+            const infoBox = document.getElementById('detail-info-box');
+            const infoTitle = document.getElementById('info-box-title');
+            const infoContent = document.getElementById('info-box-content');
+            let contentHTML = '';
+
+            if (user.role === 'developer') {
+                infoTitle.innerText = "Layouts Managed";
+                const myLayouts = window.appState.layouts.filter(l => l.devId === uid);
+                contentHTML = myLayouts.length ? myLayouts.map(l => `<div class="flex items-center gap-2"><i class="ph-bold ph-map-trifold text-brand"></i> ${l.name}</div>`).join('') : '<span class="italic opacity-50">No layouts created</span>';
+                
+            } else if (user.role === 'saver') {
+                infoTitle.innerText = "Plots Owned";
+                // Logic: Find assignments where user is assignee -> get layout -> get plot ID
+                const myPlots = window.appState.assignments.filter(a => a.userId === uid);
+                contentHTML = myPlots.length ? myPlots.map(a => {
+                    const l = window.appState.layouts.find(x => x.id === a.layoutId);
+                    return `<div class="flex items-center gap-2"><i class="ph-bold ph-square text-green-500"></i> ${l ? l.name : 'Unknown Layout'} : <span class="font-mono text-white">${a.plotId}</span></div>`;
+                }).join('') : '<span class="italic opacity-50">No plots assigned</span>';
+
+            } else if (user.role === 'banker') {
+                infoTitle.innerText = "Assigned Savers";
+                const myClients = window.appState.assignments.filter(a => a.bankerId === uid);
+                // Get unique user IDs
+                const uniqueClientIds = [...new Set(myClients.map(a => a.userId))];
+                contentHTML = uniqueClientIds.length ? uniqueClientIds.map(cid => {
+                    const client = window.appState.users.find(u => u.id === cid);
+                    return `<div class="flex items-center gap-2"><i class="ph-bold ph-user text-amber-500"></i> ${client ? client.name : 'Unknown User'}</div>`;
+                }).join('') : '<span class="italic opacity-50">No savers assigned</span>';
+            }
+
+            infoContent.innerHTML = contentHTML;
+            infoBox.classList.remove('hidden');
+
+            window.renderDetailDocs(user.docs || []);
+            document.getElementById('user-detail-panel').classList.add('open');
+        };
+
+        window.renderDetailDocs = (docs) => {
+            const container = document.getElementById('detail-doc-list');
+            if(docs.length === 0) {
+                container.innerHTML = '<div class="text-center text-xs text-gray-600 py-4 italic">No documents stored</div>';
+                return;
+            }
+            container.innerHTML = docs.map((d, i) => `
+                <div class="flex justify-between items-center bg-surface border border-white/5 p-2 rounded hover:border-brand/50 transition group">
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <i class="ph-duotone ph-file-text text-brand text-lg"></i>
+                        <div class="flex flex-col">
+                            <span class="text-xs text-gray-200 truncate w-40 font-medium">${d.name}</span>
+                            <span class="text-[9px] text-gray-600">${d.date || 'Unknown Date'}</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <a href="${d.url}" download="${d.name}" class="p-1.5 rounded hover:bg-white/10 text-gray-400 hover:text-white"><i class="ph-bold ph-download-simple"></i></a>
+                        <button onclick="deleteDocFromUser(${i})" class="p-1.5 rounded hover:bg-red-500/20 text-gray-400 hover:text-red-500"><i class="ph-bold ph-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        window.uploadDocToUser = (input) => {
+            const file = input.files[0];
+            if(!file || !window.appState.selectedUserId) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const docObj = { name: file.name, url: e.target.result, date: new Date().toLocaleDateString() };
+                const user = window.appState.users.find(u => u.id === window.appState.selectedUserId);
+                const newDocs = [...(user.docs || []), docObj];
+                await updateDoc(doc(db, "users", window.appState.selectedUserId), { docs: newDocs });
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.deleteDocFromUser = async (idx) => {
+            if(!confirm("Remove this document?")) return;
+            const user = window.appState.users.find(u => u.id === window.appState.selectedUserId);
+            const newDocs = user.docs.filter((_, i) => i !== idx);
+            await updateDoc(doc(db, "users", window.appState.selectedUserId), { docs: newDocs });
+        };
+
+        window.saveUserEdits = async () => {
+            const name = document.getElementById('edit-u-name').value;
+            const email = document.getElementById('edit-u-email').value;
+            const contact = document.getElementById('edit-u-contact').value;
+            const password = document.getElementById('edit-u-pass').value;
+            const role = document.getElementById('edit-u-role').value;
+            await updateDoc(doc(db, "users", window.appState.selectedUserId), { name, email, contact, password, role });
+            alert("Profile Updated");
+        };
+
+        window.deleteUser = async () => {
+            if(!confirm("Are you sure? This action cannot be undone.")) return;
+            await deleteDoc(doc(db, "users", window.appState.selectedUserId));
+            window.closeUserDetail();
+        };
+
+        // Utilities
+        window.setRole = (r) => { 
+            window.appState.currentRole = r; 
+            document.querySelectorAll('.role-btn').forEach(b => {
+                b.className = 'role-btn px-3 py-1.5 text-[10px] font-bold rounded text-gray-500 hover:text-white transition';
+            });
+            event.target.className = 'role-btn active px-3 py-1.5 text-[10px] font-bold rounded bg-brand text-white shadow-lg';
+        };
+        window.closeUserDetail = () => { document.getElementById('user-detail-panel').classList.remove('open'); };
+        window.generatePass = () => { document.getElementById('u-password').value = Math.random().toString(36).slice(-8); };
+        window.generateEditPass = () => { document.getElementById('edit-u-pass').value = Math.random().toString(36).slice(-8); };
+        window.filterUsers = (val) => { window.appState.searchUser = val.toLowerCase(); window.renderUserList(); };
+    </script>
+</body>
+</html>

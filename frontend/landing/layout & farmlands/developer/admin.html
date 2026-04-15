@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rajchavin Nexus | Super Admin</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+                extend: { colors: { bg: '#09090b', surface: '#18181b', border: '#27272a', brand: '#3b82f6' } }
+            }
+        }
+    </script>
+
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+        .glass-panel { background: rgba(24, 24, 27, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
+        .glass-sidebar { background: #18181b; border-right: 1px solid #27272a; }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; opacity: 0; transform: translateY(10px); }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+        
+        /* Map Styles */
+        .map-poly { stroke-width: 1; transition: 0.2s; cursor: pointer; stroke: rgba(255,255,255,0.2); }
+        .map-poly:hover { stroke: white; stroke-width: 2; filter: brightness(1.2); }
+
+        .type-plot { fill: #334155; }
+        .type-road { fill: #27272a; stroke: #3f3f46; }
+        .type-park { fill: #166534; opacity: 0.8; }
+        .type-infra { fill: #3b82f6; opacity: 0.5; }
+
+        .status-sold { fill: #10b981 !important; }
+        .status-booked { fill: #eab308 !important; }
+
+        .cursor-draw { cursor: crosshair; }
+        .drawing-poly { fill: rgba(59, 130, 246, 0.2); stroke: #3b82f6; stroke-width: 2; }
+        
+        /* Table */
+        th { font-size: 11px; text-transform: uppercase; color: #71717a; font-weight: 600; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+        td { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.03); color: #e4e4e7; font-size: 13px; }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+    </style>
+</head>
+<body class="bg-bg text-gray-200 h-screen w-full flex overflow-hidden selection:bg-brand/30">
+
+    <div id="login-overlay" class="fixed inset-0 z-50 flex items-center justify-center bg-bg">
+        <div class="glass-panel w-96 p-8 rounded-2xl shadow-2xl flex flex-col items-center border border-white/10">
+            <h1 class="text-xl font-bold text-white mb-1">Rajchavin Nexus</h1>
+            <p class="text-xs text-gray-500 font-mono mb-8">SystemRoot</p>
+            <button onclick="enterSystem()" class="w-full bg-white text-black font-bold py-2.5 rounded-lg text-sm transition">Unlock Console</button>
+        </div>
+    </div>
+
+    <div id="modal-new-layout" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 hidden">
+        <div class="glass-panel w-96 p-6 rounded-xl border border-white/10">
+            <h2 class="text-lg font-bold mb-4">Initialize New Layout</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-gray-500 uppercase">Layout Name</label>
+                    <input type="text" id="nl-name" placeholder="e.g. Green Acres" class="w-full bg-surface border border-border rounded-lg p-2.5 text-sm outline-none focus:border-brand">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-500 uppercase">Assign Developer</label>
+                    <select id="nl-dev" class="w-full bg-surface border border-border rounded-lg p-2.5 text-sm"></select>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button onclick="document.getElementById('modal-new-layout').classList.add('hidden')" class="flex-1 bg-white/5 hover:bg-white/10 py-2 rounded-lg text-sm">Cancel</button>
+                    <button onclick="confirmCreateLayout()" class="flex-1 bg-brand text-white font-bold py-2 rounded-lg text-sm">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-layout-settings" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 hidden">
+        <div class="glass-panel w-[500px] p-6 rounded-xl border border-white/10">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-lg font-bold">Layout Settings</h2>
+                <button onclick="closeLayoutSettings()" class="text-gray-500 hover:text-white"><i class="ph-bold ph-x"></i></button>
+            </div>
+            <div class="mb-6">
+                <label class="text-xs font-bold text-gray-500 uppercase block mb-2">Project Documents</label>
+                <div class="bg-black/30 p-3 rounded-lg border border-white/5 mb-3">
+                    <div class="flex gap-2 mb-2">
+                        <input type="text" id="ld-name" placeholder="Doc Name" class="flex-1 bg-surface border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-brand">
+                        <button onclick="document.getElementById('ld-file').click()" class="bg-white/10 hover:bg-white/20 px-3 rounded-lg text-white"><i class="ph-bold ph-upload-simple"></i></button>
+                        <input type="file" id="ld-file" class="hidden">
+                    </div>
+                    <button onclick="addLayoutDoc()" class="w-full bg-brand/20 text-brand text-xs font-bold py-2 rounded hover:bg-brand/30 transition">+ Add Document</button>
+                </div>
+                <div id="layout-doc-list" class="space-y-2 max-h-32 overflow-y-auto"></div>
+            </div>
+            <div class="pt-6 border-t border-white/10">
+                <label class="text-xs font-bold text-red-500 uppercase block mb-2">Danger Zone</label>
+                <button onclick="deleteCurrentLayout()" class="w-full border border-red-500/30 text-red-500 hover:bg-red-500/10 font-bold py-2.5 rounded-lg text-sm transition flex items-center justify-center gap-2"><i class="ph-bold ph-trash"></i> Delete This Layout</button>
+            </div>
+        </div>
+    </div>
+
+    <aside class="w-64 glass-sidebar flex flex-col justify-between hidden" id="sidebar">
+        <div>
+            <div class="h-16 flex items-center px-6 border-b border-border gap-3">
+                <div class="w-6 h-6 bg-brand rounded flex items-center justify-center text-white font-bold text-xs">R</div>
+                <span class="font-bold text-sm tracking-wide">RAJCHAVIN <span class="text-gray-600 font-normal">OS</span></span>
+            </div>
+            <nav class="p-4 space-y-1">
+                <p class="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 mt-2">Modules</p>
+                <button onclick="router('users')" id="nav-users" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition"><i class="ph-duotone ph-users text-lg"></i> User Factory</button>
+                <button onclick="router('layouts')" id="nav-layouts" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition"><i class="ph-duotone ph-map-trifold text-lg"></i> Layout Architect</button>
+                <button onclick="router('assign')" id="nav-assign" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition"><i class="ph-duotone ph-git-merge text-lg"></i> Assignment Nexus</button>
+            </nav>
+        </div>
+    </aside>
+
+    <main class="flex-1 bg-bg relative overflow-hidden hidden" id="main-content">
+        <header class="h-16 border-b border-border flex justify-between items-center px-8 bg-bg/80 backdrop-blur z-20">
+            <div class="flex items-center gap-2 text-sm text-gray-500"><i class="ph-bold ph-house"></i><span>/</span><span id="breadcrumb" class="text-white font-medium">Dashboard</span></div>
+            <div class="flex items-center gap-2 bg-surface border border-border px-3 py-1.5 rounded-md text-xs text-gray-400"><i class="ph-bold ph-clock"></i> <span id="clock">--:--</span></div>
+        </header>
+
+        <div id="view-users" class="app-view absolute inset-0 top-16 p-8 flex gap-8">
+            <div class="w-80 flex-shrink-0 fade-in">
+                <div class="glass-panel p-6 rounded-xl space-y-6 sticky top-0 overflow-y-auto max-h-full">
+                    <h2 class="text-lg font-bold text-white">Create Entity</h2>
+                    <div class="grid grid-cols-3 bg-black/40 p-1 rounded-lg border border-white/5">
+                        <button onclick="setRole('developer')" class="role-btn active px-3 py-1.5 text-[10px] font-bold rounded bg-brand text-white">DEV</button>
+                        <button onclick="setRole('banker')" class="role-btn px-3 py-1.5 text-[10px] font-bold rounded text-gray-500">BANK</button>
+                        <button onclick="setRole('saver')" class="role-btn px-3 py-1.5 text-[10px] font-bold rounded text-gray-500">USER</button>
+                    </div>
+                    <div class="space-y-3">
+                        <input type="text" id="u-name" placeholder="Full Name" class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm focus:border-brand outline-none">
+                        <input type="email" id="u-email" placeholder="Email Address" class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm focus:border-brand outline-none">
+                        <input type="text" id="u-contact" placeholder="Phone (+91)" class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm focus:border-brand outline-none">
+                    </div>
+                    <div class="bg-black/30 p-3 rounded-lg border border-white/5">
+                        <label class="text-[10px] font-bold text-gray-500 uppercase mb-2 block">Upload Documents</label>
+                        <div class="flex gap-2 mb-2">
+                            <input type="text" id="u-doc-name" placeholder="Doc Name" class="flex-1 bg-surface border border-border rounded px-2 py-1.5 text-xs outline-none focus:border-brand">
+                            <button onclick="document.getElementById('u-doc-file').click()" class="bg-white/10 hover:bg-white/20 px-2 rounded text-white"><i class="ph-bold ph-upload-simple"></i></button>
+                            <input type="file" id="u-doc-file" class="hidden">
+                        </div>
+                        <button onclick="addUserDoc()" class="w-full bg-brand/20 text-brand text-[10px] font-bold py-1.5 rounded hover:bg-brand/30 transition">Add to List</button>
+                        <div id="u-doc-list-preview" class="mt-2 space-y-1"></div>
+                    </div>
+                    <button onclick="createUser()" class="w-full bg-white text-black hover:bg-gray-200 font-bold py-2 rounded-lg text-sm transition">Create User</button>
+                </div>
+            </div>
+            <div class="flex-1 glass-panel rounded-xl overflow-hidden flex flex-col fade-in">
+                <div class="p-4 border-b border-border bg-surface/50"><h3 class="text-sm font-bold text-gray-300">System Directory</h3></div>
+                <div class="flex-1 overflow-auto">
+                    <table class="w-full">
+                        <thead><tr class="bg-surface/80"><th>Name</th><th>Role</th><th>Email / Contact</th><th>Docs</th><th>Status</th></tr></thead>
+                        <tbody id="user-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-layouts" class="app-view absolute inset-0 top-16 p-8 hidden flex-col h-full fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-2xl font-bold text-white">Blueprint Engine</h2>
+                    <div class="h-6 w-px bg-white/20"></div>
+                    <select id="active-layout-select" onchange="switchLayout(this.value)" class="bg-surface border border-border rounded-lg py-1.5 px-3 text-sm outline-none focus:border-brand"></select>
+                    <button onclick="openLayoutSettings()" class="text-gray-400 hover:text-white px-2 transition"><i class="ph-bold ph-gear text-lg"></i></button>
+                    <button onclick="openNewLayoutModal()" class="text-xs bg-brand hover:bg-blue-600 px-3 py-1.5 rounded text-white font-bold transition flex items-center gap-2"><i class="ph-bold ph-plus"></i> New</button>
+                </div>
+                <div class="flex gap-4 items-center">
+                    <p class="text-xs text-gray-500 font-mono uppercase" id="layout-owner-display">Owner: --</p>
+                    <div class="flex bg-surface p-1 rounded-lg border border-border">
+                        <button onclick="toggleLayoutMode('view')" id="mode-view" class="px-4 py-1.5 text-xs font-bold rounded bg-brand text-white transition">View Mode</button>
+                        <button onclick="toggleLayoutMode('edit')" id="mode-edit" class="px-4 py-1.5 text-xs font-bold rounded text-gray-400 hover:text-white transition">Drawing Mode</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="layout-view-panel" class="flex-1 flex gap-8 min-h-0">
+                <div class="flex-1 glass-panel rounded-xl p-4 flex items-center justify-center bg-[#121214] relative overflow-hidden">
+                    <div id="view-map-container" class="w-full h-full relative"></div>
+                </div>
+                <div class="w-80 glass-panel rounded-xl p-6 flex flex-col border-l border-border bg-surface">
+                    <div id="inspector-content" class="hidden flex-col h-full">
+                        <div class="mb-6 flex justify-between items-start">
+                            <div><span class="text-[10px] font-mono text-brand bg-brand/10 px-2 py-1 rounded">SELECTED</span><h2 class="text-3xl font-bold text-white mt-2" id="insp-id">--</h2><p class="text-xs text-gray-500 mt-1">Type: <span id="insp-type" class="text-white font-bold uppercase">--</span></p></div>
+                            <button onclick="deleteElement()" class="bg-red-500/10 text-red-500 p-2 rounded hover:bg-red-500/20 transition"><i class="ph-bold ph-trash"></i></button>
+                        </div>
+                        <div id="insp-buyable" class="space-y-4 flex-1">
+                            <div><label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Price (₹)</label><input type="number" id="insp-price" class="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm text-green-400"></div>
+                            <div class="pt-6 border-t border-white/10 space-y-2">
+                                <label class="text-[10px] uppercase font-bold text-gray-500 mb-2 block">Status</label>
+                                <button onclick="updateStatus('sold')" class="w-full py-2 bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 rounded text-xs font-bold">Mark SOLD</button>
+                                <button onclick="updateStatus('booked')" class="w-full py-2 bg-amber-500/10 text-amber-500 border border-amber-500/30 rounded text-xs font-bold">Mark BOOKED</button>
+                                <button onclick="updateStatus('open')" class="w-full py-2 bg-gray-700/30 text-gray-400 border border-gray-600 rounded text-xs font-bold">Reset OPEN</button>
+                            </div>
+                        </div>
+                        <div id="insp-nonbuyable" class="hidden flex-1 text-center opacity-50 flex flex-col items-center justify-center"><i class="ph-duotone ph-cone text-4xl mb-2"></i><p class="text-xs">Infrastructure Element<br>(Not for Sale)</p></div>
+                    </div>
+                    <div id="inspector-empty" class="flex-1 flex items-center justify-center text-center opacity-40"><p class="text-sm">Select an element</p></div>
+                </div>
+            </div>
+
+            <div id="layout-edit-panel" class="flex-1 flex gap-8 min-h-0 hidden">
+                <div class="flex-1 relative bg-[#101010] flex items-center justify-center overflow-auto cursor-draw rounded-xl border border-dashed border-white/10 select-none" id="draw-area">
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none" id="draw-placeholder"><span class="text-xs text-gray-600">Upload Blueprint First</span></div>
+                    <div class="relative shadow-2xl" id="canvas-container">
+                        <img id="blueprint-img" src="" class="max-w-none opacity-50 pointer-events-none hidden" style="width: 800px; height: 500px;">
+                        <svg id="draw-layer" class="absolute inset-0 w-full h-full" viewBox="0 0 800 500" onclick="addPoint(event)">
+                            <g id="editor-ghost-layer"></g> 
+                            <polygon id="current-poly" points="" class="drawing-poly"/> 
+                        </svg>
+                    </div>
+                </div>
+                <div class="w-72 glass-panel p-6 flex flex-col border-l border-border bg-surface">
+                    <div class="mb-6">
+                        <label class="text-[10px] font-bold text-gray-500 uppercase mb-2 block">1. Background</label>
+                        <div class="border-2 border-dashed border-gray-700 rounded-xl h-16 flex flex-col items-center justify-center text-gray-500 hover:border-brand hover:text-brand cursor-pointer transition" onclick="document.getElementById('file-upload').click()">
+                            <i class="ph-bold ph-upload-simple text-xl"></i>
+                        </div>
+                        <input type="file" id="file-upload" class="hidden" onchange="loadImage(event)">
+                    </div>
+                    <div class="mb-6">
+                        <label class="text-[10px] font-bold text-gray-500 uppercase mb-2 block">2. Type</label>
+                        <div class="grid grid-cols-2 gap-2 mb-4 bg-black/40 p-1 rounded-lg">
+                            <button onclick="setDrawType('plot')" class="py-1 text-[10px] font-bold rounded bg-brand text-white" id="btn-type-plot">PLOT</button>
+                            <button onclick="setDrawType('road')" class="py-1 text-[10px] font-bold rounded text-gray-500" id="btn-type-road">ROAD</button>
+                            <button onclick="setDrawType('park')" class="py-1 text-[10px] font-bold rounded text-gray-500" id="btn-type-park">PARK</button>
+                            <button onclick="setDrawType('infra')" class="py-1 text-[10px] font-bold rounded text-gray-500" id="btn-type-infra">INFRA</button>
+                        </div>
+                        <input type="text" id="new-plot-id" placeholder="ID (e.g. P-101)" class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-2 focus:border-brand outline-none">
+                        <div id="plot-fields"><input type="number" id="new-plot-price" placeholder="Price (₹)" class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm focus:border-brand outline-none"></div>
+                    </div>
+                    <div class="space-y-2 mt-auto">
+                        <button onclick="saveShape()" class="w-full bg-brand text-white font-bold py-2 rounded-lg text-sm transition shadow-lg">Save Shape</button>
+                        <button onclick="clearPoints()" class="w-full bg-white/5 text-gray-400 font-bold py-2 rounded-lg text-sm hover:bg-white/10 transition">Reset Points</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-assign" class="app-view absolute inset-0 top-16 p-8 hidden overflow-y-auto fade-in">
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                <div class="xl:col-span-1 glass-panel p-6 rounded-xl h-fit sticky top-0">
+                    <h2 class="text-lg font-bold mb-6">Create Assignment</h2>
+                    <div class="space-y-4">
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1">1. Select Layout</label><select id="sel-nexus-layout" onchange="updateNexusPlots()" class="w-full bg-surface border border-border rounded-lg p-3 text-sm focus:border-brand outline-none"></select></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1">2. Select Customer</label><select id="sel-saver" class="w-full bg-surface border border-border rounded-lg p-3 text-sm focus:border-brand outline-none"></select></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1">3. Select Plot (Open Only)</label><select id="sel-plot" class="w-full bg-surface border border-border rounded-lg p-3 text-sm focus:border-brand outline-none"></select></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1">4. Collecting Banker</label><select id="sel-banker" class="w-full bg-surface border border-border rounded-lg p-3 text-sm focus:border-brand outline-none"></select></div>
+                        <button onclick="createAssignment()" class="w-full bg-brand hover:bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg transition mt-2">Link & Book Plot</button>
+                    </div>
+                </div>
+                <div class="xl:col-span-2 glass-panel rounded-xl overflow-hidden flex flex-col">
+                    <div class="p-4 border-b border-border bg-surface/50"><h3 class="text-sm font-bold text-gray-300">Active Chains</h3></div>
+                    <table class="w-full">
+                        <thead><tr class="bg-surface/80"><th>Layout</th><th>Customer</th><th>Plot</th><th>Value</th><th>Banker</th><th>Status</th></tr></thead>
+                        <tbody id="assign-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- DATABASE ---
+        const db = {
+            users: [
+                {id: 101, name: 'Rajchavin Realty', role: 'developer', email: 'dev@rajchavin.com', contact: 'Head Office', docs: []},
+                {id: 102, name: 'Rajesh Kumar', role: 'banker', email: 'rajesh@gmail.com', contact: '9876500001', docs: []},
+                {id: 103, name: 'Arjun Mehta', role: 'saver', email: 'arjun@gmail.com', contact: 'User-001', docs: []}
+            ],
+            layouts: [
+                {
+                    id: 'L-1', name: 'Sunrise Estate', devId: 101, bgImage: null, docs: [],
+                    elements: [
+                        {id: 'P-1', type: 'plot', status: 'open', price: 4500000, points: "20,20 150,20 150,100 20,100"},
+                        {id: 'Road-1', type: 'road', points: "0,250 800,250 800,290 0,290"}
+                    ]
+                }
+            ],
+            assignments: []
+        };
+
+        // --- STATE ---
+        let currentLayoutId = 'L-1';
+        let currentDrawType = 'plot';
+        let drawPoints = [];
+        let selectedElementId = null;
+        let tempUserDocs = [];
+
+        // --- SYSTEM ---
+        function enterSystem() {
+            document.getElementById('login-overlay').classList.add('hidden');
+            document.getElementById('sidebar').classList.remove('hidden');
+            document.getElementById('main-content').classList.remove('hidden');
+            refreshAll(); router('users');
+            setInterval(() => document.getElementById('clock').innerText = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}), 1000);
+        }
+
+        function refreshAll() {
+            renderUserList(); 
+            populateLayoutSelect();
+            switchLayout(currentLayoutId);
+            populateNexusLayouts(); 
+            renderAssignments(); // Re-render table to catch deleted plots
+        }
+
+        function router(view) {
+            document.querySelectorAll('.app-view').forEach(v => v.classList.add('hidden'));
+            document.getElementById(`view-${view}`).classList.remove('hidden');
+            document.getElementById('breadcrumb').innerText = view.toUpperCase();
+        }
+
+        // --- 1. USER FACTORY ---
+        let currentRole = 'developer';
+        function setRole(r) { currentRole = r; document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('bg-brand','text-white')); event.target.classList.add('bg-brand','text-white'); }
+        
+        function addUserDoc() {
+            const name = document.getElementById('u-doc-name').value;
+            const file = document.getElementById('u-doc-file').files[0];
+            if(!name || !file) return alert("Name/File required");
+            tempUserDocs.push(name);
+            document.getElementById('u-doc-name').value = '';
+            renderUserDocPreview();
+        }
+        function renderUserDocPreview() { document.getElementById('u-doc-list-preview').innerHTML = tempUserDocs.map(d => `<div class="text-[10px] bg-white/5 px-2 py-1 rounded flex justify-between"><span>${d}</span> <i class="ph-check text-green-500"></i></div>`).join(''); }
+
+        function createUser() {
+            const name = document.getElementById('u-name').value;
+            if(!name) return alert('Name required');
+            db.users.push({
+                id: Date.now(), name, role: currentRole, 
+                email: document.getElementById('u-email').value,
+                contact: document.getElementById('u-contact').value,
+                docs: [...tempUserDocs]
+            });
+            tempUserDocs = []; renderUserDocPreview();
+            renderUserList(); document.getElementById('u-name').value = '';
+        }
+        function renderUserList() {
+            document.getElementById('user-table-body').innerHTML = db.users.map(u => `<tr><td><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center font-bold text-xs text-white">${u.name.charAt(0)}</div><span>${u.name}</span></div></td><td><span class="text-[10px] uppercase font-bold px-2 py-1 rounded bg-white/10 text-gray-300">${u.role}</span></td><td class="text-xs text-gray-400"><div>${u.email}</div><div>${u.contact}</div></td><td><span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded">${u.docs.length} Docs</span></td><td><span class="text-green-500 text-xs">● Active</span></td></tr>`).join('');
+        }
+
+        // --- 2. LAYOUTS ---
+        function openNewLayoutModal() {
+            document.getElementById('nl-dev').innerHTML = db.users.filter(u=>u.role==='developer').map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
+            document.getElementById('modal-new-layout').classList.remove('hidden');
+        }
+        function confirmCreateLayout() {
+            const name = document.getElementById('nl-name').value;
+            const devId = document.getElementById('nl-dev').value;
+            if(!name) return alert("Name required");
+            const newId = `L-${Date.now()}`;
+            db.layouts.push({id: newId, name, devId: parseInt(devId), elements: [], bgImage: null, docs: []});
+            document.getElementById('modal-new-layout').classList.add('hidden');
+            populateLayoutSelect(); switchLayout(newId); populateNexusLayouts();
+        }
+        function populateLayoutSelect() {
+            const sel = document.getElementById('active-layout-select');
+            sel.innerHTML = db.layouts.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+            sel.value = currentLayoutId;
+        }
+        function switchLayout(id) {
+            currentLayoutId = id;
+            const layout = db.layouts.find(l => l.id === id);
+            const dev = db.users.find(u => u.id === layout.devId);
+            document.getElementById('layout-owner-display').innerText = `OWNER: ${dev ? dev.name : 'Unknown'}`;
+            const img = document.getElementById('blueprint-img');
+            const ph = document.getElementById('draw-placeholder');
+            if(layout.bgImage) { img.src = layout.bgImage; img.classList.remove('hidden'); ph.classList.add('hidden'); }
+            else { img.classList.add('hidden'); ph.classList.remove('hidden'); }
+            renderMap(); renderGhostLayer();
+        }
+
+        // Layout Settings
+        function openLayoutSettings() { document.getElementById('modal-layout-settings').classList.remove('hidden'); renderLayoutDocs(); }
+        function closeLayoutSettings() { document.getElementById('modal-layout-settings').classList.add('hidden'); }
+        function addLayoutDoc() {
+            const name = document.getElementById('ld-name').value;
+            if(!name) return alert("Name required");
+            db.layouts.find(l => l.id === currentLayoutId).docs.push(name);
+            document.getElementById('ld-name').value = ''; renderLayoutDocs();
+        }
+        function renderLayoutDocs() {
+            document.getElementById('layout-doc-list').innerHTML = db.layouts.find(l => l.id === currentLayoutId).docs.map(d => `<div class="flex justify-between bg-white/5 p-2 rounded text-xs border border-white/5"><span>${d}</span> <i class="ph-file-text text-brand"></i></div>`).join('');
+        }
+        function deleteCurrentLayout() {
+            if(!confirm("Delete Layout?")) return;
+            db.layouts = db.layouts.filter(l => l.id !== currentLayoutId);
+            closeLayoutSettings();
+            if(db.layouts.length > 0) switchLayout(db.layouts[0].id);
+            else alert("No layouts remaining.");
+            populateLayoutSelect();
+        }
+
+        // --- 3. MAP ---
+        function toggleLayoutMode(mode) {
+            document.getElementById('layout-view-panel').classList.toggle('hidden', mode === 'edit');
+            document.getElementById('layout-edit-panel').classList.toggle('hidden', mode === 'view');
+            // Toggle Button Colors Correctly
+            const active = 'px-4 py-1.5 text-xs font-bold rounded bg-brand text-white transition';
+            const inactive = 'px-4 py-1.5 text-xs font-bold rounded text-gray-400 hover:text-white transition';
+            document.getElementById('mode-view').className = mode === 'view' ? active : inactive;
+            document.getElementById('mode-edit').className = mode === 'edit' ? active : inactive;
+            
+            if(mode === 'view') renderMap(); if(mode === 'edit') renderGhostLayer();
+        }
+        function renderMap() {
+            const container = document.getElementById('view-map-container');
+            const layout = db.layouts.find(l => l.id === currentLayoutId);
+            if(!layout) { container.innerHTML = ''; return; }
+            let svgContent = `<svg viewBox="0 0 800 500" class="w-full h-full">`;
+            [...layout.elements].sort((a,b) => (a.type === 'plot' ? 1 : -1)).forEach(el => {
+                let cls = `map-poly type-${el.type}`;
+                if(el.type === 'plot') {
+                    if(el.status === 'sold') cls += ' status-sold';
+                    if(el.status === 'booked') cls += ' status-booked';
+                }
+                svgContent += `<polygon points="${el.points}" class="${cls}" onclick="inspectElement('${el.id}')" />`;
+                if(el.type === 'plot') {
+                    const pts = el.points.split(' ').map(p => p.split(',').map(Number));
+                    const cx = pts.reduce((a,b)=>a+b[0],0)/pts.length;
+                    const cy = pts.reduce((a,b)=>a+b[1],0)/pts.length;
+                    svgContent += `<text x="${cx}" y="${cy}" fill="white" font-size="10" text-anchor="middle" dominant-baseline="middle" pointer-events="none">${el.id}</text>`;
+                }
+            });
+            svgContent += `</svg>`; container.innerHTML = svgContent;
+        }
+        function renderGhostLayer() {
+            const ghost = document.getElementById('editor-ghost-layer');
+            const layout = db.layouts.find(l => l.id === currentLayoutId);
+            ghost.innerHTML = layout ? layout.elements.map(el => `<polygon points="${el.points}" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.3)" stroke-width="1" />`).join('') : '';
+        }
+        function inspectElement(id) {
+            selectedElementId = id;
+            const el = db.layouts.find(l => l.id === currentLayoutId).elements.find(x => x.id === id);
+            document.getElementById('inspector-empty').classList.add('hidden');
+            document.getElementById('inspector-content').classList.remove('hidden');
+            document.getElementById('inspector-content').classList.add('flex');
+            document.getElementById('insp-id').innerText = el.id;
+            document.getElementById('insp-type').innerText = el.type;
+            if(el.type === 'plot') {
+                document.getElementById('insp-buyable').classList.remove('hidden');
+                document.getElementById('insp-nonbuyable').classList.add('hidden');
+                document.getElementById('insp-price').value = el.price;
+            } else {
+                document.getElementById('insp-buyable').classList.add('hidden');
+                document.getElementById('insp-nonbuyable').classList.remove('hidden');
+            }
+        }
+        function updateStatus(status) {
+            const el = db.layouts.find(l => l.id === currentLayoutId).elements.find(x => x.id === selectedElementId);
+            if(el && el.type === 'plot') { el.status = status; el.price = document.getElementById('insp-price').value; renderMap(); }
+        }
+        function deleteElement() {
+            if(!confirm("Delete?")) return;
+            const layout = db.layouts.find(l => l.id === currentLayoutId);
+            layout.elements = layout.elements.filter(x => x.id !== selectedElementId);
+            selectedElementId = null;
+            document.getElementById('inspector-content').classList.remove('flex');
+            document.getElementById('inspector-content').classList.add('hidden');
+            document.getElementById('inspector-empty').classList.remove('hidden');
+            renderMap();
+            refreshAll(); // Refresh table in case an assigned plot was deleted
+        }
+
+        // --- 4. DRAWING ---
+        function setDrawType(type) {
+            currentDrawType = type;
+            ['plot','road','park','infra'].forEach(t => document.getElementById(`btn-type-${t}`).className = 'flex-1 py-1 text-[10px] font-bold rounded text-gray-500');
+            document.getElementById(`btn-type-${type}`).className = 'flex-1 py-1 text-[10px] font-bold rounded bg-brand text-white';
+            document.getElementById('plot-fields').classList.toggle('hidden', type !== 'plot');
+        }
+        function loadImage(e) {
+            const reader = new FileReader();
+            reader.onload = function(){
+                db.layouts.find(l => l.id === currentLayoutId).bgImage = reader.result;
+                switchLayout(currentLayoutId);
+            }
+            reader.readAsDataURL(e.target.files[0]);
+        }
+        function addPoint(e) {
+            const rect = e.target.getBoundingClientRect();
+            const scaleX = 800 / rect.width; const scaleY = 500 / rect.height;
+            const x = (e.clientX - rect.left) * scaleX; const y = (e.clientY - rect.top) * scaleY;
+            drawPoints.push(`${x},${y}`);
+            document.getElementById('current-poly').setAttribute('points', drawPoints.join(' '));
+        }
+        function saveShape() {
+            if(drawPoints.length < 3) return alert("Draw shape first");
+            const id = document.getElementById('new-plot-id').value || `${currentDrawType}-${Date.now()}`;
+            const newEl = { id, type: currentDrawType, points: drawPoints.join(' ') };
+            if(currentDrawType === 'plot') {
+                newEl.status = 'open';
+                newEl.price = document.getElementById('new-plot-price').value || 0;
+            }
+            db.layouts.find(l => l.id === currentLayoutId).elements.push(newEl);
+            drawPoints = []; document.getElementById('current-poly').setAttribute('points', '');
+            document.getElementById('new-plot-id').value = '';
+            renderGhostLayer();
+            populateNexusLayouts(); // Refresh assignments
+        }
+        function clearPoints() { drawPoints = []; document.getElementById('current-poly').setAttribute('points', ''); }
+
+        // --- 5. NEXUS (LOGIC FIXED) ---
+        function populateNexusLayouts() {
+            document.getElementById('sel-nexus-layout').innerHTML = `<option value="">Select Layout</option>` + db.layouts.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+            document.getElementById('sel-saver').innerHTML = db.users.filter(u=>u.role==='saver').map(x => `<option value="${x.name}">${x.name}</option>`).join('');
+            document.getElementById('sel-banker').innerHTML = db.users.filter(u=>u.role==='banker').map(x => `<option value="${x.name}">${x.name}</option>`).join('');
+        }
+        function updateNexusPlots() {
+            const layoutId = document.getElementById('sel-nexus-layout').value;
+            const plotSel = document.getElementById('sel-plot');
+            if(!layoutId) { plotSel.innerHTML = ''; return; }
+            const layout = db.layouts.find(l => l.id === layoutId);
+            // Filter: Only OPEN plots (Booked/Sold excluded)
+            const plots = layout.elements.filter(el => el.type === 'plot' && el.status === 'open');
+            if(plots.length > 0) plotSel.innerHTML = plots.map(p => `<option value="${p.id}">${p.id} (₹${Number(p.price).toLocaleString()})</option>`).join('');
+            else plotSel.innerHTML = '<option>No Open Plots</option>';
+        }
+        function createAssignment() {
+            const layId = document.getElementById('sel-nexus-layout').value;
+            const layName = document.getElementById('sel-nexus-layout').options[document.getElementById('sel-nexus-layout').selectedIndex]?.text;
+            const s = document.getElementById('sel-saver').value;
+            const pId = document.getElementById('sel-plot').value;
+            const b = document.getElementById('sel-banker').value;
+            if(!layId || !s || !pId || !b) return alert("Select all fields");
+            
+            // Logic: Book Plot & Create Assignment
+            const layout = db.layouts.find(l => l.id === layId);
+            const plot = layout.elements.find(x => x.id === pId);
+            plot.status = 'booked';
+            
+            db.assignments.push({lay: layName, s, p: pId, val: `₹${Number(plot.price).toLocaleString()}`, b});
+            
+            renderAssignments();
+            updateNexusPlots(); // Remove booked plot from list
+            renderMap(); // Update map color
+        }
+        function renderAssignments() {
+            document.getElementById('assign-table-body').innerHTML = db.assignments.map(a => {
+                // Check if plot still exists
+                const layout = db.layouts.find(l => l.name === a.lay);
+                const plotExists = layout ? layout.elements.find(e => e.id === a.p) : false;
+                const plotDisplay = plotExists ? a.p : `<span class="text-red-500 flex items-center gap-1"><i class="ph-bold ph-warning"></i> ${a.p} (Deleted)</span>`;
+                
+                return `<tr>
+                    <td><span class="text-xs bg-white/10 px-2 py-1 rounded">${a.lay}</span></td>
+                    <td class="font-medium text-white">${a.s}</td>
+                    <td class="font-mono text-blue-400 font-bold">${plotDisplay}</td>
+                    <td class="text-xs text-gray-400">${a.val}</td>
+                    <td class="text-purple-300">${a.b}</td>
+                    <td><span class="text-[10px] bg-green-500/10 text-green-500 border border-green-500/20 px-2 py-1 rounded font-bold uppercase">Active</span></td>
+                </tr>`;
+            }).join('');
+        }
+    </script>
+</body>
+</html>

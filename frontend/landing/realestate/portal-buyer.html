@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collection | Raj Chavin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { dark: '#050505', surface: '#121212', gold: '#D4AF37', pearl: '#F9FAFB' },
+                    fontFamily: { sans: ['Manrope', 'sans-serif'], serif: ['Playfair Display', 'serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.5); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .dark .glass-panel { background: rgba(18, 18, 18, 0.8); border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        
+        .filter-btn { background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.1); color: #555; padding: 8px 24px; border-radius: 9999px; font-weight: 600; white-space: nowrap; transition: all 0.3s; }
+        .dark .filter-btn { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #9ca3af; }
+        .filter-btn:hover, .filter-btn.active { background: #D4AF37; color: #050505; border-color: #D4AF37; }
+
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-pearl text-gray-900 dark:bg-dark dark:text-gray-300 font-sans min-h-screen transition-colors duration-300">
+
+    <nav class="fixed top-0 w-full z-50 px-4 py-4">
+        <div class="max-w-7xl mx-auto glass-panel rounded-2xl px-4 py-3 flex justify-between items-center transition-all">
+            <a href="../index.html" class="flex items-center gap-2">
+                <img src="Gemini_Generated_Image_hd7sbhd7sbhd7sbh-removebg-preview.png" alt="Raj Chavin Logo" class="h-10 w-auto object-contain">
+                <span class="font-serif text-lg font-bold tracking-wide hidden sm:block">Real Estate</span>
+            </a>
+            
+            <div class="flex items-center gap-4">
+                <button id="theme-toggle" class="w-9 h-9 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center hover:scale-110 transition">
+                    <i class="fas fa-sun hidden dark:block text-gold text-xs"></i>
+                    <i class="fas fa-moon block dark:hidden text-xs"></i>
+                </button>
+                
+                <span id="userGreeting" class="text-xs font-bold text-gold uppercase tracking-wider hidden sm:block"></span>
+
+                <div id="authContainer">
+                    <button onclick="window.location.href='real-estate-login.html'" class="px-4 py-2 bg-gold text-dark font-bold text-xs rounded-full uppercase tracking-wider hover:bg-white transition">Login</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="pt-28 pb-12 px-4 max-w-7xl mx-auto">
+        <div class="flex flex-col md:flex-row gap-4 mb-8 justify-between">
+            <div class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                <button onclick="switchView('browse'); filterProps('all')" class="filter-btn active">All</button>
+                <button onclick="switchView('browse'); filterProps('sell')" class="filter-btn">Buy</button>
+                <button onclick="switchView('browse'); filterProps('rent')" class="filter-btn">Rent</button>
+            </div>
+            <button onclick="switchView('requests')" id="myReqBtn" class="filter-btn border-gold text-gold hover:text-dark hidden">My Requests</button>
+        </div>
+
+        <div id="propertyGrid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="col-span-full text-center py-20 opacity-50">
+                <i class="fas fa-circle-notch fa-spin text-gold text-3xl mb-4"></i>
+                <p>Loading Properties...</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, db } from './firebase-config.js';
+        import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // Theme Logic
+        const themeBtn = document.getElementById('theme-toggle');
+        themeBtn.addEventListener('click', () => { 
+            document.documentElement.classList.toggle('dark'); 
+            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light'; 
+        });
+
+        // Filter Logic
+        const buttons = document.querySelectorAll('.filter-btn');
+        buttons.forEach(btn => btn.addEventListener('click', () => { buttons.forEach(b => b.classList.remove('active')); btn.classList.add('active'); }));
+
+        let currentUser = null; 
+        let myRequests = {}; 
+        let allProps = [];
+
+        // Auth Listener
+        onAuthStateChanged(auth, async (user) => { 
+            if (user) { 
+                // User is Logged In
+                currentUser = user;
+                
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                let userName = userDoc.exists() ? (userDoc.data().name || "Buyer") : "Buyer";
+                document.getElementById('userGreeting').innerText = `Hello, ${userName}`;
+                
+                // Show Logout
+                document.getElementById('authContainer').innerHTML = `<button id="logoutBtn" class="text-xs font-bold uppercase tracking-widest hover:text-gold pl-2 border-l border-gray-300 dark:border-white/10">Logout</button>`;
+                document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth).then(() => window.location.reload()));
+                
+                // Show Requests Button
+                document.getElementById('myReqBtn').classList.remove('hidden');
+
+                await loadRequests(); 
+            } else {
+                // User is Logged Out
+                currentUser = null;
+                document.getElementById('userGreeting').innerText = '';
+                document.getElementById('authContainer').innerHTML = `<button onclick="window.location.href='real-estate-login.html'" class="px-4 py-2 bg-gold text-dark font-bold text-xs rounded-full uppercase tracking-wider hover:bg-white transition">Login</button>`;
+                document.getElementById('myReqBtn').classList.add('hidden');
+            }
+            // Always load properties regardless of auth state
+            await loadProperties(); 
+        });
+
+        async function loadRequests() {
+            if(!currentUser) return;
+            const q = query(collection(db, "access_requests"), where("buyerId", "==", currentUser.uid));
+            const snap = await getDocs(q);
+            snap.forEach(doc => myRequests[doc.data().propertyId] = doc.data().status);
+        }
+
+        async function loadProperties() {
+            // Updated to allow public viewing - Ensure Firebase Rules allow 'read' for properties
+            try {
+                const q = query(collection(db, "properties"), where("status", "==", "approved"));
+                const snap = await getDocs(q);
+                
+                allProps = [];
+                snap.forEach(doc => allProps.push({ id: doc.id, ...doc.data() }));
+                render(allProps);
+            } catch (error) {
+                console.error("Error loading properties:", error);
+                document.getElementById('propertyGrid').innerHTML = '<div class="col-span-full text-center py-20 opacity-50"><p class="text-red-500">Error loading data. Please check Firebase Console Rules.</p></div>';
+            }
+        }
+
+        window.switchView = (view) => {
+            const container = document.getElementById('propertyGrid');
+            container.innerHTML = '';
+            
+            if(view === 'browse') {
+                render(allProps);
+            } else {
+                const requestedProps = allProps.filter(p => myRequests[p.id]);
+                if(requestedProps.length === 0) container.innerHTML = '<p class="col-span-full text-center opacity-50">You haven\'t requested any contacts yet.</p>';
+                else render(requestedProps);
+            }
+        };
+
+        window.filterProps = (type) => { 
+            if(type === 'all') render(allProps); 
+            else render(allProps.filter(p => p.type === type)); 
+        };
+
+        function render(props) {
+            const container = document.getElementById('propertyGrid'); 
+            container.innerHTML = '';
+            
+            if(props.length === 0) {
+                container.innerHTML = '<p class="col-span-full text-center opacity-50">No properties found.</p>';
+                return;
+            }
+
+            props.forEach(p => {
+                const reqStatus = myRequests[p.id];
+                const images = p.images && p.images.length > 0 ? p.images : (p.image ? [p.image] : ['https://via.placeholder.com/400']);
+                
+                const slidesHtml = images.map(img => `
+                    <div class="flex-shrink-0 w-full h-full snap-center bg-gray-900 relative">
+                        <img src="${img}" class="w-full h-full object-cover">
+                    </div>
+                `).join('');
+
+                // --- BUTTON LOGIC START ---
+                let btnHtml = '';
+                
+                if (!currentUser) {
+                    // Not Logged In
+                    btnHtml = `<button onclick="window.location.href='real-estate-login.html'" class="w-full mt-4 py-3 bg-white/5 text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-white/10 rounded-lg text-xs font-bold uppercase hover:bg-gold hover:text-dark hover:border-gold transition flex items-center justify-center gap-2"><i class="fas fa-lock"></i> Login to View Contact</button>`;
+                } else {
+                    // Logged In
+                    if(reqStatus === 'approved') {
+                        btnHtml = `
+                        <div class="mt-4 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
+                            <p class="text-[10px] text-green-600 dark:text-green-400 font-bold uppercase mb-2">Access Granted</p>
+                            <div class="space-y-1 text-sm font-medium text-gray-800 dark:text-gray-200">
+                                <p><i class="fas fa-user text-gold w-5"></i> ${p.sellerName || 'Owner'}</p>
+                                <p><i class="fas fa-phone text-gold w-5"></i> ${p.sellerPhone || 'Hidden'}</p>
+                                <p><i class="fas fa-envelope text-gold w-5"></i> ${p.sellerEmail}</p>
+                            </div>
+                        </div>`;
+                    } else if(reqStatus === 'pending') {
+                        btnHtml = `<button disabled class="w-full mt-4 py-3 bg-yellow-500/10 text-yellow-600 dark:text-yellow-500 border border-yellow-500/30 rounded-lg text-xs font-bold uppercase cursor-not-allowed">Request Pending</button>`;
+                    } else {
+                        btnHtml = `<button onclick="requestAccess('${p.id}','${p.sellerId}')" class="w-full mt-4 py-3 bg-gold text-dark rounded-lg text-xs font-bold uppercase hover:bg-white transition shadow-lg shadow-gold/20">Request Owner Contact</button>`;
+                    }
+                }
+                // --- BUTTON LOGIC END ---
+
+                container.innerHTML += `
+                    <div class="glass-panel rounded-2xl overflow-hidden group hover:shadow-xl transition duration-500 flex flex-col">
+                        
+                        <div class="h-64 relative w-full group-hover:scale-[1.01] transition duration-500">
+                            <div class="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide h-full w-full">
+                                ${slidesHtml}
+                            </div>
+                            
+                            <div class="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1 text-[10px] font-bold text-white uppercase tracking-widest border border-white/10 rounded">
+                                ${p.type}
+                            </div>
+                            
+                            <div class="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md px-2 py-1 text-[10px] font-bold text-white rounded border border-white/10">
+                                <i class="fas fa-images text-gold mr-1"></i> ${images.length}
+                            </div>
+
+                            <div class="absolute bottom-4 left-4 text-white drop-shadow-md">
+                                <p class="text-[10px] uppercase tracking-widest opacity-90 mb-1">${p.category}</p>
+                                <h3 class="text-xl font-bold font-serif leading-none">${p.title}</h3>
+                            </div>
+                        </div>
+
+                        <div class="p-6 flex-1 flex flex-col">
+                            <div class="flex justify-between items-end mb-4 pb-4 border-b border-gray-200 dark:border-white/10">
+                                <p class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                    <i class="fas fa-map-marker-alt text-gold"></i> ${p.location}
+                                </p>
+                                <p class="text-gold font-mono text-lg font-bold">₹${Number(p.price).toLocaleString()}</p>
+                            </div>
+                            
+                            <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4 line-clamp-3 flex-1">
+                                ${p.description || 'No description available.'}
+                            </p>
+                            
+                            <div class="mt-auto">
+                                ${btnHtml}
+                            </div>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        window.requestAccess = async (pid, sid) => {
+            if(!confirm("Request Admin to reveal contact?")) return;
+            try {
+                await addDoc(collection(db, "access_requests"), { 
+                    buyerId: currentUser.uid, 
+                    buyerEmail: currentUser.email, 
+                    propertyId: pid, 
+                    sellerId: sid, 
+                    status: 'pending', 
+                    requestDate: serverTimestamp() 
+                });
+                window.location.reload();
+            } catch(e) { alert("Error: " + e.message); }
+        };
+    </script>
+</body>
+</html>
