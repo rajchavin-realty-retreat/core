@@ -3,36 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Construction Services | Raj Chavin</title>
+    <title>Real Estate System | Raj Chavin</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <script>
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-
         tailwind.config = {
             darkMode: 'class', 
             theme: {
                 extend: {
                     colors: {
-                        dark: '#020617',   // Deep Blue (Launch Page)
-                        surface: '#0F172A', // Slate Blue Surface
-                        primary: '#1C58A1', // Rich Blue Accent (Replacing Gold)
-                        secondary: '#60A5FA', // Subtle Blue Accent
-                        pearl: '#F8FAFC'
+                        dark: '#020617',   
+                        surface: '#0F172A', 
+                        primary: '#1C58A1', 
+                        secondary: '#60A5FA', 
+                        pearl: '#F8FAFC',
                     },
                     fontFamily: {
                         sans: ['Manrope', 'sans-serif'],
                         serif: ['Playfair Display', 'serif'],
                     },
                     backgroundImage: {
-                        'hero-const': "url('https://images.unsplash.com/photo-1541888946425-d81bb19240f5?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')",
+                        'hero-pattern': "url('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=2075&q=80')",
                     }
                 }
             }
@@ -45,33 +40,35 @@
         ::-webkit-scrollbar-thumb { background: #1C58A1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #60A5FA; }
 
-        .glass-panel, .nav-dropdown {
-            transform: translateZ(0);
-            -webkit-transform: translateZ(0);
-            backface-visibility: hidden;
-        }
-
-        /* Glass Panel - Blue Tint */
         .glass-panel {
             background: rgba(255, 255, 255, 0.9); 
             backdrop-filter: blur(12px);
             border: 1px solid rgba(28, 88, 161, 0.2);
             box-shadow: 0 4px 6px -1px rgba(28, 88, 161, 0.1);
         }
-        
         .dark .glass-panel {
             background: rgba(15, 23, 42, 0.8); 
             border: 1px solid rgba(28, 88, 161, 0.2);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
         }
-
-        .nav-dropdown { opacity: 0; visibility: hidden; transform: translateY(10px) translateZ(0); transition: all 0.2s ease-out; }
-        .group:hover .nav-dropdown { opacity: 1; visibility: visible; transform: translateY(0) translateZ(0); }
-
-        .card-hover { transition: transform 0.3s ease, box-shadow 0.3s ease; will-change: transform; }
-        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 20px 40px -10px rgba(28, 88, 161, 0.2); }
         
-        .text-gradient { background: linear-gradient(to right, #1C58A1, #60A5FA); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .nav-dropdown {
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px) translateZ(0);
+            transition: all 0.2s ease-out;
+        }
+        .group:hover .nav-dropdown {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0) translateZ(0);
+        }
+
+        .text-gradient {
+            background: linear-gradient(to right, #1C58A1, #60A5FA);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
     </style>
 </head>
 <body class="bg-pearl text-slate-900 dark:bg-dark dark:text-gray-300 font-sans antialiased transition-colors duration-300">
@@ -253,167 +250,174 @@
         </div>
     </nav>
 
+    <header class="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden bg-pearl dark:bg-dark border-b border-gray-200 dark:border-white/5">
+        <div class="absolute inset-0 bg-hero-pattern bg-cover bg-center opacity-10 dark:opacity-20 pointer-events-none"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-pearl dark:from-dark to-transparent pointer-events-none"></div>
 
-    <header class="relative pt-40 pb-24 px-4 min-h-[50vh] flex items-center justify-center text-center overflow-hidden">
-        <div class="absolute inset-0 bg-hero-const bg-cover bg-center bg-fixed opacity-30 dark:opacity-20"></div>
-        <div class="absolute inset-0 bg-gradient-to-b from-transparent via-pearl/80 to-pearl dark:from-transparent dark:via-dark/80 dark:to-dark"></div>
-
-        <div class="relative z-10 max-w-4xl mx-auto">
-            <span class="inline-block py-1 px-3 rounded-full bg-primary/10 border border-primary/30 text-primary text-xs font-bold uppercase tracking-widest mb-6">Master Builders</span>
-            <h1 class="text-4xl md:text-6xl font-serif font-bold text-gray-900 dark:text-white mb-6 leading-tight">
-                Building Foundations <br>
-                <span class="text-gradient">Crafting Lifestyles</span>
+        <div class="relative z-10 max-w-5xl mx-auto px-4 text-center">
+            <div class="inline-flex items-center gap-2 px-4 py-1 rounded-full border border-primary/50 bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest mb-6">
+                Property Transaction Services
+            </div> 
+            <h1 class="text-4xl md:text-6xl lg:text-7xl font-serif font-bold text-gray-900 dark:text-white mb-6 leading-tight">
+                The <span class="text-gradient">Rajchavin</span> <br>Real Estate System.
             </h1>
-            <p class="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed mb-10">
-                From structural reinforcement to the final coat of paint. We provide end-to-end construction services with precision, durability, and modern aesthetics.
+            <p class="text-lg md:text-xl text-slate-600 dark:text-gray-400 max-w-3xl mx-auto leading-relaxed">
+                We facilitate the buying, selling, leasing, and renting of Residential, Plot, Land, Commercial, and Industrial properties with absolute transparency, zero fund custody, and strict governance.
             </p>
-            <a href="#services" class="px-8 py-3 bg-primary text-white font-bold rounded-full hover:bg-secondary transition shadow-lg transform hover:-translate-y-1">Explore Services</a>
         </div>
     </header>
 
-    <section id="services" class="py-20 px-4">
+    <section class="py-20 px-4 bg-white dark:bg-surface">
         <div class="max-w-7xl mx-auto">
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                
-                <div class="glass-panel p-8 rounded-2xl card-hover group">
-                    <div class="w-14 h-14 rounded-full bg-gray-500/10 text-gray-500 flex items-center justify-center text-2xl mb-6 group-hover:bg-gray-600 group-hover:text-white transition">
-                        <i class="fas fa-layer-group"></i>
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-serif font-bold text-gray-900 dark:text-white mb-4">End-to-End Governance</h2>
+                <p class="text-slate-500 dark:text-gray-400 max-w-2xl mx-auto">Rajchavin is never a transacting party. We are the facilitation engine that connects buyers, sellers, and tenants through a clean, auditable, and traceable process.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="glass-panel p-8 rounded-2xl text-center group hover:-translate-y-2 transition duration-300">
+                    <div class="w-16 h-16 mx-auto rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center text-2xl mb-6">
+                        <i class="fas fa-shopping-cart"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Construction & Reinforcement</h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Accurate steel bar bending, cutting, and placement for structural integrity.</p>
-                    <div class="space-y-3">
-                        <div class="text-xs">
-                            <strong class="text-primary block mb-1">New Construction:</strong>
-                            <span class="text-gray-500">CNC-precision bending, Foundation layouts, Column/Beam reinforcement.</span>
-                        </div>
-                        <div class="text-xs">
-                            <strong class="text-primary block mb-1">Renovations:</strong>
-                            <span class="text-gray-500">Strengthening for extensions & retrofitting.</span>
-                        </div>
-                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Buy</h3>
+                    <p class="text-sm text-slate-500 dark:text-gray-400">Discover verified residential, commercial, and industrial properties with compliance-first documentation.</p>
                 </div>
 
-                <div class="glass-panel p-8 rounded-2xl card-hover group">
-                    <div class="w-14 h-14 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center text-2xl mb-6 group-hover:bg-blue-600 group-hover:text-white transition">
-                        <i class="fas fa-faucet"></i>
+                <div class="glass-panel p-8 rounded-2xl text-center group hover:-translate-y-2 transition duration-300">
+                    <div class="w-16 h-16 mx-auto rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 flex items-center justify-center text-2xl mb-6">
+                        <i class="fas fa-tags"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Plumbing Services</h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Reliable water systems for flawless functionality and hygiene.</p>
-                    <div class="space-y-3">
-                        <div class="text-xs">
-                            <strong class="text-primary block mb-1">Services:</strong>
-                            <span class="text-gray-500">Water supply, Drainage, Rainwater harvesting, Leak detection.</span>
-                        </div>
-                        <div class="text-xs">
-                            <strong class="text-primary block mb-1">Renovations:</strong>
-                            <span class="text-gray-500">Replacing rusted pipes & modernizing fixtures.</span>
-                        </div>
-                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Sell</h3>
+                    <p class="text-sm text-slate-500 dark:text-gray-400">List your property with us. We handle buyer coordination and ensure a smooth, secure registration flow.</p>
                 </div>
 
-                <div class="glass-panel p-8 rounded-2xl card-hover group">
-                    <div class="w-14 h-14 rounded-full bg-yellow-500/10 text-yellow-500 flex items-center justify-center text-2xl mb-6 group-hover:bg-yellow-600 group-hover:text-white transition">
-                        <i class="fas fa-bolt"></i>
+                <div class="glass-panel p-8 rounded-2xl text-center group hover:-translate-y-2 transition duration-300">
+                    <div class="w-16 h-16 mx-auto rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 flex items-center justify-center text-2xl mb-6">
+                        <i class="fas fa-key"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Electrical Wiring</h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Safe, energy-efficient, and scalable power solutions.</p>
-                    <div class="space-y-3">
-                        <div class="text-xs">
-                            <strong class="text-primary block mb-1">New Projects:</strong>
-                            <span class="text-gray-500">Load distribution, MCB panels, Concealed wiring, Smart home setup.</span>
-                        </div>
-                        <div class="text-xs">
-                            <strong class="text-primary block mb-1">Renovations:</strong>
-                            <span class="text-gray-500">Complete rewiring & safety retrofitting.</span>
-                        </div>
-                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Rent</h3>
+                    <p class="text-sm text-slate-500 dark:text-gray-400">Standardized residential rental agreements ensuring fairness and legal clarity for both owners and tenants.</p>
                 </div>
 
-                <div class="glass-panel p-8 rounded-2xl card-hover group">
-                    <div class="w-14 h-14 rounded-full bg-orange-500/10 text-orange-500 flex items-center justify-center text-2xl mb-6 group-hover:bg-orange-600 group-hover:text-white transition">
-                        <i class="fas fa-th"></i>
+                <div class="glass-panel p-8 rounded-2xl text-center group hover:-translate-y-2 transition duration-300">
+                    <div class="w-16 h-16 mx-auto rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 flex items-center justify-center text-2xl mb-6">
+                        <i class="fas fa-building"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Flooring Services</h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Stylish, durable floors that define your space foundation.</p>
-                    <ul class="text-xs text-gray-500 space-y-1 list-disc pl-4">
-                        <li>Tile, Marble, Vitrified & Ceramic</li>
-                        <li>Wooden & Laminate Flooring</li>
-                        <li>Polishing & Grouting</li>
-                        <li>Anti-skid Bathroom/Kitchen installation</li>
-                    </ul>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Lease</h3>
+                    <p class="text-sm text-slate-500 dark:text-gray-400">Commercial and industrial leasing executed with rigorous corporate standards and one-time transparent fees.</p>
                 </div>
-
-                <div class="glass-panel p-8 rounded-2xl card-hover group">
-                    <div class="w-14 h-14 rounded-full bg-purple-500/10 text-purple-500 flex items-center justify-center text-2xl mb-6 group-hover:bg-purple-600 group-hover:text-white transition">
-                        <i class="fas fa-cloud"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">POP & False Ceilings</h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Structural elegance with lighting integration and insulation.</p>
-                    <ul class="text-xs text-gray-500 space-y-1 list-disc pl-4">
-                        <li>Custom False Ceiling Designs</li>
-                        <li>Cornices & Mouldings</li>
-                        <li>Lighting-Integrated Ceilings</li>
-                        <li>Moisture-Resistant options</li>
-                    </ul>
-                </div>
-
-                <div class="glass-panel p-8 rounded-2xl card-hover group">
-                    <div class="w-14 h-14 rounded-full bg-amber-700/10 text-amber-700 flex items-center justify-center text-2xl mb-6 group-hover:bg-amber-800 group-hover:text-white transition">
-                        <i class="fas fa-hammer"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Carpentry Services</h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Crafted woodwork for functional elegance and storage.</p>
-                    <ul class="text-xs text-gray-500 space-y-1 list-disc pl-4">
-                        <li>Modular Kitchens & Wardrobes</li>
-                        <li>Doors, Windows & Frames</li>
-                        <li>TV Units & Paneling</li>
-                        <li>Furniture Repair & Polish</li>
-                    </ul>
-                </div>
-
-                <div class="glass-panel p-8 rounded-2xl card-hover group">
-                    <div class="w-14 h-14 rounded-full bg-pink-500/10 text-pink-500 flex items-center justify-center text-2xl mb-6 group-hover:bg-pink-600 group-hover:text-white transition">
-                        <i class="fas fa-paint-roller"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Painting (Interior & Exterior)</h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Enhance mood and protect surfaces with high-quality finishes.</p>
-                    <ul class="text-xs text-gray-500 space-y-1 list-disc pl-4">
-                        <li>Wall Putty & Surface Prep</li>
-                        <li>Waterproof & Weatherproof Coatings</li>
-                        <li>Texture & Designer Finishes</li>
-                        <li>Wood Polish & Metal Paints</li>
-                    </ul>
-                </div>
-
-                <div class="glass-panel p-8 rounded-2xl card-hover group">
-                    <div class="w-14 h-14 rounded-full bg-slate-500/10 text-slate-500 flex items-center justify-center text-2xl mb-6 group-hover:bg-slate-600 group-hover:text-white transition">
-                        <i class="fas fa-window-maximize"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Aluminium Works</h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Lightweight, modern, and durable fixtures.</p>
-                    <ul class="text-xs text-gray-500 space-y-1 list-disc pl-4">
-                        <li>Sliding Doors & Windows</li>
-                        <li>Office Partitions</li>
-                        <li>Frameless Glass Assemblies</li>
-                        <li>Ventilators & Louvers</li>
-                    </ul>
-                </div>
-
             </div>
         </div>
     </section>
 
-    <section class="py-24 bg-gray-50 dark:bg-black/20">
-        <div class="max-w-4xl mx-auto glass-panel p-8 md:p-16 rounded-3xl text-center relative overflow-hidden">
-            <div class="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+    <section class="py-20 px-4 bg-pearl dark:bg-dark border-t border-gray-200 dark:border-white/5">
+        <div class="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
+            <div class="order-2 lg:order-1">
+                <div class="inline-flex items-center gap-2 px-4 py-1 rounded-full border border-secondary/50 bg-secondary/10 text-secondary text-xs font-bold uppercase tracking-widest mb-6">
+                    Master Pricing Policy
+                </div> 
+                <h2 class="text-3xl md:text-4xl font-serif font-bold text-gray-900 dark:text-white mb-6">The 0.99% Revolution.</h2>
+                <p class="text-slate-600 dark:text-gray-400 text-lg mb-8 leading-relaxed">
+                    We believe real estate services must be simple, fair, and accountable. That is why our charges are lower than traditional brokerage, completely transparent, and billed only on success.
+                </p>
+
+                <div class="space-y-6">
+                    <div class="glass-panel p-6 rounded-2xl border-l-4 border-l-primary">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-bold text-lg text-gray-900 dark:text-white">Buy & Sell (Any Property)</h4>
+                            <span class="bg-primary text-white text-xs font-bold px-3 py-1 rounded-full">0.99%</span>
+                        </div>
+                        <p class="text-sm text-slate-500 dark:text-gray-400">Of the total transaction value. If referred through agents, we charge 0.49% from each agent.</p>
+                    </div>
+
+                    <div class="glass-panel p-6 rounded-2xl border-l-4 border-l-secondary">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-bold text-lg text-gray-900 dark:text-white">Commercial & Industrial Lease</h4>
+                            <span class="bg-secondary text-white text-xs font-bold px-3 py-1 rounded-full">0.99%</span>
+                        </div>
+                        <p class="text-sm text-slate-500 dark:text-gray-400">Of the total lease agreement value. This is a one-time charge at lease execution with no recurring commissions.</p>
+                    </div>
+
+                    <div class="glass-panel p-6 rounded-2xl border-l-4 border-l-green-500">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-bold text-lg text-gray-900 dark:text-white">Residential Rental</h4>
+                            <span class="bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">1 Month</span>
+                        </div>
+                        <p class="text-sm text-slate-500 dark:text-gray-400">Charged to both Owner & Tenant. Payable only after a successful agreement and occupancy.</p>
+                    </div>
+                </div>
+            </div>
             
-            <h2 class="text-3xl md:text-5xl font-serif font-bold text-gray-900 dark:text-white mb-6 relative z-10">
-                Start Your Project Today
-            </h2>
-            <p class="text-lg text-gray-600 dark:text-gray-400 mb-10 relative z-10">
-                Book a free design consultation with our experts.
-            </p>
-            <a href="contact.html" class="inline-block px-10 py-4 bg-primary text-white font-bold rounded-lg hover:bg-secondary transition uppercase tracking-widest shadow-lg relative z-10">Contact Us</a>
+            <div class="order-1 lg:order-2">
+                <div class="glass-panel p-8 md:p-12 rounded-3xl shadow-xl bg-gradient-to-br from-white to-gray-50 dark:from-surface dark:to-dark border border-gray-200 dark:border-white/10 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-bl-full -z-10"></div>
+                    <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-6 border-b border-gray-200 dark:border-white/10 pb-4">Standard Payment Structure</h3>
+                    
+                    <ul class="space-y-6">
+                        <li class="flex gap-4 items-start">
+                            <div class="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold flex-shrink-0">50%</div>
+                            <div>
+                                <h5 class="font-bold text-gray-900 dark:text-white">At Sale Agreement / Token Stage</h5>
+                                <p class="text-sm text-slate-500 dark:text-gray-400 mt-1">Advance fees to initiate processing (Non-refundable).</p>
+                            </div>
+                        </li>
+                        <li class="flex gap-4 items-start">
+                            <div class="w-10 h-10 rounded-full bg-secondary/20 text-secondary flex items-center justify-center font-bold flex-shrink-0">50%</div>
+                            <div>
+                                <h5 class="font-bold text-gray-900 dark:text-white">At Final Sale Deed / Registration</h5>
+                                <p class="text-sm text-slate-500 dark:text-gray-400 mt-1">Payable upon successful closure of the transaction.</p>
+                            </div>
+                        </li>
+                        <li class="flex gap-4 items-start pt-4 border-t border-gray-200 dark:border-white/10">
+                            <div class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 text-red-500 flex items-center justify-center flex-shrink-0"><i class="fas fa-shield-alt"></i></div>
+                            <div>
+                                <h5 class="font-bold text-gray-900 dark:text-white">Success Guarantee</h5>
+                                <p class="text-sm text-slate-500 dark:text-gray-400 mt-1">If the transaction does not conclude, no further fee is charged.</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-20 px-4 bg-white dark:bg-surface border-t border-gray-200 dark:border-white/5">
+        <div class="max-w-7xl mx-auto text-center">
+            <h2 class="text-3xl md:text-4xl font-serif font-bold text-slate-800 dark:text-white mb-12">What Our Service Includes</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="p-6">
+                    <div class="w-16 h-16 mx-auto rounded-2xl bg-gray-50 dark:bg-dark border border-gray-200 dark:border-white/10 flex items-center justify-center text-primary text-2xl mb-4 shadow-sm">
+                        <i class="fas fa-handshake"></i>
+                    </div>
+                    <h4 class="font-bold text-gray-900 dark:text-white mb-2">Buyer-Seller Coordination</h4>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">We manage the communications, negotiations, and scheduling between all parties involved.</p>
+                </div>
+                
+                <div class="p-6">
+                    <div class="w-16 h-16 mx-auto rounded-2xl bg-gray-50 dark:bg-dark border border-gray-200 dark:border-white/10 flex items-center justify-center text-primary text-2xl mb-4 shadow-sm">
+                        <i class="fas fa-project-diagram"></i>
+                    </div>
+                    <h4 class="font-bold text-gray-900 dark:text-white mb-2">Process Management</h4>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">End-to-end oversight of the transaction lifecycle to ensure no delays or operational hiccups.</p>
+                </div>
+
+                <div class="p-6">
+                    <div class="w-16 h-16 mx-auto rounded-2xl bg-gray-50 dark:bg-dark border border-gray-200 dark:border-white/10 flex items-center justify-center text-primary text-2xl mb-4 shadow-sm">
+                        <i class="fas fa-folder-open"></i>
+                    </div>
+                    <h4 class="font-bold text-gray-900 dark:text-white mb-2">Compliance Tracking</h4>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">We orchestrate the documentation flow, ensuring all paperwork meets strict regulatory standards.</p>
+                </div>
+
+                <div class="p-6">
+                    <div class="w-16 h-16 mx-auto rounded-2xl bg-gray-50 dark:bg-dark border border-gray-200 dark:border-white/10 flex items-center justify-center text-primary text-2xl mb-4 shadow-sm">
+                        <i class="fas fa-stamp"></i>
+                    </div>
+                    <h4 class="font-bold text-gray-900 dark:text-white mb-2">Auditable Closure</h4>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Registration coordination leading to a clean, traceable, and legally binding closure of the deal.</p>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -497,7 +501,7 @@
 
     <script>
         const themeToggleBtn = document.getElementById('theme-toggle');
-        
+
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         } else {
