@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rajchavin | Assignment Nexus</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { fontFamily: { sans: ['Inter'], mono: ['JetBrains Mono'] }, extend: { colors: { bg: '#09090b', surface: '#18181b', border: '#27272a', brand: '#3b82f6' } } } }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; } ::-webkit-scrollbar-track { background: #18181b; } ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+        .glass-panel { background: rgba(24, 24, 27, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
+        .glass-sidebar { background: #18181b; border-right: 1px solid #27272a; }
+        th { font-size: 11px; text-transform: uppercase; color: #71717a; font-weight: 600; padding: 12px 16px; border-bottom: 1px solid #27272a; text-align: left; }
+        td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); color: #e4e4e7; font-size: 13px; }
+        
+        .ss-container { position: relative; width: 100%; margin-bottom: 0; }
+        .ss-input { width: 100%; background: #18181b; border: 1px solid #27272a; padding: 8px 12px; border-radius: 8px; font-size: 12px; outline: none; color: white; cursor: text; }
+        .ss-input:focus { border-color: #3b82f6; }
+        .ss-list { position: absolute; top: 100%; left: 0; width: 100%; max-height: 200px; overflow-y: auto; background: #09090b; border: 1px solid #3b82f6; border-radius: 8px; z-index: 999; display: none; margin-top: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.8); }
+        .ss-list.open { display: block; }
+        .ss-option { padding: 10px 12px; font-size: 12px; cursor: pointer; color: #d4d4d8; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .ss-option:hover { background: #3b82f6; color: white; }
+    </style>
+</head>
+<body class="bg-bg text-gray-200 h-screen w-full flex overflow-hidden">
+
+    <aside class="w-64 glass-sidebar flex flex-col justify-between" id="sidebar">
+        <div>
+            <div class="h-16 flex items-center px-6 border-b border-border gap-3"><div class="w-6 h-6 bg-brand rounded flex items-center justify-center text-white font-bold text-xs">R</div><span class="font-bold text-sm tracking-wide">RAJCHAVIN <span class="text-gray-600 font-normal">OS</span></span></div>
+            <nav class="p-4 space-y-1">
+                <a href="admin_users.html" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition"><i class="ph-duotone ph-users text-lg"></i> User Factory</a>
+                <a href="admin_layouts.html" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition"><i class="ph-duotone ph-map-trifold text-lg"></i> Layout Architect</a>
+                <a href="admin_assign.html" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm bg-brand text-white transition"><i class="ph-duotone ph-git-merge text-lg"></i> Assignment Nexus</a>
+            </nav>
+        </div>
+    </aside>
+
+    <main class="flex-1 bg-bg relative overflow-hidden flex flex-col">
+        <header class="h-16 border-b border-border flex justify-between items-center px-8 bg-bg/80 backdrop-blur z-20"><div class="flex items-center gap-2 text-sm text-gray-500"><i class="ph-bold ph-house"></i><span>/</span><span class="text-white font-medium">Assignment Nexus</span></div></header>
+
+        <div class="flex-1 p-8 grid grid-cols-1 xl:grid-cols-3 gap-8 overflow-hidden">
+            <div class="xl:col-span-1 glass-panel p-6 rounded-xl h-fit overflow-y-auto">
+                <h2 class="text-lg font-bold mb-6">Create Assignment</h2>
+                <div class="space-y-4">
+                    <label class="text-[10px] font-bold text-gray-500 uppercase block">1. Select Developer</label><select id="sel-nexus-dev" onchange="updateNexusLayoutsByDev()" class="hidden-select"></select>
+                    <label class="text-[10px] font-bold text-gray-500 uppercase block">2. Select Project</label><select id="sel-nexus-layout" onchange="updateNexusPlots()" class="hidden-select"></select>
+                    <label class="text-[10px] font-bold text-gray-500 uppercase block">3. Customer</label><select id="sel-saver" class="hidden-select"></select>
+                    <label class="text-[10px] font-bold text-gray-500 uppercase block">4. Plot</label><select id="sel-plot" class="hidden-select"></select>
+                    <label class="text-[10px] font-bold text-gray-500 uppercase block">5. Banker</label><select id="sel-banker" class="hidden-select"></select>
+                    <button onclick="createAssignment()" class="w-full bg-brand hover:bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg transition mt-4">Link & Book</button>
+                </div>
+            </div>
+
+            <div class="xl:col-span-2 glass-panel rounded-xl overflow-hidden flex flex-col">
+                <div class="p-4 border-b border-border bg-surface/50 flex justify-between items-center"><h3 class="text-sm font-bold text-gray-300">Active Chains</h3><div class="relative w-64"><i class="ph-bold ph-magnifying-glass absolute left-3 top-2.5 text-gray-500"></i><input type="text" onkeyup="filterAssignments(this.value)" placeholder="Search layout, customer..." class="w-full bg-black/30 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-xs outline-none focus:border-brand"></div></div>
+                <div class="flex-1 overflow-auto">
+                    <table class="w-full"><thead><tr class="bg-surface/80"><th>Layout</th><th>Customer</th><th>Plot</th><th>Value</th><th>Banker</th><th>Status</th></tr></thead><tbody id="assign-table-body"></tbody></table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, doc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // --- PASTE YOUR FIREBASE CONFIG HERE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDHHQXki7JAzDsnsKH6LoLNRYlySfnxW7Y",
+            authDomain: "rajchavin-live.firebaseapp.com",
+            projectId: "rajchavin-live",
+            storageBucket: "rajchavin-live.firebasestorage.app",
+            messagingSenderId: "626552794688",
+            appId: "1:626552794688:web:92988d178bde6c8e6439a5"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.appState = { users: [], layouts: [], assignments: [], searchAssign: '' };
+
+        // --- SEARCHABLE SELECT ---
+        function createSearchableSelect(id, placeholder) {
+            const select = document.getElementById(id);
+            if(!select || select.nextElementSibling?.classList.contains('ss-container')) return; 
+            select.style.display = 'none'; 
+            const wrapper = document.createElement('div'); wrapper.className = 'ss-container';
+            const input = document.createElement('input'); input.type = 'text'; input.className = 'ss-input'; input.placeholder = placeholder;
+            const list = document.createElement('div'); list.className = 'ss-list';
+            const populate = () => {
+                list.innerHTML = '';
+                Array.from(select.options).forEach(opt => {
+                    if(opt.value === "" && opt.innerText.includes("Select")) return;
+                    const item = document.createElement('div');
+                    item.className = 'ss-option';
+                    item.innerText = opt.innerText;
+                    item.onmousedown = (e) => { e.preventDefault(); input.value = opt.innerText; select.value = opt.value; select.dispatchEvent(new Event('change')); list.classList.remove('open'); };
+                    list.appendChild(item);
+                });
+            };
+            input.onfocus = () => { populate(); list.classList.add('open'); };
+            input.onblur = () => setTimeout(() => list.classList.remove('open'), 200);
+            input.onkeyup = (e) => { const term = e.target.value.toLowerCase(); Array.from(list.children).forEach(item => { item.style.display = item.innerText.toLowerCase().includes(term) ? 'block' : 'none'; }); };
+            wrapper.appendChild(input); wrapper.appendChild(list); select.parentNode.insertBefore(wrapper, select.nextSibling);
+            const observer = new MutationObserver(() => { input.value = ''; populate(); });
+            observer.observe(select, {childList: true});
+        }
+
+        // --- LISTENERS ---
+        onSnapshot(collection(db, "users"), snap => {
+            window.appState.users = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            const devs = window.appState.users.filter(u => u.role === 'developer');
+            const savers = window.appState.users.filter(u => u.role === 'saver');
+            const bankers = window.appState.users.filter(u => u.role === 'banker');
+            document.getElementById('sel-nexus-dev').innerHTML = `<option value="">Select Developer</option>` + devs.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+            document.getElementById('sel-saver').innerHTML = savers.map(x => `<option value="${x.name}">${x.name}</option>`).join('');
+            document.getElementById('sel-banker').innerHTML = bankers.map(x => `<option value="${x.name}">${x.name}</option>`).join('');
+            
+            // Init Searchables after data load
+            ['sel-nexus-dev', 'sel-nexus-layout', 'sel-saver', 'sel-plot', 'sel-banker'].forEach(id => createSearchableSelect(id, "Search..."));
+        });
+        onSnapshot(collection(db, "layouts"), snap => {
+            window.appState.layouts = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            window.updateNexusLayoutsByDev(); 
+        });
+        onSnapshot(collection(db, "assignments"), snap => {
+            window.appState.assignments = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            window.renderAssignments();
+        });
+
+        // --- LOGIC ---
+        window.updateNexusLayoutsByDev = () => {
+            const devId = document.getElementById('sel-nexus-dev').value;
+            const layoutSelect = document.getElementById('sel-nexus-layout');
+            if(!devId) { layoutSelect.innerHTML = '<option value="">Select Developer First</option>'; return; }
+            const filteredLayouts = window.appState.layouts.filter(l => l.devId === devId);
+            layoutSelect.innerHTML = `<option value="">Select Project</option>` + filteredLayouts.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+            document.getElementById('sel-plot').innerHTML = '';
+        };
+
+        window.updateNexusPlots = () => {
+            const id = document.getElementById('sel-nexus-layout').value;
+            if(!id) return;
+            const l = window.appState.layouts.find(x => x.id === id);
+            const plots = l.elements.filter(e => e.type === 'plot' && e.status === 'open');
+            document.getElementById('sel-plot').innerHTML = plots.length ? plots.map(p => `<option value="${p.id}">${p.id} (₹${p.price})</option>`).join('') : '<option>No Open Plots</option>';
+        };
+
+        window.renderAssignments = () => {
+            const q = window.appState.searchAssign || '';
+            const filtered = window.appState.assignments.filter(a => a.layoutName.toLowerCase().includes(q) || a.saverName.toLowerCase().includes(q));
+            document.getElementById('assign-table-body').innerHTML = filtered.map(a => {
+                const l = window.appState.layouts.find(x => x.id === a.layoutId);
+                const exists = l ? l.elements.find(e => e.id === a.plotId) : false;
+                const pDisplay = exists ? `<span class="font-bold text-blue-400">${a.plotId}</span>` : `<span class="text-red-500 font-bold flex items-center gap-1"><i class="ph-warning"></i> ${a.plotId} Deleted</span>`;
+                return `<tr><td><span class="text-xs bg-white/10 px-2 py-1 rounded">${a.layoutName}</span></td><td class="font-medium text-white">${a.saverName}</td><td class="font-mono">${pDisplay}</td><td class="text-xs text-gray-400">₹${Number(a.value).toLocaleString()}</td><td class="text-purple-300">${a.bankerName}</td><td><span class="text-[10px] bg-green-500/10 text-green-500 border border-green-500/20 px-2 py-1 rounded font-bold uppercase">Active</span></td></tr>`;
+            }).join('');
+        };
+
+        window.createAssignment = async () => {
+            const layId = document.getElementById('sel-nexus-layout').value;
+            const layName = document.getElementById('sel-nexus-layout').options[document.getElementById('sel-nexus-layout').selectedIndex]?.text;
+            const s = document.getElementById('sel-saver').value;
+            const pId = document.getElementById('sel-plot').value;
+            const b = document.getElementById('sel-banker').value;
+            if(!layId || !s || !pId || !b) return alert("All fields required");
+            const layout = window.appState.layouts.find(l => l.id === layId);
+            const plot = layout.elements.find(e => e.id === pId);
+            await addDoc(collection(db, "assignments"), { layoutId: layId, layoutName: layName, saverName: s, bankerName: b, plotId: pId, value: plot.price, status: 'active' });
+            const updated = layout.elements.map(e => e.id === pId ? {...e, status: 'booked'} : e);
+            await updateDoc(doc(db, "layouts", layId), { elements: updated });
+            alert("Success!");
+        };
+
+        window.filterAssignments = (val) => { window.appState.searchAssign = val.toLowerCase(); window.renderAssignments(); };
+    </script>
+</body>
+</html>

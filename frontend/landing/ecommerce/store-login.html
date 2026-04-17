@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store Login | Raj Chavin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: { colors: { dark: '#050505', gold: '#D4AF37', pearl: '#F9FAFB' }, fontFamily: { sans: ['Manrope', 'sans-serif'], serif: ['Playfair Display', 'serif'] } }
+            }
+        }
+    </script>
+    <style>
+        /* Light Mode Glass */
+        .glass-panel { 
+            background: rgba(255, 255, 255, 0.9); 
+            backdrop-filter: blur(12px); 
+            border: 1px solid rgba(255, 255, 255, 0.5); 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        /* Dark Mode Glass */
+        .dark .glass-panel { 
+            background: rgba(18, 18, 18, 0.85); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        
+        /* Input Transitions */
+        .form-input { transition: all 0.3s; }
+    </style>
+</head>
+<body class="bg-pearl text-gray-900 dark:bg-dark dark:text-white font-sans min-h-screen flex items-center justify-center p-4 bg-[url('https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&q=80')] bg-cover bg-center bg-white/60 dark:bg-black/80 bg-blend-overlay transition-colors duration-300">
+
+    <div class="absolute top-6 right-6 z-50">
+        <button id="theme-toggle" class="w-10 h-10 rounded-full bg-white/20 dark:bg-black/20 backdrop-blur border border-gray-300 dark:border-white/10 flex items-center justify-center hover:scale-110 transition shadow-lg text-gray-800 dark:text-gold">
+            <i class="fas fa-sun hidden dark:block"></i>
+            <i class="fas fa-moon block dark:hidden"></i>
+        </button>
+    </div>
+
+    <div class="w-full max-w-md glass-panel rounded-2xl p-8 shadow-2xl relative transition-all duration-300">
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 bg-gold rounded-xl flex items-center justify-center text-3xl font-serif font-bold text-white dark:text-dark mx-auto mb-4 shadow-lg">RC</div>
+            <h1 class="text-2xl font-serif font-bold">Material Store</h1>
+            <p class="text-xs uppercase tracking-widest text-gray-500 dark:text-gray-400 mt-2">Customer • Supplier • Admin</p>
+        </div>
+
+        <div class="flex border-b border-gray-300 dark:border-white/10 mb-6">
+            <button onclick="toggleTab('login')" id="tab-login" class="flex-1 py-3 text-sm font-bold text-gold border-b-2 border-gold transition">Login</button>
+            <button onclick="toggleTab('signup')" id="tab-signup" class="flex-1 py-3 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition">Sign Up</button>
+        </div>
+
+        <form id="loginForm" class="space-y-4">
+            <input type="email" id="l-email" placeholder="Email Address" class="form-input w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl p-3 outline-none focus:border-gold dark:focus:border-gold text-sm placeholder-gray-500 dark:placeholder-gray-400">
+            <input type="password" id="l-password" placeholder="Password" class="form-input w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl p-3 outline-none focus:border-gold dark:focus:border-gold text-sm placeholder-gray-500 dark:placeholder-gray-400">
+            <button type="submit" class="w-full bg-gold hover:bg-white hover:text-gold hover:border hover:border-gold text-dark font-bold py-3 rounded-xl transition shadow-lg mt-2">Access Store</button>
+        </form>
+
+        <form id="signupForm" class="space-y-4 hidden">
+            <input type="text" id="s-name" placeholder="Full Name" class="form-input w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl p-3 outline-none focus:border-gold dark:focus:border-gold text-sm placeholder-gray-500 dark:placeholder-gray-400">
+            <input type="email" id="s-email" placeholder="Email Address" class="form-input w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl p-3 outline-none focus:border-gold dark:focus:border-gold text-sm placeholder-gray-500 dark:placeholder-gray-400">
+            <input type="tel" id="s-phone" placeholder="Phone Number" class="form-input w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl p-3 outline-none focus:border-gold dark:focus:border-gold text-sm placeholder-gray-500 dark:placeholder-gray-400">
+            <input type="password" id="s-pass" placeholder="Create Password" class="form-input w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl p-3 outline-none focus:border-gold dark:focus:border-gold text-sm placeholder-gray-500 dark:placeholder-gray-400">
+            <button type="submit" class="w-full border border-gold text-gold hover:bg-gold hover:text-dark font-bold py-3 rounded-xl transition shadow-lg mt-2">Create Account</button>
+            <p class="text-[10px] text-center text-gray-500 dark:text-gray-400">Only Customers can sign up here. Suppliers are added by Admin.</p>
+        </form>
+    </div>
+
+    <script type="module">
+        import { auth, db } from './firebase-config.js';
+        import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // --- THEME LOGIC ---
+        const themeBtn = document.getElementById('theme-toggle');
+        const html = document.documentElement;
+
+        // Check LocalStorage on load
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            html.classList.add('dark');
+        } else {
+            html.classList.remove('dark');
+        }
+
+        // Toggle Event
+        themeBtn.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            localStorage.theme = html.classList.contains('dark') ? 'dark' : 'light';
+        });
+
+        // --- TAB LOGIC ---
+        window.toggleTab = (tab) => {
+            const loginBtn = document.getElementById('tab-login');
+            const signupBtn = document.getElementById('tab-signup');
+            
+            document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
+            document.getElementById('signupForm').classList.toggle('hidden', tab !== 'signup');
+            
+            if(tab === 'login') {
+                loginBtn.className = 'flex-1 py-3 text-sm font-bold text-gold border-b-2 border-gold transition';
+                signupBtn.className = 'flex-1 py-3 text-sm font-bold text-gray-500 hover:text-gray-900 dark:hover:text-white transition';
+            } else {
+                loginBtn.className = 'flex-1 py-3 text-sm font-bold text-gray-500 hover:text-gray-900 dark:hover:text-white transition';
+                signupBtn.className = 'flex-1 py-3 text-sm font-bold text-gold border-b-2 border-gold transition';
+            }
+        };
+
+        // --- AUTH LOGIC (Existing) ---
+        // SIGN UP (Customers)
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const cred = await createUserWithEmailAndPassword(auth, document.getElementById('s-email').value, document.getElementById('s-pass').value);
+                await setDoc(doc(db, "users", cred.user.uid), {
+                    name: document.getElementById('s-name').value,
+                    email: document.getElementById('s-email').value,
+                    phone: document.getElementById('s-phone').value,
+                    role: 'customer', 
+                    createdAt: new Date()
+                });
+                alert("Account Created! Redirecting...");
+                window.location.href = 'portal-store.html';
+            } catch(err) { alert(err.message); }
+        });
+
+        // LOGIN
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('l-email').value;
+            const pass = document.getElementById('l-password').value;
+
+            try {
+                const cred = await signInWithEmailAndPassword(auth, email, pass);
+                if (email === 'admin@rajchavin.com') {
+                    window.location.href = 'portal-store-admin.html';
+                    return;
+                }
+                const userDoc = await getDoc(doc(db, "users", cred.user.uid));
+                if (userDoc.exists()) {
+                    const data = userDoc.data();
+                    if(data.blocked) { alert("Access Denied: Account Blocked."); return; }
+                    if (data.role === 'supplier') window.location.href = 'portal-store-supplier.html';
+                    else window.location.href = 'portal-store.html'; 
+                } else {
+                    window.location.href = 'portal-store.html';
+                }
+            } catch(err) { alert("Login Failed: " + err.message); }
+        });
+    </script>
+</body>
+</html>

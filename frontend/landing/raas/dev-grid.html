@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rajchavin | Grid Manager</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { brand: '#3b82f6', dark: '#09090b', glass: 'rgba(24, 24, 27, 0.9)' } } }
+        }
+    </script>
+
+    <style>
+        body { background-color: #09090b; color: white; font-family: sans-serif; overflow: hidden; height: 100vh; width: 100vw; }
+        .glass-panel { background: var(--glass); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; }
+        .glass-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; transition: 0.2s; }
+        
+        /* Modal */
+        #modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .modal-content { background: #121214; border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 24px; max-width: 500px; width: 95%; max-height: 90vh; overflow-y: auto; }
+        
+        /* Grid Boxes */
+        .grid-box { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-weight: bold; font-size: 10px; cursor: pointer; transition: 0.2s; border: 1px solid rgba(255,255,255,0.1); }
+        .grid-box:active { transform: scale(0.95); }
+        .status-open { background: #18181b; color: #6b7280; }
+        .status-booked { background: #eab308; color: black; border-color: #eab308; }
+        .status-sold { background: #10b981; color: black; border-color: #10b981; }
+
+        /* Wired Milestones */
+        .wired-list { position: relative; padding-left: 20px; border-left: 2px solid rgba(255,255,255,0.1); margin-left: 10px; }
+        .wired-item { position: relative; margin-bottom: 15px; }
+        .wired-dot { position: absolute; left: -27px; top: 6px; width: 12px; height: 12px; background: #09090b; border: 2px solid #3f3f46; border-radius: 50%; }
+        .wired-item.done .wired-dot { background: #10b981; border-color: #10b981; }
+        .wired-item.done h4 { color: #10b981; text-decoration: line-through; }
+
+        /* Scrollbars */
+        .scroll-container { -webkit-overflow-scrolling: touch; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        
+        .hidden-view { display: none !important; }
+    </style>
+</head>
+<body class="flex flex-col h-screen">
+
+    <nav class="h-16 border-b border-white/10 flex justify-between items-center px-4 md:px-6 bg-[#09090b] z-20 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-brand rounded-lg flex items-center justify-center font-bold text-white shadow-lg">R</div>
+            <div>
+                <h1 class="font-bold text-sm tracking-wide">RAJCHAVIN</h1>
+                <p class="text-[10px] text-gray-500 font-mono hidden md:block">GRID MANAGER</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="text-right hidden md:block">
+                <p class="text-sm font-bold text-white" id="nav-dev-name">Developer</p>
+            </div>
+            <button onclick="logout()" class="bg-red-500/10 text-red-500 p-2 rounded-lg hover:bg-red-500/20 transition"><i class="ph-bold ph-sign-out text-lg"></i></button>
+        </div>
+    </nav>
+
+    <div id="view-dashboard" class="app-view flex-1 min-h-0 overflow-y-auto p-4 md:p-6 scroll-container flex flex-col gap-6">
+        
+        <div class="order-1 md:order-2 flex flex-col gap-4">
+            <div class="flex justify-between items-end">
+                <h2 class="text-lg font-bold">Your Layouts</h2>
+                <button onclick="openCreateModal()" class="bg-brand hover:bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 transition">
+                    <i class="ph-bold ph-plus"></i> New Layout
+                </button>
+            </div>
+            <div id="project-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-10"></div>
+        </div>
+
+        <div class="order-2 md:order-1 flex flex-col gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="glass-panel p-5 border-l-4 border-brand">
+                    <p class="text-[10px] text-gray-500 uppercase font-bold">Total Revenue</p>
+                    <h3 class="text-2xl font-bold text-white mt-1" id="dash-revenue">₹ 0</h3>
+                </div>
+                <div class="glass-panel p-5 border-l-4 border-green-500">
+                    <p class="text-[10px] text-gray-500 uppercase font-bold">Total Customers</p>
+                    <h3 class="text-2xl font-bold text-white mt-1" id="dash-customers">0</h3>
+                </div>
+                <div class="glass-panel p-5 border-l-4 border-yellow-500">
+                    <p class="text-[10px] text-gray-500 uppercase font-bold">Sold / Booked</p>
+                    <h3 class="text-2xl font-bold text-white mt-1" id="dash-sold-booked">0 / 0</h3>
+                </div>
+                <div class="glass-panel p-5">
+                    <p class="text-[10px] text-gray-500 uppercase font-bold">Limits (Plots)</p>
+                    <div class="flex justify-between items-end mt-1">
+                        <span class="text-lg font-bold"><span id="dash-usage-plots">0</span> / <span id="dash-limit-plots">0</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 pb-4">
+                <div class="glass-panel p-5">
+                    <h3 class="text-xs font-bold uppercase text-gray-500 mb-4">Revenue by Project</h3>
+                    <div class="h-48 relative w-full"><canvas id="dashBarChart"></canvas></div>
+                </div>
+                <div class="glass-panel p-5">
+                    <h3 class="text-xs font-bold uppercase text-gray-500 mb-4">Overall Inventory</h3>
+                    <div class="h-48 relative w-full flex justify-center"><canvas id="dashPieChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-layout" class="app-view hidden-view flex flex-col h-full bg-[#09090b]">
+        
+        <div class="h-14 border-b border-white/10 flex justify-between items-center px-4 bg-white/5 shrink-0 sticky top-0 z-30 backdrop-blur-md">
+            <div class="flex items-center gap-3">
+                <button onclick="showDashboard()" class="text-xs text-gray-400 hover:text-white flex items-center gap-2 font-bold">
+                    <i class="ph-bold ph-caret-left"></i> Back
+                </button>
+                <h2 class="font-bold text-white text-sm truncate max-w-[120px]" id="nav-layout-title">Project</h2>
+            </div>
+            <div class="flex bg-black/40 rounded-lg p-1 border border-white/10">
+                <button onclick="toggleView('grid')" id="btn-view-grid" class="px-3 py-1 rounded bg-brand text-white text-[10px] font-bold">Grid</button>
+                <button onclick="toggleView('map')" id="btn-view-map" class="px-3 py-1 rounded text-gray-400 text-[10px] font-bold">Map</button>
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col lg:grid lg:grid-cols-12 gap-0 overflow-y-auto lg:overflow-hidden min-h-0">
+            
+            <div class="col-span-12 lg:col-span-8 flex flex-col h-[500px] lg:h-full border-b lg:border-b-0 lg:border-r border-white/10 bg-[#0e0e10] relative shrink-0">
+                
+                <div id="container-grid" class="flex-1 flex flex-col overflow-hidden p-4">
+                    <div class="flex justify-between items-center mb-4 shrink-0">
+                        <h3 class="text-sm font-bold text-white flex items-center gap-2" id="grid-layout-title">Grid</h3>
+                        <button onclick="addMoreGrids()" class="bg-white/10 hover:bg-white/20 text-[10px] font-bold px-3 py-1.5 rounded transition border border-white/10">+ Add Plots</button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto custom-scrollbar">
+                        <div id="grid-content" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 pb-10"></div>
+                    </div>
+                </div>
+
+                <div id="container-map" class="hidden-view flex-1 flex flex-col overflow-hidden p-4 relative">
+                    <div class="flex justify-between items-center mb-2 z-10 shrink-0">
+                        <h3 class="text-xs font-bold text-gray-500">REFERENCE MAP</h3>
+                        <div class="flex gap-2">
+                            <button onclick="document.getElementById('map-upload').click()" class="bg-brand text-white px-3 py-1.5 rounded text-[10px] font-bold">Upload</button>
+                            <input type="file" id="map-upload" class="hidden" accept="image/*" onchange="handleMapUpload(this)">
+                        </div>
+                    </div>
+                    <div class="flex-1 bg-[#121214] rounded-xl border border-white/10 relative overflow-hidden flex items-center justify-center">
+                        <img id="layout-map-img" class="max-w-full max-h-full object-contain hidden">
+                        <p id="no-map-text" class="text-xs text-gray-600">No map uploaded.</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="col-span-12 lg:col-span-4 bg-[#09090b] flex flex-col lg:h-full lg:overflow-y-auto scroll-container">
+                <div class="p-4 space-y-6 pb-24">
+                    
+                    <div class="glass-panel p-4">
+                        <h3 class="text-xs font-bold uppercase text-gray-500 mb-3">Status</h3>
+                        <div class="flex items-center gap-4">
+                            <div class="h-24 w-24 relative"><canvas id="layoutStatsChart"></canvas></div>
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-2 text-[10px]"><div class="w-2 h-2 bg-green-500 rounded-full"></div> Sold</div>
+                                <div class="flex items-center gap-2 text-[10px]"><div class="w-2 h-2 bg-yellow-500 rounded-full"></div> Booked</div>
+                                <div class="flex items-center gap-2 text-[10px]"><div class="w-2 h-2 bg-gray-700 rounded-full"></div> Open</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-xs font-bold uppercase text-gray-500">Milestones</h3>
+                            <button onclick="addMilestone()" class="text-[10px] text-brand font-bold">+ Add</button>
+                        </div>
+                        <div id="milestones-list" class="wired-list space-y-2"></div>
+                    </div>
+
+                    <div class="glass-panel p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-xs font-bold uppercase text-gray-500">Documents</h3>
+                            <button onclick="document.getElementById('doc-upload').click()" class="text-[10px] text-brand font-bold">+ Upload</button>
+                            <input type="file" id="doc-upload" class="hidden" onchange="handleDocUpload(this)">
+                        </div>
+                        <div id="layout-docs-list" class="space-y-2"></div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="text-xs font-bold uppercase text-gray-500">Recent Customers</h3>
+                            <span class="text-[10px] text-gray-600" id="inv-count">0</span>
+                        </div>
+                        <div id="customer-list" class="space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="modal-backdrop" class="hidden">
+        
+        <div id="modal-create-project" class="modal-content hidden">
+            <h2 class="text-lg font-bold mb-4">Create Grid Layout</h2>
+            <div class="space-y-4">
+                <div><label class="text-[10px] text-gray-500 uppercase font-bold">Layout Name</label><input id="new-proj-name" type="text" class="w-full bg-black/40 border border-white/10 rounded p-2.5 text-sm text-white outline-none focus:border-brand"></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="text-[10px] text-gray-500 uppercase font-bold">Prefix (e.g. A-)</label><input id="new-proj-prefix" type="text" class="w-full bg-black/40 border border-white/10 rounded p-2.5 text-sm text-white outline-none focus:border-brand" placeholder="P-"></div>
+                    <div><label class="text-[10px] text-gray-500 uppercase font-bold">Count</label><input id="new-proj-count" type="number" class="w-full bg-black/40 border border-white/10 rounded p-2.5 text-sm text-white outline-none focus:border-brand" placeholder="50"></div>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button onclick="closeModals()" class="flex-1 bg-white/10 hover:bg-white/20 text-xs font-bold py-2.5 rounded">Cancel</button>
+                    <button onclick="confirmCreateProject()" class="flex-1 bg-brand hover:bg-blue-600 text-white text-xs font-bold py-2.5 rounded">Generate</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-customer" class="modal-content hidden">
+            <div class="flex justify-between items-start mb-4">
+                <h2 class="text-lg font-bold">Edit Plot</h2>
+                <button onclick="deleteCurrentCustomer()" class="text-red-500 text-xs font-bold hover:bg-red-500/10 px-2 py-1 rounded"><i class="ph-bold ph-trash"></i> Delete</button>
+            </div>
+            <div class="space-y-3">
+                <input type="hidden" id="cust-id">
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="text-[10px] text-gray-500 uppercase font-bold">Plot No</label><input id="cust-plot" type="text" class="w-full bg-black/40 border border-white/10 rounded p-2 text-sm text-white font-mono font-bold"></div>
+                    <div>
+                        <label class="text-[10px] text-gray-500 uppercase font-bold">Status</label>
+                        <select id="cust-status" class="w-full bg-black/40 border border-white/10 rounded p-2 text-sm text-white">
+                            <option value="open">Open</option>
+                            <option value="booked">Booked</option>
+                            <option value="sold">Sold</option>
+                        </select>
+                    </div>
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase font-bold">Price (₹)</label><input id="cust-price" type="number" class="w-full bg-black/40 border border-white/10 rounded p-2 text-sm text-white"></div>
+                <div><label class="text-[10px] text-gray-500 uppercase font-bold">Customer Name</label><input id="cust-name" type="text" class="w-full bg-black/40 border border-white/10 rounded p-2 text-sm text-white"></div>
+                <div><label class="text-[10px] text-gray-500 uppercase font-bold">Phone Number</label><input id="cust-phone" type="text" class="w-full bg-black/40 border border-white/10 rounded p-2 text-sm text-white"></div>
+                
+                <div class="border-t border-white/10 pt-3 mt-2">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-[10px] text-gray-500 uppercase font-bold">Documents</label>
+                        <button onclick="document.getElementById('cust-doc-file').click()" class="text-[10px] text-brand font-bold">+ Upload</button>
+                        <input type="file" id="cust-doc-file" class="hidden" onchange="uploadCustomerDoc(this)">
+                    </div>
+                    <div id="cust-docs-list" class="space-y-1"></div>
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button onclick="closeModals()" class="flex-1 bg-white/10 hover:bg-white/20 text-xs font-bold py-2.5 rounded">Close</button>
+                    <button onclick="saveCustomer()" class="flex-1 bg-green-600 hover:bg-green-500 text-white text-xs font-bold py-2.5 rounded">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, query, where, getDocs, onSnapshot, doc, updateDoc, addDoc, deleteDoc, getDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+       const firebaseConfig = {
+            apiKey: "AIzaSyAd8kVZEt919GfWvhhstgebLWxgwaunT5o",
+            authDomain: "rajchavin-raas.firebaseapp.com",
+            projectId: "rajchavin-raas",
+            storageBucket: "rajchavin-raas.firebasestorage.app",
+            messagingSenderId: "14499629170",
+            appId: "1:14499629170:web:1cd21aa2434df98afcdaeb"
+        };
+
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- SESSION ---
+        async function startSessionMonitor() {
+            const session = JSON.parse(localStorage.getItem('rajchavin_user'));
+            if(!session || !session.sessionId) return window.location.href = 'login.html';
+            
+            onSnapshot(doc(db, "sessions", session.sessionId), (snapshot) => {
+                if (!snapshot.exists()) {
+                    alert("Session Revoked. Logging out.");
+                    localStorage.removeItem('rajchavin_user');
+                    window.location.href = 'login.html';
+                }
+            });
+        }
+        startSessionMonitor();
+
+        const session = JSON.parse(localStorage.getItem('rajchavin_user'));
+        const LIMITS = {
+            maxLayouts: session.limits?.maxLayouts || 1,
+            maxPlots: session.limits?.maxPlots || 50
+        };
+
+        const safeSetText = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
+        safeSetText('nav-dev-name', session.name);
+        safeSetText('dash-limit-plots', LIMITS.maxPlots);
+
+        let appState = { layouts: [], currentLayout: null, activeModalCustId: null, charts: {} };
+
+        // --- DATA SYNC ---
+        onSnapshot(query(collection(db, "layouts"), where("devId", "==", session.id)), (snap) => {
+            appState.layouts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            
+            let totalRev = 0, sold = 0, booked = 0, open = 0, totalPlots = 0, totalCust = 0;
+            appState.layouts.forEach(l => {
+                const elems = l.elements || [];
+                totalPlots += elems.length;
+                elems.forEach(e => {
+                    if(e.status === 'sold') { sold++; totalRev += Number(e.price || 0); }
+                    else if(e.status === 'booked') { booked++; totalRev += (Number(e.price || 0) * 0.1); }
+                    else { open++; }
+                    if(e.customerName && e.customerName.trim().length > 0) totalCust++;
+                });
+            });
+
+            safeSetText('dash-revenue', "₹ " + formatVal(totalRev));
+            safeSetText('dash-sold-booked', `${sold} / ${booked}`);
+            safeSetText('dash-customers', totalCust);
+            safeSetText('dash-usage-plots', totalPlots);
+
+            renderDashboard(sold, booked, open);
+
+            if(appState.currentLayout) {
+                const fresh = appState.layouts.find(l => l.id === appState.currentLayout.id);
+                if(fresh) { appState.currentLayout = fresh; renderLayoutView(); }
+                else { showDashboard(); } 
+            }
+        });
+
+        // --- DASHBOARD ---
+        function renderDashboard(sold, booked, open) {
+            const grid = document.getElementById('project-grid');
+            if(grid) {
+                grid.innerHTML = appState.layouts.map(l => {
+                    const plots = l.elements || [];
+                    const soldCount = plots.filter(p => p.status === 'sold').length;
+                    return `
+                    <div class="glass-card p-5 group relative">
+                        <div onclick="openLayout('${l.id}')" class="cursor-pointer">
+                            <div class="flex justify-between items-start mb-4">
+                                <div><h3 class="font-bold text-lg text-white group-hover:text-brand transition">${l.name}</h3><p class="text-xs text-gray-500">${plots.length} Plots • ${soldCount} Sold</p></div>
+                                <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-xl text-gray-400 group-hover:text-white group-hover:bg-brand transition"><i class="ph-fill ph-caret-right"></i></div>
+                            </div>
+                        </div>
+                        <div class="w-full bg-white/10 h-1.5 rounded-full overflow-hidden mb-3"><div class="bg-green-500 h-full" style="width: ${(soldCount/Math.max(plots.length,1))*100}%"></div></div>
+                        <div class="flex justify-between items-center border-t border-white/5 pt-3">
+                            <button onclick="editLayoutName('${l.id}')" class="text-xs text-gray-400 hover:text-white"><i class="ph-bold ph-pencil-simple"></i> Rename</button>
+                            <button onclick="deleteLayout('${l.id}')" class="text-xs text-red-500 hover:text-red-400"><i class="ph-bold ph-trash"></i> Delete</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+
+            const ctxBar = document.getElementById('dashBarChart');
+            const ctxPie = document.getElementById('dashPieChart');
+            if(ctxBar && ctxPie) {
+                if(appState.charts.bar) appState.charts.bar.destroy();
+                appState.charts.bar = new Chart(ctxBar.getContext('2d'), {
+                    type: 'bar',
+                    data: { labels: appState.layouts.map(l => l.name), datasets: [{ label: 'Revenue', data: appState.layouts.map(l => (l.elements||[]).reduce((s,p)=>p.status==='sold'?s+Number(p.price||0):s,0)), backgroundColor: '#3b82f6', borderRadius: 4 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } }
+                });
+
+                if(appState.charts.pie) appState.charts.pie.destroy();
+                appState.charts.pie = new Chart(ctxPie.getContext('2d'), {
+                    type: 'doughnut',
+                    data: { labels: ['Sold', 'Booked', 'Open'], datasets: [{ data: [sold, booked, open], backgroundColor: ['#10b981', '#eab308', '#374151'], borderWidth: 0 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: 'white' } } } }
+                });
+            }
+        }
+
+        window.openCreateModal = () => { if(appState.layouts.length >= LIMITS.maxLayouts) return alert("Limit Reached"); showModal('modal-create-project'); };
+        
+        window.confirmCreateProject = async () => {
+            const name = document.getElementById('new-proj-name').value;
+            const count = parseInt(document.getElementById('new-proj-count').value);
+            const prefix = document.getElementById('new-proj-prefix').value || "P-";
+            const currentTotalPlots = parseInt(document.getElementById('dash-usage-plots').innerText);
+            
+            if(currentTotalPlots + count > LIMITS.maxPlots) return alert("Plot Limit Exceeded");
+
+            if(name && count > 0) {
+                const elements = [];
+                for(let i=1; i<=count; i++) elements.push({ id: `${prefix}${i}`, status: 'open', price: '', type: 'plot' });
+                await addDoc(collection(db, "layouts"), { name, devId: session.id, elements, milestones: [], docs: [], createdAt: new Date() });
+                closeModals();
+            }
+        };
+
+        window.deleteLayout = async (id) => { if(confirm("Delete Project?")) await deleteDoc(doc(db, "layouts", id)); };
+        window.editLayoutName = async (id) => { const n = prompt("New Name:"); if(n) await updateDoc(doc(db, "layouts", id), { name: n }); };
+
+        // --- LAYOUT EDITOR ---
+        window.openLayout = (id) => {
+            appState.currentLayout = appState.layouts.find(l => l.id === id);
+            document.getElementById('view-dashboard').classList.add('hidden-view');
+            document.getElementById('view-layout').classList.remove('hidden-view');
+            renderLayoutView();
+        };
+
+        window.showDashboard = () => {
+            document.getElementById('view-layout').classList.add('hidden-view');
+            document.getElementById('view-dashboard').classList.remove('hidden-view');
+            appState.currentLayout = null;
+        };
+
+        window.toggleView = (mode) => {
+            document.getElementById('container-grid').classList.toggle('hidden-view', mode !== 'grid');
+            document.getElementById('container-map').classList.toggle('hidden-view', mode !== 'map');
+            document.getElementById('btn-view-grid').className = mode === 'grid' ? 'px-3 py-1 rounded bg-brand text-white text-[10px] font-bold' : 'px-3 py-1 rounded text-gray-400 text-[10px] font-bold';
+            document.getElementById('btn-view-map').className = mode === 'map' ? 'px-3 py-1 rounded bg-brand text-white text-[10px] font-bold' : 'px-3 py-1 rounded text-gray-400 text-[10px] font-bold';
+        };
+
+        function renderLayoutView() {
+            const l = appState.currentLayout;
+            safeSetText('nav-layout-title', l.name);
+            safeSetText('grid-layout-title', l.name);
+
+            // Grid
+            const grid = document.getElementById('grid-content');
+            if(grid) {
+                grid.innerHTML = (l.elements || []).map((p, idx) => `
+                    <div onclick="openCustomerModal(${idx})" class="grid-box status-${p.status}">${p.id}</div>
+                `).join('');
+            }
+
+            // Map
+            const img = document.getElementById('layout-map-img');
+            const noMap = document.getElementById('no-map-text');
+            if(img && noMap) {
+                if(l.bgImage) { img.src = l.bgImage; img.classList.remove('hidden'); noMap.classList.add('hidden'); }
+                else { img.classList.add('hidden'); noMap.classList.remove('hidden'); }
+            }
+
+            // Milestones
+            const msList = document.getElementById('milestones-list');
+            if(msList) {
+                msList.innerHTML = (l.milestones || []).map((m, i) => `
+                    <div class="wired-item ${m.done ? 'done' : ''}">
+                        <div class="wired-dot"></div>
+                        <div class="flex justify-between items-center text-xs pl-2">
+                            <h4 class="font-bold text-gray-300 transition">${m.title}</h4>
+                            <div class="flex gap-2 text-gray-500 items-center">
+                                <button class="p-1 rounded hover:bg-white/10 hover:text-green-500" onclick="toggleMilestone(${i})"><i class="ph-bold ph-check"></i></button>
+                                <button class="p-1 rounded hover:bg-white/10 hover:text-brand" onclick="editMilestone(${i})"><i class="ph-bold ph-pencil"></i></button>
+                                <button class="p-1 rounded hover:bg-white/10 hover:text-red-500" onclick="deleteMilestone(${i})"><i class="ph-bold ph-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>`).join('');
+            }
+
+            // Docs
+            const docList = document.getElementById('layout-docs-list');
+            if(docList) {
+                docList.innerHTML = (l.docs || []).map((d, i) => `
+                    <div class="flex justify-between items-center text-[10px] p-2 bg-white/5 rounded border border-white/5">
+                        <span class="truncate w-24">${d.name}</span>
+                        <div class="flex gap-2">
+                            <a href="${d.url}" download="${d.name}" class="text-white hover:text-brand"><i class="ph-bold ph-download-simple"></i></a>
+                            <i class="ph-trash text-red-500 cursor-pointer hover:text-red-400" onclick="deleteLayoutDoc(${i})"></i>
+                        </div>
+                    </div>`).join('');
+            }
+
+            // Customer List
+            safeSetText('inv-count', `${l.elements.length} Plots`);
+            const custList = document.getElementById('customer-list');
+            if(custList) {
+                custList.innerHTML = l.elements.map((p, idx) => `
+                    <div onclick="openCustomerModal(${idx})" class="glass-card p-3 flex justify-between items-center cursor-pointer border-l-2 ${p.status === 'sold' ? 'border-green-500' : (p.status === 'booked' ? 'border-yellow-500' : 'border-transparent')}">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-mono text-xs font-bold text-brand bg-brand/10 px-1.5 rounded">${p.id}</span>
+                                <span class="text-xs font-bold text-white">${p.customerName || 'Available'}</span>
+                            </div>
+                            <p class="text-[10px] text-gray-500 mt-0.5">${p.customerPhone || 'No Contact'}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs font-bold text-gray-300">₹${formatVal(p.price)}</p>
+                            <p class="text-[9px] uppercase font-bold ${p.status==='sold'?'text-green-500':(p.status==='booked'?'text-yellow-500':'text-gray-600')}">${p.status}</p>
+                        </div>
+                    </div>`).join('');
+            }
+
+            // Chart
+            const sold = l.elements.filter(p=>p.status==='sold').length;
+            const booked = l.elements.filter(p=>p.status==='booked').length;
+            const open = l.elements.length - sold - booked;
+            const ctxStat = document.getElementById('layoutStatsChart');
+            if(ctxStat) {
+                if(appState.charts.layout) appState.charts.layout.destroy();
+                appState.charts.layout = new Chart(ctxStat, {
+                    type: 'doughnut',
+                    data: { labels: ['Sold','Booked','Open'], datasets: [{ data: [sold, booked, open], backgroundColor: ['#22c55e', '#eab308', '#3f3f46'], borderWidth: 0 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+            }
+        }
+
+        // --- GRID LOGIC ---
+        window.addMoreGrids = async () => {
+            const currentTotalPlots = parseInt(document.getElementById('dash-usage-plots').innerText);
+            const count = parseInt(prompt("How many plots to add?"));
+            if(count && currentTotalPlots + count > LIMITS.maxPlots) return alert("Limit Exceeded");
+            if(count) {
+                const prefix = prompt("Prefix (e.g. B-)") || "P-";
+                const start = appState.currentLayout.elements.length + 1;
+                const newEls = [];
+                for(let i=0; i<count; i++) newEls.push({ id: `${prefix}${start+i}`, status: 'open', price: '', type: 'plot' });
+                await updateDoc(doc(db, "layouts", appState.currentLayout.id), { elements: [...appState.currentLayout.elements, ...newEls] });
+            }
+        };
+
+        window.openCustomerModal = (idx) => {
+            appState.activeModalCustId = idx;
+            const p = appState.currentLayout.elements[idx];
+            document.getElementById('cust-plot').value = p.id;
+            document.getElementById('cust-status').value = p.status;
+            document.getElementById('cust-price').value = p.price;
+            document.getElementById('cust-name').value = p.customerName || '';
+            document.getElementById('cust-phone').value = p.customerPhone || '';
+            
+            document.getElementById('cust-docs-list').innerHTML = (p.documents || []).map((d, i) => `
+                <div class="flex justify-between items-center text-[10px] bg-white/5 p-1 rounded">
+                    <span class="truncate w-32">${d.name}</span>
+                    <div class="flex gap-2">
+                        <a href="${d.url}" download="${d.name}" class="text-white hover:text-brand"><i class="ph-bold ph-download-simple"></i></a>
+                        <i class="ph-trash text-red-500 cursor-pointer" onclick="deleteCustDoc(${i})"></i>
+                    </div>
+                </div>`).join('');
+            showModal('modal-customer');
+        };
+
+        window.saveCustomer = async () => {
+            const idx = appState.activeModalCustId;
+            const elems = [...appState.currentLayout.elements];
+            elems[idx] = { ...elems[idx], 
+                id: document.getElementById('cust-plot').value, status: document.getElementById('cust-status').value,
+                price: document.getElementById('cust-price').value, customerName: document.getElementById('cust-name').value,
+                customerPhone: document.getElementById('cust-phone').value
+            };
+            await updateDoc(doc(db, "layouts", appState.currentLayout.id), { elements: elems });
+            closeModals();
+        };
+
+        window.deleteCurrentCustomer = async () => {
+            if(confirm("Delete plot?")) {
+                const elems = appState.currentLayout.elements.filter((_, i) => i !== appState.activeModalCustId);
+                await updateDoc(doc(db, "layouts", appState.currentLayout.id), { elements: elems });
+                closeModals();
+            }
+        };
+
+        // --- DOCS & MILESTONES ---
+        window.handleDocUpload = (input) => {
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const newDoc = { name: file.name, url: e.target.result };
+                await updateDoc(doc(db, "layouts", appState.currentLayout.id), { docs: [...(appState.currentLayout.docs || []), newDoc] });
+            };
+            reader.readAsDataURL(file);
+        };
+        window.deleteLayoutDoc = async (i) => { const d=appState.currentLayout.docs.filter((_,idx)=>idx!==i); await updateDoc(doc(db,"layouts",appState.currentLayout.id),{docs:d}); };
+        
+        window.uploadCustomerDoc = async (input) => {
+            const file = input.files[0];
+            const idx = appState.activeModalCustId;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const newDoc = { name: file.name, url: e.target.result };
+                const elems = [...appState.currentLayout.elements];
+                elems[idx].documents = [...(elems[idx].documents||[]), newDoc];
+                await updateDoc(doc(db, "layouts", appState.currentLayout.id), { elements: elems });
+                openCustomerModal(idx);
+            };
+            reader.readAsDataURL(file);
+        };
+        window.deleteCustDoc = async (di) => { const i=appState.activeModalCustId; const el=[...appState.currentLayout.elements]; el[i].documents=el[i].documents.filter((_,idx)=>idx!==di); await updateDoc(doc(db,"layouts",appState.currentLayout.id),{elements:el}); openCustomerModal(i); };
+
+        window.handleMapUpload = (input) => {
+            const r = new FileReader();
+            r.onload = async () => await updateDoc(doc(db, "layouts", appState.currentLayout.id), { bgImage: r.result });
+            r.readAsDataURL(input.files[0]);
+        };
+
+        window.addMilestone = async () => { const t = prompt("Name:"); if(t) await updateDoc(doc(db, "layouts", appState.currentLayout.id), { milestones: [...(appState.currentLayout.milestones || []), {title: t, done: false}] }); };
+        window.toggleMilestone = async (i) => { const ms = appState.currentLayout.milestones; ms[i].done = !ms[i].done; await updateDoc(doc(db, "layouts", appState.currentLayout.id), { milestones: ms }); };
+        window.editMilestone = async (i) => { const t = prompt("Rename:", appState.currentLayout.milestones[i].title); if(t) { const ms = appState.currentLayout.milestones; ms[i].title = t; await updateDoc(doc(db, "layouts", appState.currentLayout.id), { milestones: ms }); } };
+        window.deleteMilestone = async (i) => { const ms = appState.currentLayout.milestones.filter((_, idx) => idx !== i); await updateDoc(doc(db, "layouts", appState.currentLayout.id), { milestones: ms }); };
+
+        function formatVal(n) { if(n>=10000000) return (n/10000000).toFixed(2)+' Cr'; if(n>=100000) return (n/100000).toFixed(2)+' L'; return n.toLocaleString('en-IN'); }
+        function showModal(id) { document.getElementById('modal-backdrop').style.display='flex'; document.getElementById(id).classList.remove('hidden'); }
+        window.closeModals = () => { document.getElementById('modal-backdrop').style.display='none'; document.querySelectorAll('.modal-content').forEach(e=>e.classList.add('hidden')); };
+        window.logout = async () => { if(session?.sessionId) try { await deleteDoc(doc(db, "sessions", session.sessionId)); } catch(e){} localStorage.removeItem('rajchavin_user'); window.location.href='login.html'; };
+        
+        window.openLayout = window.openLayout; window.openCustomerModal = window.openCustomerModal;
+    </script>
+</body>
+</html>

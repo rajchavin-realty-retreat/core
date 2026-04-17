@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SECURE PROTOCOL</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { 
+                extend: { 
+                    colors: { dark: '#000000', glass: 'rgba(24, 24, 27, 0.95)' },
+                    fontFamily: { sans: ['Courier New', 'monospace'] } 
+                } 
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #000; color: #0f0; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        
+        /* LOGIN STYLES - Fixed: Removed uppercase transform */
+        .auth-input { background: #000; border: 1px solid #333; color: #0f0; padding: 15px; width: 100%; outline: none; font-size: 14px; margin-bottom: 10px; }
+        .auth-input:focus { border-color: #0f0; box-shadow: 0 0 10px rgba(0, 255, 0, 0.2); }
+        .auth-btn { background: #0f0; color: #000; font-weight: bold; padding: 15px; width: 100%; text-transform: uppercase; letter-spacing: 2px; cursor: pointer; transition: 0.2s; }
+        .auth-btn:hover { box-shadow: 0 0 20px rgba(0, 255, 0, 0.6); }
+
+        /* PANIC BUTTON STYLES */
+        #panic-btn {
+            width: 250px; height: 250px; border-radius: 50%; 
+            border: 4px solid #3f3f46;
+            background: linear-gradient(145deg, #18181b, #000);
+            box-shadow: 0 0 0 10px rgba(0,0,0,1), 0 0 50px rgba(255,0,0,0.2);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            -webkit-tap-highlight-color: transparent; user-select: none;
+        }
+        
+        #panic-btn:active, .activated #panic-btn { 
+            transform: scale(0.95); 
+            border-color: #ef4444; 
+            background: #450a0a; 
+            box-shadow: 0 0 0 10px rgba(0,0,0,1), 0 0 100px rgba(239, 68, 68, 0.8); 
+        }
+        
+        #panic-btn i { color: #52525b; transition: 0.3s; font-size: 80px; }
+        #panic-btn:active i, .activated #panic-btn i { color: #ef4444; text-shadow: 0 0 20px rgba(239, 68, 68, 0.8); }
+
+        .scan-line { position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: rgba(0, 255, 0, 0.3); animation: scan 3s linear infinite; pointer-events: none; z-index: 50; }
+        @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="scan-line"></div>
+
+    <div id="login-view" class="w-full max-w-sm p-8 hidden">
+        <div class="text-center mb-10">
+            <i class="ph-fill ph-lock-key text-4xl mb-4"></i>
+            <h1 class="text-xl tracking-widest border-b border-green-900 pb-2 inline-block">SYSTEM ACCESS</h1>
+        </div>
+        <input type="text" id="dev-id" class="auth-input" placeholder="Access ID">
+        <input type="password" id="dev-pass" class="auth-input" placeholder="Passphrase">
+        <button onclick="handleLogin()" class="auth-btn mt-4">AUTHENTICATE</button>
+        <p id="error-msg" class="text-red-500 text-xs mt-4 text-center hidden">ACCESS DENIED</p>
+    </div>
+
+    <div id="panic-view" class="flex flex-col items-center w-full h-full justify-center hidden">
+        <div class="absolute top-10 w-full text-center">
+            <p class="text-xs text-gray-500 tracking-[0.5em]">CONNECTION SECURE</p>
+            <p id="user-display" class="text-sm font-bold text-green-700 mt-1 uppercase"></p>
+        </div>
+
+        <div id="panic-btn" onclick="activateProtocol()">
+            <i class="ph-fill ph-warning-octagon"></i>
+        </div>
+        
+        <div class="mt-12 text-center space-y-2">
+            <h1 id="status-text" class="text-xl font-bold tracking-[0.2em] text-gray-500 uppercase">READY</h1>
+            <p class="text-[10px] text-gray-800">TAP TO MASK DATA GLOBALLY</p>
+        </div>
+
+        <div class="absolute bottom-10 w-64 border-t border-gray-900 pt-4">
+             <input type="text" id="dummy-client" value="Verified Client" class="bg-transparent border-b border-gray-900 text-[10px] text-gray-600 w-full text-center outline-none focus:text-green-500 transition" placeholder="Dummy Client Name">
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, query, where, getDocs, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCNiU_Z4vzF0umfxL7jqPbnlTWADWnNcOY",
+  authDomain: "raas-elite.firebaseapp.com",
+  projectId: "raas-elite",
+  storageBucket: "raas-elite.firebasestorage.app",
+  messagingSenderId: "482783048277",
+  appId: "1:482783048277:web:a0188ef41403dd488b9adc"
+};
+
+
+       const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let currentUser = null;
+
+        // 1. INITIAL LOAD CHECK
+        function init() {
+            try {
+                const stored = localStorage.getItem('rajchavin_user');
+                if (stored) {
+                    currentUser = JSON.parse(stored);
+                    showPanicView();
+                } else {
+                    document.getElementById('login-view').classList.remove('hidden');
+                }
+            } catch(e) {
+                document.getElementById('login-view').classList.remove('hidden');
+            }
+        }
+        init();
+
+        // 2. LOGIN LOGIC
+        window.handleLogin = async () => {
+            const id = document.getElementById('dev-id').value.trim();
+            const pass = document.getElementById('dev-pass').value.trim();
+            const btn = document.querySelector('.auth-btn');
+            const err = document.getElementById('error-msg');
+            
+            btn.innerText = "VERIFYING...";
+            err.classList.add('hidden');
+
+            try {
+                // FIX 1 & 2: Changed "devs" to "users", and changed "id" to "email" 
+                // (Change "email" back to "id" if your database literally uses a field called 'id')
+                const q = query(collection(db, "users"), where("email", "==", id), where("password", "==", pass));
+                const snap = await getDocs(q);
+
+                if (!snap.empty) {
+                    const user = snap.docs[0].data();
+                    // Grab the document ID if 'user.id' isn't explicitly saved inside the document
+                    const userId = snap.docs[0].id; 
+                    
+                    currentUser = { id: userId, name: user.name || user.email, sessionId: 'panic-session' };
+                    
+                    localStorage.setItem('rajchavin_user', JSON.stringify(currentUser));
+                    showPanicView();
+                } else {
+                    console.error("No matching user found");
+                    err.innerText = "ACCESS DENIED";
+                    err.classList.remove('hidden');
+                    btn.innerText = "AUTHENTICATE";
+                }
+            } catch(e) {
+                console.error("Login Error:", e);
+                err.innerText = "NETWORK ERROR";
+                err.classList.remove('hidden');
+                btn.innerText = "AUTHENTICATE";
+            }
+        };
+
+        function showPanicView() {
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('panic-view').classList.remove('hidden');
+            document.getElementById('user-display').innerText = currentUser.name || "Authorized";
+        }
+
+        // 3. ACTIVATE PANIC
+        window.activateProtocol = async () => {
+            if(!currentUser) return;
+            
+            const btn = document.getElementById('panic-btn');
+            const status = document.getElementById('status-text');
+            const dummyName = document.getElementById('dummy-client').value || "Verified Client";
+            
+            // UI Feedback
+            document.body.classList.add('activated');
+            status.innerText = "EXECUTING...";
+            status.className = "text-xl font-bold tracking-[0.2em] text-red-500 uppercase animate-pulse";
+            
+            try {
+                // UPDATE USER SPECIFIC SETTINGS
+                const configRef = doc(db, "settings", currentUser.id);
+                
+                await setDoc(configRef, { 
+                    panicMode: true,
+                    dummyRevenue: 150000, // Default safe revenue
+                    dummyName: dummyName
+                }, { merge: true });
+
+                // Success State - Turn screen blank to hide evidence
+                setTimeout(() => {
+                    document.body.innerHTML = "";
+                    document.body.style.backgroundColor = "#111"; // Blank dark screen
+                    document.title = "New Tab";
+                }, 800);
+
+            } catch(e) {
+                alert("PROTOCOL FAILED: " + e.message);
+                document.body.classList.remove('activated');
+            }
+        };
+    </script>
+</body>
+</html>

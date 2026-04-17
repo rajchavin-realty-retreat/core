@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing Framework | Rajchavin OS</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: { 
+                    colors: { brand: '#3b82f6', darkBg: '#050505', lightBg: '#f8fafc' },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; overflow-x: hidden; transition: background-color 0.3s, color 0.3s; }
+        
+        /* Performance-Safe Glass Effect (Prevents Chrome Crashes) */
+        .dark .glass { background: rgba(20, 20, 20, 0.95); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .dark .glass:hover { border-color: rgba(59, 130, 246, 0.3); background: rgba(30, 30, 30, 0.98); }
+        .glass { background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(0, 0, 0, 0.05); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .glass:hover { border-color: rgba(59, 130, 246, 0.5); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        
+        /* Text Gradients & Backgrounds */
+        .text-gradient-brand { background: linear-gradient(to right, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .dark .grid-bg { background-size: 40px 40px; background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px); background-color: #050505; }
+        .grid-bg { background-size: 40px 40px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px); background-color: #f8fafc; }
+        
+        /* Card Transitions */
+        .pricing-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .pricing-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px -10px rgba(59, 130, 246, 0.15); }
+    </style>
+
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        // Toggle Expandable List function
+        function toggleFeatures(button) {
+            const container = button.previousElementSibling;
+            const fadeOverlay = container.querySelector('.fade-overlay');
+            const icon = button.querySelector('i');
+            
+            if (container.classList.contains('max-h-[160px]')) {
+                container.classList.remove('max-h-[160px]');
+                container.classList.add('max-h-[1000px]');
+                fadeOverlay.style.opacity = '0';
+                button.innerHTML = 'Show less <i class="ph-bold ph-caret-up ml-1"></i>';
+            } else {
+                container.classList.add('max-h-[160px]');
+                container.classList.remove('max-h-[1000px]');
+                fadeOverlay.style.opacity = '1';
+                button.innerHTML = 'Show all features <i class="ph-bold ph-caret-down ml-1"></i>';
+            }
+        }
+    </script>
+</head>
+<body class="grid-bg text-gray-900 dark:text-white flex flex-col min-h-screen">
+
+    <nav class="fixed w-full z-50 top-0 border-b border-gray-200 dark:border-white/5 bg-white/95 dark:bg-darkBg/95 transition-colors">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <img src="rajchavin-removebg-preview.png" alt="Rajchavin OS Logo" class="h-8 w-auto"> 
+            </div>
+
+            <div class="hidden md:flex gap-8 text-sm font-medium text-gray-600 dark:text-gray-400">
+                <a href="raasfeat.html" class="hover:text-brand dark:hover:text-white transition">Features</a>
+                <a href="#tech" class="hover:text-brand dark:hover:text-white transition">Solutions</a>
+                <a href="#security" class="hover:text-brand dark:hover:text-white transition">Security</a>
+                <a href="raaspricing.html" class="text-brand dark:text-white font-bold transition">Pricing</a>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <button id="theme-toggle" class="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center hover:scale-110 transition text-gray-700 dark:text-yellow-400">
+                    <i class="ph-fill ph-sun hidden dark:block"></i>
+                    <i class="ph-fill ph-moon block dark:hidden"></i>
+                </button>
+                <button onclick="window.location.href='https://rass.rajchavin.com'" class="hidden md:block px-5 py-2 rounded-full bg-gray-900 dark:bg-white text-white dark:text-black font-bold text-sm hover:opacity-90 transition">Login</button>
+                <button onclick="window.location.href='index.html'" class="hidden md:block px-5 py-2 rounded-full bg-gray-900 dark:bg-white text-white dark:text-black font-bold text-sm hover:opacity-90 transition">Return Home</button>
+                <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="md:hidden text-2xl text-gray-700 dark:text-white"><i class="ph ph-list"></i></button>
+            </div>
+        </div>
+
+        <div id="mobile-menu" class="hidden md:hidden absolute w-full bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-white/10 shadow-xl">
+            <div class="flex flex-col p-4 space-y-4 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <a href="raasfeat.html" class="block p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded">Features</a>
+                <a href="#tech" class="block p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded">Solutions</a>
+                <a href="#security" class="block p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded">Security</a>
+                <a href="raaspricing.html" class="block p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded">Pricing</a>
+                <button onclick="window.location.href='https://raas.rajchavin.com'" class="w-full py-3 rounded-lg bg-brand text-white font-bold">Return Home</button>
+                <button onclick="window.location.href='index.html'" class="w-full py-3 rounded-lg bg-brand text-white font-bold">Return Home</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow">
+        <section class="relative pt-32 pb-16 md:pt-40 md:pb-20 px-6 overflow-hidden">
+            <div class="absolute top-10 left-1/2 -translate-x-1/2 w-[300px] md:w-[600px] h-[300px] md:h-[600px] bg-[radial-gradient(circle,rgba(59,130,246,0.1)_0%,transparent_70%)] rounded-full -z-10"></div>
+            <div class="max-w-4xl mx-auto text-center">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand/30 bg-brand/10 text-brand text-xs font-bold uppercase tracking-widest mb-6">
+                    Real Estate as a Service (RaaS™)
+                </div>
+                <h1 class="text-4xl md:text-6xl font-black mb-6 leading-tight tracking-tight text-gray-900 dark:text-white">
+                    RaaS™ Pricing & <br> <span class="text-gradient-brand">Services Framework.</span>
+                </h1>
+                <p class="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
+                    Clear, transparent, and scalable pricing. Built for institutional-grade compliance and operational superiority.
+                </p>
+            </div>
+        </section>
+
+        <section class="py-10 px-6 max-w-7xl mx-auto">
+            <div class="mb-12 text-center">
+                <h2 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Foundational Pricing Principles</h2>
+                <p class="text-gray-500 mt-2">RAAS™ operates under strict institutional guidelines.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="glass rounded-2xl p-6 flex flex-col items-center text-center">
+                    <div class="w-10 h-10 rounded-full bg-brand/10 text-brand flex items-center justify-center text-xl mb-4"><i class="ph-fill ph-trend-up"></i></div>
+                    <h3 class="font-bold text-gray-900 dark:text-white mb-2">Success-Linked Earnings</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Fees are charged only when work progresses or transactions successfully close.</p>
+                </div>
+                <div class="glass rounded-2xl p-6 flex flex-col items-center text-center">
+                    <div class="w-10 h-10 rounded-full bg-brand/10 text-brand flex items-center justify-center text-xl mb-4"><i class="ph-fill ph-lock-key"></i></div>
+                    <h3 class="font-bold text-gray-900 dark:text-white mb-2">No Custody of Funds</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Rajchavin never holds, routes, or controls customer or developer money.</p>
+                </div>
+                <div class="glass rounded-2xl p-6 flex flex-col items-center text-center">
+                    <div class="w-10 h-10 rounded-full bg-brand/10 text-brand flex items-center justify-center text-xl mb-4"><i class="ph-fill ph-git-merge"></i></div>
+                    <h3 class="font-bold text-gray-900 dark:text-white mb-2">Clear Role Separation</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Land = Developer. Money = Bank. System & Governance = Rajchavin.</p>
+                </div>
+                <div class="glass rounded-2xl p-6 flex flex-col items-center text-center lg:col-span-1 md:col-span-2">
+                    <div class="w-10 h-10 rounded-full bg-brand/10 text-brand flex items-center justify-center text-xl mb-4"><i class="ph-fill ph-eye"></i></div>
+                    <h3 class="font-bold text-gray-900 dark:text-white mb-2">No Hidden Charges</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">All fees are disclosed in advance and formally invoiced.</p>
+                </div>
+                <div class="glass rounded-2xl p-6 flex flex-col items-center text-center lg:col-span-2 md:col-span-2">
+                    <div class="w-10 h-10 rounded-full bg-brand/10 text-brand flex items-center justify-center text-xl mb-4"><i class="ph-fill ph-shield-check"></i></div>
+                    <h3 class="font-bold text-gray-900 dark:text-white mb-2">Compliance-First Model</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">An audit-ready, bank-friendly, and regulator-safe operational structure.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-16 px-6 max-w-[95rem] mx-auto mb-20">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
+
+                <div class="glass rounded-3xl p-6 flex flex-col pricing-card border-t-4 border-t-green-500 h-full">
+                    <div class="mb-4">
+                        <span class="px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-xs font-bold uppercase tracking-wider">🟢 Basic</span>
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white mt-4">Guided RaaS™</h3>
+                        <p class="text-sm text-gray-500 italic mt-1">“We guide you. You execute.”</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-500">One-Time Onboarding</p>
+                        <p class="text-3xl font-black text-gray-900 dark:text-white mb-4">₹ 29,999</p>
+                        <div class="space-y-1 text-sm text-gray-600 dark:text-gray-300 bg-black/5 dark:bg-white/5 p-3 rounded-xl">
+                            <div class="flex justify-between"><span>Monthly</span> <strong>₹ 799</strong></div>
+                            <div class="flex justify-between"><span>Quarterly</span> <strong>₹ 2,299</strong></div>
+                            <div class="flex justify-between"><span>Yearly</span> <strong>₹ 8,399</strong></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <p class="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-2">Designed For</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">First-time developers, Small landowners, Pilot layout projects.</p>
+                    </div>
+
+                    <hr class="border-gray-200 dark:border-white/10 my-4">
+
+                    <div class="flex-1 flex flex-col">
+                        <p class="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-3">Capacity & Limits</p>
+                        <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-2 mb-4 font-mono text-xs">
+                            <li class="flex justify-between border-b border-gray-200 dark:border-white/5 pb-1"><span>Admin Users</span> <strong>1</strong></li>
+                            <li class="flex justify-between border-b border-gray-200 dark:border-white/5 pb-1"><span>Projects</span> <strong>Up to 2</strong></li>
+                            <li class="flex justify-between border-b border-gray-200 dark:border-white/5 pb-1"><span>Customers</span> <strong>Up to 200</strong></li>
+                            <li class="flex justify-between pb-1"><span>Storage</span> <strong>5 GB</strong></li>
+                        </ul>
+
+                        <p class="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-3">Core Capabilities</p>
+                        
+                        <div class="relative overflow-hidden transition-all duration-500 max-h-[160px]">
+                            <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-3 pb-8">
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-green-500 mt-0.5 shrink-0"></i> Secure RaaS™️ software access</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-green-500 mt-0.5 shrink-0"></i> Plot-wise inventory tracking</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-green-500 mt-0.5 shrink-0"></i> Buyer-to-plot mapping</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-green-500 mt-0.5 shrink-0"></i> Expense & profit visibility</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-green-500 mt-0.5 shrink-0"></i> Selling price vs cost clarity</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-green-500 mt-0.5 shrink-0"></i> Legal & documentation checklist</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-green-500 mt-0.5 shrink-0"></i> Structured workflow guidance</li>
+                            </ul>
+                            <div class="fade-overlay absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-[#fcfcfc] dark:from-[#141414] to-transparent pointer-events-none transition-opacity duration-300"></div>
+                        </div>
+                        <button onclick="toggleFeatures(this)" class="text-brand font-bold text-sm w-full text-center py-2 hover:bg-brand/5 rounded-lg transition mt-2">Show all features <i class="ph-bold ph-caret-down ml-1"></i></button>
+                    </div>
+
+                    <div class="bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 rounded-xl p-4 mt-6">
+                        <p class="text-xs font-bold text-gray-900 dark:text-white mb-1">Rajchavin’s Role</p>
+                        <p class="text-xs text-gray-600 dark:text-gray-400">Platform access, Governance framework, Document review guidance.</p>
+                        <p class="text-xs text-red-600 dark:text-red-400 font-medium mt-2">🚫 Rajchavin does not handle sales or customer execution in this plan.</p>
+                    </div>
+                </div>
+
+                <div class="glass rounded-3xl p-6 flex flex-col pricing-card border-t-4 border-t-blue-500 h-full">
+                    <div class="mb-4">
+                        <span class="px-3 py-1 rounded-full bg-blue-500/10 text-blue-500 text-xs font-bold uppercase tracking-wider">🔵 Standard</span>
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white mt-4">Managed RaaS™</h3>
+                        <p class="text-sm text-gray-500 italic mt-1">“We manage the system with you.”</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-500">One-Time Onboarding</p>
+                        <p class="text-3xl font-black text-gray-900 dark:text-white mb-4">₹ 49,999</p>
+                        <div class="space-y-1 text-sm text-gray-600 dark:text-gray-300 bg-black/5 dark:bg-white/5 p-3 rounded-xl">
+                            <div class="flex justify-between"><span>Monthly</span> <strong>₹ 999</strong></div>
+                            <div class="flex justify-between"><span>Quarterly</span> <strong>₹ 2,799</strong></div>
+                            <div class="flex justify-between"><span>Yearly</span> <strong>₹ 10,999</strong></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <p class="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-2">Designed For</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Small & mid-size developers, Joint-venture layouts, 3–10 acre projects.</p>
+                    </div>
+
+                    <hr class="border-gray-200 dark:border-white/10 my-4">
+
+                    <div class="flex-1 flex flex-col">
+                        <p class="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-3">Capacity & Limits</p>
+                        <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-2 mb-4 font-mono text-xs">
+                            <li class="flex justify-between border-b border-gray-200 dark:border-white/5 pb-1"><span>Users (Admin+Team)</span> <strong>3</strong></li>
+                            <li class="flex justify-between border-b border-gray-200 dark:border-white/5 pb-1"><span>Projects</span> <strong>Up to 5</strong></li>
+                            <li class="flex justify-between border-b border-gray-200 dark:border-white/5 pb-1"><span>Customers</span> <strong>Up to 500</strong></li>
+                            <li class="flex justify-between pb-1"><span>Storage</span> <strong>25 GB</strong></li>
+                        </ul>
+
+                        <p class="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-3">Advanced Capabilities</p>
+                        
+                        <div class="relative overflow-hidden transition-all duration-500 max-h-[160px]">
+                            <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-3 pb-8">
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-blue-500 mt-0.5 shrink-0"></i> All Basic Features included</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-blue-500 mt-0.5 shrink-0"></i> Interactive layout (clickable map)</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-blue-500 mt-0.5 shrink-0"></i> Customer allotment tracking</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-blue-500 mt-0.5 shrink-0"></i> Installment milestone tracking</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-blue-500 mt-0.5 shrink-0"></i> Expense categorization</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-blue-500 mt-0.5 shrink-0"></i> PDF & Excel reporting</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-blue-500 mt-0.5 shrink-0"></i> Documentation flow coordination</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-blue-500 mt-0.5 shrink-0"></i> Governance enforcement</li>                                
+
+                            </ul>
+                            <div class="fade-overlay absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-[#fcfcfc] dark:from-[#141414] to-transparent pointer-events-none transition-opacity duration-300"></div>
+                        </div>
+                        <button onclick="toggleFeatures(this)" class="text-brand font-bold text-sm w-full text-center py-2 hover:bg-brand/5 rounded-lg transition mt-2">Show all features <i class="ph-bold ph-caret-down ml-1"></i></button>
+                    </div>
+
+                    <div class="bg-gray-50 dark:bg-white/5 rounded-xl p-4 mt-6">
+                        <p class="text-xs font-bold text-gray-900 dark:text-white mb-1">Rajchavin’s Role</p>
+                        <p class="text-xs text-gray-600 dark:text-gray-400">Manages documentation flow, enforces system discipline, and coordinates operational structure. Developer retains sales control.</p>
+                    </div>
+                </div>
+
+                <div class="glass rounded-3xl p-6 flex flex-col pricing-card border-t-4 border-t-purple-500 h-full relative xl:-translate-y-4 xl:shadow-2xl">
+                    <div class="absolute top-0 right-0 bg-purple-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg shadow-md">Most Popular</div>
+                    <div class="mb-4">
+                        <span class="px-3 py-1 rounded-full bg-purple-500/10 text-purple-500 text-xs font-bold uppercase tracking-wider">🟣 Premium</span>
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white mt-4">Executed RaaS™</h3>
+                        <p class="text-sm text-gray-500 italic mt-1">“We run operations. You focus on development.”</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-500">One-Time Onboarding</p>
+                        <p class="text-3xl font-black text-gray-900 dark:text-white mb-4">₹ 99,999</p>
+                        <div class="space-y-1 text-sm text-gray-600 dark:text-gray-300 bg-black/5 dark:bg-white/5 p-3 rounded-xl mb-4">
+                            <div class="flex justify-between"><span>Monthly</span> <strong>₹ 4,999</strong></div>
+                            <div class="flex justify-between"><span>Quarterly</span> <strong>₹ 13,999</strong></div>
+                            <div class="flex justify-between"><span>Yearly</span> <strong>₹ 54,999</strong></div>
+                        </div>
+                        
+                        
+                        <div class="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3">
+                            <p class="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase">Success-Based Fee</p>
+                            <p class="text-sm text-gray-900 dark:text-white font-bold">0.99% of total deal value</p>
+                            <p class="text-xs text-gray-500 leading-tight mt-1">Charged only after successful sale on referred plots. No fund custody.</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <p class="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-2">Designed For</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Portfolio developers, Multi-city operators, Institutional-grade developers.</p>
+                    </div>
+
+                    <hr class="border-gray-200 dark:border-white/10 my-4">
+
+                    <div class="flex-1 flex flex-col">
+                        <p class="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-3">Capacity & Limits</p>
+                        <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-2 mb-4 font-mono text-xs">
+                            <li class="flex justify-between border-b border-gray-200 dark:border-white/5 pb-1"><span>Users</span> <strong>Up to 10</strong></li>
+                            <li class="flex justify-between border-b border-gray-200 dark:border-white/5 pb-1"><span>Projects</span> <strong>Up to 10</strong></li>
+                            <li class="flex justify-between border-b border-gray-200 dark:border-white/5 pb-1"><span>Customers</span> <strong>Up to 1,000</strong></li>
+                            <li class="flex justify-between pb-1"><span>Storage</span> <strong>100 GB</strong></li>
+                        </ul>
+
+                        <p class="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-3">Enterprise Features</p>
+                        
+                        <div class="relative overflow-hidden transition-all duration-500 max-h-[160px]">
+                            <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-3 pb-8">
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-purple-500 mt-0.5 shrink-0"></i> All Standard Features included</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-purple-500 mt-0.5 shrink-0"></i> Approved 2D / 3D layout integration</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-purple-500 mt-0.5 shrink-0"></i> Live plot availability dashboard</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-purple-500 mt-0.5 shrink-0"></i> Sales pipeline tracking</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-purple-500 mt-0.5 shrink-0"></i> Compliance checklist system</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-purple-500 mt-0.5 shrink-0"></i> Audit-ready financial reports</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-purple-500 mt-0.5 shrink-0"></i> Bank coordination assistance</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-purple-500 mt-0.5 shrink-0"></i> Customer lifecycle tracking</li>
+                            </ul>
+                            <div class="fade-overlay absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-[#fcfcfc] dark:from-[#141414] to-transparent pointer-events-none transition-opacity duration-300"></div>
+                        </div>
+                        <button onclick="toggleFeatures(this)" class="text-brand font-bold text-sm w-full text-center py-2 hover:bg-brand/5 rounded-lg transition mt-2">Show all features <i class="ph-bold ph-caret-down ml-1"></i></button>
+                    </div>
+                </div>
+
+                <div class="glass rounded-3xl p-6 flex flex-col pricing-card border-t-4 border-t-yellow-500 h-full">
+                    <div class="mb-4">
+                        <span class="px-3 py-1 rounded-full bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 text-xs font-bold uppercase tracking-wider">🟡 Elite</span>
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white mt-4">Optimised & Scaled RaaS™</h3>
+                        <p class="text-sm text-gray-500 italic mt-1">“We become your Real Estate Operating System.”</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-500">Fixed Fees / Onboarding</p>
+                        <p class="text-3xl font-black text-gray-900 dark:text-white mb-4">₹ 2,49,999</p>
+                        <div class="space-y-1 text-sm text-gray-600 dark:text-gray-300 bg-black/5 dark:bg-white/5 p-3 rounded-xl mb-4">
+                            <div class="flex justify-between"><span>Monthly</span> <strong>₹ 14,999</strong></div>
+                            <div class="flex justify-between"><span>Quarterly</span> <strong>₹ 43,999</strong></div>
+                            <div class="flex justify-between"><span>Yearly</span> <strong>₹ 1,74,999</strong></div>
+                        </div>
+
+                        <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+                            <p class="text-xs font-bold text-yellow-600 dark:text-yellow-400 uppercase">Performance Fee</p>
+                            <p class="text-sm text-gray-900 dark:text-white font-bold">0.99% per plot sold</p>
+                            <p class="text-xs text-gray-500 leading-tight mt-1">Success-based pricing structure.</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <p class="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-2">Designed For</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Portfolio developers, Multi-city operators, Institutional-grade developers.</p>
+                    </div>
+
+                    <hr class="border-gray-200 dark:border-white/10 my-4">
+
+                    <div class="flex-1 flex flex-col">
+                        <p class="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-3">Capacity & Limits</p>
+                        <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-2 mb-4 font-mono text-xs">
+                            <li class="flex justify-between border-b border-gray-200 dark:border-white/5 pb-1"><span>Users</span> <strong>Up to 25</strong></li>
+                            <li class="flex justify-between border-b border-gray-200 dark:border-white/5 pb-1"><span>Projects</span> <strong>Up to 25</strong></li>
+                            <li class="flex justify-between border-b border-gray-200 dark:border-white/5 pb-1"><span>Customers</span> <strong>Up to 2,500</strong></li>
+                            <li class="flex justify-between pb-1"><span>Storage</span> <strong>Unlimited</strong></li>
+                        </ul>
+
+                        <p class="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-3">Institutional Features</p>
+                        
+                        <div class="relative overflow-hidden transition-all duration-500 max-h-[160px]">
+                            <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-3 pb-8">
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-yellow-500 mt-0.5 shrink-0"></i> All Premium Features included</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-yellow-500 mt-0.5 shrink-0"></i> Portfolio-level dashboards</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-yellow-500 mt-0.5 shrink-0"></i> Revenue leakage detection</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-yellow-500 mt-0.5 shrink-0"></i> Cost optimization insights</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-yellow-500 mt-0.5 shrink-0"></i> Institutional-grade reporting</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-yellow-500 mt-0.5 shrink-0"></i> Full sales execution</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-yellow-500 mt-0.5 shrink-0"></i> Customer follow-ups</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-yellow-500 mt-0.5 shrink-0"></i> Bank & registration coordination</li>
+                                <li class="flex items-start gap-2"><i class="ph-bold ph-check text-yellow-500 mt-0.5 shrink-0"></i> Compliance orchestration</li>
+                            </ul>
+                            <div class="fade-overlay absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-[#fcfcfc] dark:from-[#141414] to-transparent pointer-events-none transition-opacity duration-300"></div>
+                        </div>
+                        <button onclick="toggleFeatures(this)" class="text-brand font-bold text-sm w-full text-center py-2 hover:bg-brand/5 rounded-lg transition mt-2">Show all features <i class="ph-bold ph-caret-down ml-1"></i></button>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="max-w-4xl mx-auto text-center mt-12 px-6 py-4 rounded-xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-white/5">
+                <div class="flex flex-col md:flex-row justify-center items-center gap-6 text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <span class="flex items-center gap-2"><i class="ph-bold ph-x-circle text-red-500"></i> Rajchavin never owns land</span>
+                    <span class="flex items-center gap-2"><i class="ph-bold ph-x-circle text-red-500"></i> Rajchavin never holds customer funds</span>
+                    <span class="flex items-center gap-2"><i class="ph-bold ph-x-circle text-red-500"></i> No profit-sharing structure</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="relative bg-gray-100 dark:bg-surface pt-20 pb-10 px-4 transition-colors duration-300 font-sans" style="will-change: transform; transform: translateZ(0);">
+        <div class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
+
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+            <div class="space-y-6">
+                 <div class="flex items-center gap-2">
+                    <img src="rajchavin-removebg-preview.png" alt="Raj Chavin Logo" class="h-12 w-auto object-contain brightness-0 dark:filter-none transition-all duration-300">
+                </div>
+                <p class="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                    Building Governed Real Estate Ecosystems — From Land Acquisition to Structured exit.                </p>
+                <div class="flex gap-4">
+                    <a href="#" class="w-10 h-10 rounded-full bg-white dark:bg-white/5 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary hover:shadow-md transition-all">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="#" class="w-10 h-10 rounded-full bg-white dark:bg-white/5 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary hover:shadow-md transition-all">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="#" class="w-10 h-10 rounded-full bg-white dark:bg-white/5 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary hover:shadow-md transition-all">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div>
+                <h4 class="text-gray-900 dark:text-white font-serif font-bold text-lg mb-6">Quick Links</h4>
+                <ul class="space-y-3">
+                    <li><a href="/about.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">About Us</a></li>
+                    <li><a href="/leadership.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Leadership</a></li>
+                    <li><a href="/careers.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Careers</a></li>
+                    <li><a href="/contact.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Contact</a></li>
+                    <li><a href="#ecosystem" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Ecosystem</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="text-gray-900 dark:text-white font-serif font-bold text-lg mb-6">Our Services</h4>
+                <ul class="space-y-3">
+                    <li><a href="/layout & farmlands/index.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Plots & Farmlands</a></li>
+                    <li><a href="realestate/portal-buyer.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Buy Property</a></li>
+                    <li><a href="realestate/portal-seller.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Sell Property</a></li>
+                    <li><a href="ecommerce/portal-store.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Construction Materials</a></li>
+                    <li><a href="/legals.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Legal Services</a></li>
+                    <li><a href="/mortgage.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Mortgage Loans</a></li>
+                </ul>
+            </div>
+
+             <div>
+                <h4 class="text-gray-900 dark:text-white font-serif font-bold text-lg mb-6">Contact</h4>
+                <ul class="space-y-4 text-sm text-gray-600 dark:text-gray-400">
+                    
+                    <p>RAJCHAVIN REALTY RETREAT Shop No. 1, Survey No. 391, Tirlapur’s Premise, Basaveshwar Nagar, Shahapur Peth, Opp. Someshwara Temple, Ward No. 15.</p>
+                    <p>Gadag – 582101, Karnataka, India</p>
+                    
+                    <li class="flex items-center gap-3">
+                        <i class="fas fa-phone text-primary"></i>
+                        <span>+91 907 1188 118</span>
+                    </li>
+                    <li class="flex items-center gap-3">
+                        <i class="fas fa-phone text-primary"></i>
+                        <span>+91 8006800270</span>
+                    </li>
+                    <a href="mailto:contact@rajchavin.com"><li class="flex items-center gap-3">
+                        <i class="fas fa-envelope text-primary"></i>
+                        <span>contact@rajchavin.com</span>
+                    </li></a>
+                </ul>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto border-t border-gray-200 dark:border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500 dark:text-gray-400">
+            <p>&copy; 2026 Raj Chavin Realty Group. All rights reserved.</p>
+            <div class="flex gap-6 mt-4 md:mt-0">
+                <a href="#" class="hover:text-primary transition">Terms of Service</a>
+                <a href="#" class="hover:text-primary transition">Privacy Policy</a>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

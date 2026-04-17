@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Us | Raj Chavin</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class', 
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#020617',   
+                        surface: '#0F172A', 
+                        primary: '#1C58A1', 
+                        secondary: '#60A5FA', 
+                        pearl: '#F8FAFC',
+                    },
+                    fontFamily: {
+                        sans: ['Manrope', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    },
+                    backgroundImage: {
+                        'hero-pattern': "url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')",
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #1C58A1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #60A5FA; }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9); 
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(28, 88, 161, 0.2);
+            box-shadow: 0 4px 6px -1px rgba(28, 88, 161, 0.1);
+        }
+        .dark .glass-panel {
+            background: rgba(15, 23, 42, 0.8); 
+            border: 1px solid rgba(28, 88, 161, 0.2);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+        
+        .nav-dropdown {
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px) translateZ(0);
+            transition: all 0.2s ease-out;
+        }
+        .group:hover .nav-dropdown {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0) translateZ(0);
+        }
+
+        .text-gradient {
+            background: linear-gradient(to right, #1C58A1, #60A5FA);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-pearl text-slate-900 dark:bg-dark dark:text-gray-300 font-sans antialiased transition-colors duration-300">
+
+    <nav class="fixed top-2 left-0 right-0 z-50 px-2 lg:px-6">
+        <div class="max-w-7xl mx-auto glass-panel rounded-xl px-4 py-2 flex justify-between items-center transition-all">
+            
+            <div class="flex items-center gap-2 flex-shrink-0 mr-4">
+                <a href="index.html"><img src="rajchavin-removebg-preview.png" alt="Raj Chavin Logo" class="h-10 w-auto object-contain brightness-0 dark:filter-none transition-all duration-300"></a>
+            </div>
+            
+            <div class="hidden xl:flex items-center space-x-1 text-sm font-semibold tracking-wide flex-grow justify-center">
+
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 hover:text-primary transition dark:text-gray-200 flex items-center gap-1"><a href="about.html">About</a><i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full left-0 w-48 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden">
+                            <a href="/about.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">About Company</a>
+                            <a href="/leadership.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Leadership</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 text-xs hover:text-primary transition dark:text-gray-200 flex items-center gap-1"><a href="layout-farm-exp.html">Layouts & Farmlands</a> <i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full left-0 w-48 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden">
+                            <a href="/layout & farmlands/index.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Layouts</a>
+                            <a href="/farmland.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Farmlands</a>
+                        </div>
+                    </div>
+                </div>
+                <a href="/ras.html" class="px-3 py-2 text-gray-700 hover:text-primary transition dark:text-gray-200">RaaS™</a>
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 hover:text-primary transition dark:text-gray-200 flex items-center gap-1"> <a href="realestate-exp.html">Real Estate </a><i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full left-0 w-56 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden">
+                            <a href="realestate/portal-seller.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Sell Property</a>
+                            <a href="realestate/portal-buyer.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Buy Property</a>
+                            <a href="realestate/portal-seller.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Rent</a>
+                            <a href="realestate/portal-buyer.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Lease</a>
+                            <div class="h-px bg-gray-200 dark:bg-white/10 my-1"></div>
+                            <a href="#" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Add Properties</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 hover:text-primary transition dark:text-gray-200 flex items-center gap-1"><a href="marketplace-exp.html">Marketplace </a><i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full left-1/2 -translate-x-1/2 w-72 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden max-h-[80vh] overflow-y-auto">
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Construction Materials</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Plumbing Products</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Electrical & Wiring</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Flooring Materials</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">POP & Ceiling</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Carpentry & Woodwork</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Aluminium & Glass</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Paints & Wall Finishes</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Interior Accessories</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 text-xs hover:text-primary transition dark:text-gray-200 flex items-center gap-1"> <a href="design-construction-renovation-exp.html">Design & Construction </a><i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full left-0 w-56 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden">
+                            <a href="design.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Design</a>
+                            <a href="construction.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Construction & Services</a>
+                            <a href="renovation.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Renovation</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 text-xs hover:text-primary transition dark:text-gray-200 flex items-center gap-1"><a href="legals-loans-exp.html">Legals & Loans </a><i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full left-1/2 -translate-x-1/2 w-48 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden">
+                            <a href="/legals.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Legal Services</a>
+                            <a href="/mortgage.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Mortgage Loans</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 hover:text-primary transition dark:text-gray-200 flex items-center gap-1">Careers <i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full right-0 w-48 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden">
+                            <a href="/careers.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Join Us</a>
+                            <a href="/internships.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Internship</a>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="/contact.html" class="px-3 py-2 text-gray-700 hover:text-primary transition dark:text-gray-200">Contact</a>
+            </div>
+
+            <div class="flex items-center gap-4 flex-shrink-0">
+                <button id="theme-toggle" class="w-9 h-9 rounded-full bg-white border border-gray-200 dark:border-white/10 dark:bg-white/10 flex items-center justify-center text-primary dark:text-white hover:bg-primary hover:text-white transition shadow-sm">
+                    <i class="fas fa-sun hidden dark:block text-xs"></i> 
+                    <i class="fas fa-moon block dark:hidden text-xs"></i> 
+                </button>
+                
+                <button class="xl:hidden text-2xl text-gray-800 dark:text-white" onclick="document.getElementById('mob-menu').classList.toggle('hidden')">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div id="mob-menu" class="hidden absolute top-20 left-4 right-4 glass-panel rounded-2xl p-4 shadow-xl z-50 max-h-[80vh] overflow-y-auto bg-white/95 dark:bg-surface/95">
+            <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                    About <i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="/about.html" class="block p-2">About Company</a>
+                    <a href="/leadership.html" class="block p-2">About Leadership</a>
+                </div>
+            </details>
+            <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                   <a href="layout-farm-exp.html"> Layouts & Farmlands </a><i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="/layout & farmlands/index.html" class="block p-2">Layouts</a>
+                    <a href="/farmland.html" class="block p-2">Farmlands</a>
+                </div>
+            </details>
+            <a href="/ras.html" class="block font-bold text-primary p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">RaaS™</a>
+            <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                   <a href="realestate-exp.html"> Real Estate </a><i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="realestate/portal-seller.html" class="block p-2">Sell</a>
+                    <a href="realestate/portal-buyer.html" class="block p-2">Buy</a>
+                    <a href="realestate/portal-seller.html" class="block p-2">Rent</a>
+                    <a href="realestate/portal-buyer.html" class="block p-2">Lease</a>
+                    <a href="#" class="block p-2 text-primary">Add Properties</a>
+                </div>
+            </details>
+            <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                   <a href="design-construction-renovation-exp.html"> Design & Construction</a> <i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="/design.html" class="block p-2">Design</a>
+                    <a href="/construction.html" class="block p-2">Construction & Services</a>
+                    <a href="/renovation.html" class="block p-2">Renovation</a>
+                </div>
+            </details>
+            <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                   <a href="marketplace-exp.html"> Marketplace </a><i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="https://marketplace.rajchavin.com" class="block p-2">All Categories</a>
+                </div>
+            </details>
+            <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                   <a href="legals-loans-exp.html"> Legals & Loans </a><i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="/legals.html" class="block p-2">Legal Services</a>
+                    <a href="/mortgage.html" class="block p-2">Mortgage Loans</a>
+                </div>
+            </details>
+             <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                    Careers <i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="/careers.html" class="block p-2">Join Us</a>
+                    <a href="/internships.html" class="block p-2">Internship</a>
+                </div>
+            </details>
+            <a href="/contact.html" class="block font-bold text-primary p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">Contact Us</a>
+        </div>
+    </nav>
+
+    <header class="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden bg-pearl dark:bg-dark">
+        <div class="absolute inset-0 bg-hero-pattern bg-cover bg-center opacity-5 dark:opacity-10 pointer-events-none"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-pearl dark:to-dark pointer-events-none"></div>
+
+        <div class="relative z-10 max-w-5xl mx-auto px-4 text-center">
+            <div class="inline-flex items-center gap-2 px-4 py-1 rounded-full border border-primary/50 bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest mb-6">
+                Redefining Governance
+            </div> 
+            <h1 class="text-4xl md:text-6xl lg:text-7xl font-serif font-bold text-gray-900 dark:text-white mb-6 leading-tight">
+                About <span class="text-gradient">Rajchavin</span>
+            </h1>
+            <p class="text-lg md:text-xl text-slate-600 dark:text-gray-400 max-w-3xl mx-auto leading-relaxed">
+            Rajchavin is a next-generation Real Estate, Construction and Technology-enabled Advisory Group Built on one Uncompromising Principle: Long-Term Value Creation Through Trust, Governance and Execution Excellence.        
+            </p>
+        </div>
+    </header>
+
+    <section class="py-16 px-4 bg-white dark:bg-surface border-y border-gray-200 dark:border-white/5">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-serif font-bold text-slate-800 dark:text-white mb-4">Our Core Philosophy</h2>
+                <p class="text-slate-500 dark:text-gray-400 max-w-2xl mx-auto">We operate on absolute separation of Land, Money, and Systems. Our policies are designed to protect Customers, Developers, and Financial Institutions equally.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="p-6 rounded-2xl bg-pearl dark:bg-dark border border-gray-100 dark:border-white/5">
+                    <div class="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center text-xl mb-4">
+                        <i class="fas fa-hand-holding-usd"></i>
+                    </div>
+                    <h3 class="font-bold text-gray-900 dark:text-white mb-2">Success-Linked Earnings</h3>
+                    <p class="text-sm text-slate-500 dark:text-gray-400">We earn only when work progresses or completes. No hidden charges, and transparent invoicing in advance.</p>
+                </div>
+                <div class="p-6 rounded-2xl bg-pearl dark:bg-dark border border-gray-100 dark:border-white/5">
+                    <div class="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 flex items-center justify-center text-xl mb-4">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3 class="font-bold text-gray-900 dark:text-white mb-2">Zero Custody of Funds</h3>
+                    <p class="text-sm text-slate-500 dark:text-gray-400">Customer and developer money is never held by Rajchavin. All funds flow directly through authorized banking channels.</p>
+                </div>
+                <div class="p-6 rounded-2xl bg-pearl dark:bg-dark border border-gray-100 dark:border-white/5">
+                    <div class="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 flex items-center justify-center text-xl mb-4">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <h3 class="font-bold text-gray-900 dark:text-white mb-2">Clear Role Separation</h3>
+                    <p class="text-sm text-slate-500 dark:text-gray-400">Land, Money, and System remain strictly independent. We provide the governance while owners hold the assets.</p>
+                </div>
+                <div class="p-6 rounded-2xl bg-pearl dark:bg-dark border border-gray-100 dark:border-white/5">
+                    <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 flex items-center justify-center text-xl mb-4">
+                        <i class="fas fa-file-signature"></i>
+                    </div>
+                    <h3 class="font-bold text-gray-900 dark:text-white mb-2">Compliance-First</h3>
+                    <p class="text-sm text-slate-500 dark:text-gray-400">Bank-friendly, audit-ready, and regulator-safe. We ensure documented, traceable closures for every transaction.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-20 px-4 bg-pearl dark:bg-dark">
+        <div class="max-w-7xl mx-auto">
+            <div class="mb-16 border-l-4 border-primary pl-6">
+                <h2 class="text-3xl md:text-5xl font-serif font-bold text-slate-800 dark:text-white mb-4">What We Do</h2>
+                <p class="text-slate-500 dark:text-gray-400 max-w-2xl">A complete ecosystem of services governed by strict protocols. From finding a plot to financing its construction.</p>
+            </div>
+
+            <div class="space-y-8">
+                
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="glass-panel p-8 rounded-3xl group hover:border-primary/50 transition">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-14 h-14 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-2xl group-hover:scale-110 transition"><i class="fas fa-building"></i></div>
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Real Estate Transactions</h3>
+                        </div>
+                        <p class="text-slate-600 dark:text-gray-400 text-sm mb-4">End-to-end management for buying, selling, renting, and leasing. We handle residential, commercial, industrial properties, and plots.</p>
+                        <ul class="space-y-2 text-sm text-slate-700 dark:text-gray-300 font-medium">
+                            <li><i class="fas fa-check text-primary mr-2"></i> Transparent 0.99% success fee logic</li>
+                            <li><i class="fas fa-check text-primary mr-2"></i> Buyer-Seller coordination & documentation tracking</li>
+                            <li><i class="fas fa-check text-primary mr-2"></i> Registration & auditable closure</li>
+                        </ul>
+                    </div>
+
+                    <div class="glass-panel p-8 rounded-3xl group hover:border-primary/50 transition">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-14 h-14 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center text-2xl group-hover:scale-110 transition"><i class="fas fa-map-marked-alt"></i></div>
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Layouts & Farmlands</h3>
+                        </div>
+                        <p class="text-slate-600 dark:text-gray-400 text-sm mb-4">Project governance & sales enablement for layout developers and farmland owners (Sandalwood, Teak, Mango, etc.).</p>
+                        <ul class="space-y-2 text-sm text-slate-700 dark:text-gray-300 font-medium">
+                            <li><i class="fas fa-check text-primary mr-2"></i> Project verification & ownership review</li>
+                            <li><i class="fas fa-check text-primary mr-2"></i> Sales readiness & layout structuring</li>
+                            <li><i class="fas fa-check text-primary mr-2"></i> Farmland ROI tracking & management logic</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="glass-panel p-8 rounded-3xl group hover:border-primary/50 transition bg-gradient-to-br from-white to-blue-50 dark:from-surface dark:to-surface/50 border-primary/30">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-14 h-14 rounded-xl bg-primary text-white flex items-center justify-center text-2xl group-hover:scale-110 transition"><i class="fas fa-cloud"></i></div>
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">RaaS™ (Real Estate as a Service)</h3>
+                        </div>
+                        <p class="text-slate-600 dark:text-gray-400 text-sm mb-4">Our proprietary software platform for developers to sell plots safely and manage inventory seamlessly.</p>
+                        <ul class="space-y-2 text-sm text-slate-700 dark:text-gray-300 font-medium">
+                            <li><i class="fas fa-check text-primary mr-2"></i> <strong>Basic:</strong> Software access & documentation guidance</li>
+                            <li><i class="fas fa-check text-primary mr-2"></i> <strong>Standard:</strong> Managed documentation & execution tracking</li>
+                            <li><i class="fas fa-check text-primary mr-2"></i> <strong>Premium & Elite:</strong> Full sales execution, bank coordination & scaling</li>
+                        </ul>
+                    </div>
+
+                    <div class="glass-panel p-8 rounded-3xl group hover:border-primary/50 transition">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-14 h-14 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center text-2xl group-hover:scale-110 transition"><i class="fas fa-hard-hat"></i></div>
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Design & Construction</h3>
+                        </div>
+                        <p class="text-slate-600 dark:text-gray-400 text-sm mb-4">A strict governance & coordination model. We don't construct directly—we manage execution through verified professionals.</p>
+                        <ul class="space-y-2 text-sm text-slate-700 dark:text-gray-300 font-medium">
+                            <li><i class="fas fa-check text-primary mr-2"></i> 2D Plans & 3D Elevations</li>
+                            <li><i class="fas fa-check text-primary mr-2"></i> Turnkey construction & renovations</li>
+                            <li><i class="fas fa-check text-primary mr-2"></i> Milestone-based payment oversight</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="glass-panel p-8 rounded-3xl group hover:border-primary/50 transition">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-14 h-14 rounded-xl bg-yellow-500/10 text-yellow-600 flex items-center justify-center text-2xl group-hover:scale-110 transition"><i class="fas fa-balance-scale"></i></div>
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Legals & Loans</h3>
+                        </div>
+                        <p class="text-slate-600 dark:text-gray-400 text-sm mb-4">Assistance and coordination via licensed professionals and bankers to ensure your assets are clean and funded.</p>
+                        <ul class="space-y-2 text-sm text-slate-700 dark:text-gray-300 font-medium">
+                            <li><i class="fas fa-check text-primary mr-2"></i> Sale Deeds, Agreements & Legal Opinions</li>
+                            <li><i class="fas fa-check text-primary mr-2"></i> Khata, EC, RTC & NA Conversions</li>
+                            <li><i class="fas fa-check text-primary mr-2"></i> Home, Plot & Developer Loan facilitation</li>
+                        </ul>
+                    </div>
+
+                    <div class="glass-panel p-8 rounded-3xl group hover:border-primary/50 transition">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-14 h-14 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center text-2xl group-hover:scale-110 transition"><i class="fas fa-store"></i></div>
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Material Marketplace</h3>
+                        </div>
+                        <p class="text-slate-600 dark:text-gray-400 text-sm mb-4">A technology marketplace connecting customers with verified vendors for wholesale construction material supply.</p>
+                        <ul class="space-y-2 text-sm text-slate-700 dark:text-gray-300 font-medium">
+                            <li><i class="fas fa-check text-primary mr-2"></i> Cement, TMT, Plumbing & Electricals</li>
+                            <li><i class="fas fa-check text-primary mr-2"></i> Transparent billing & tracking</li>
+                            <li><i class="fas fa-check text-primary mr-2"></i> Free for customers (promotional)</li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <section class="py-20 px-4 bg-surface border-y border-white/10 text-center">
+        <div class="max-w-4xl mx-auto">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/20 text-primary text-2xl mb-6">
+                <i class="fas fa-file-pdf"></i>
+            </div>
+            <h2 class="text-3xl md:text-4xl font-serif font-bold text-white mb-4">Governance & Transparency</h2>
+            <p class="text-gray-400 mb-12 max-w-2xl mx-auto">We believe in absolute clarity. All our rules, limits of liability, pricing structures, and operational guidelines are public. Download our official governing documents below.</p>
+            
+            <div class="flex flex-col md:flex-row gap-6 justify-center">
+                <a href="Rajchavin UGRF 13_2_26 Ver 1_0.pdf" download class="group flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-primary/20 hover:border-primary/50 transition text-left w-full md:w-96">
+                    <div class="text-3xl text-gray-400 group-hover:text-primary transition"><i class="fas fa-file-download"></i></div>
+                    <div>
+                        <h4 class="font-bold text-white text-sm">UGRF (Constitution)</h4>
+                        <p class="text-xs text-gray-400">Unified Governance, Risk & Compliance Framework v1.0</p>
+                    </div>
+                </a>
+
+                <a href="Rajchavin Master Pricing policy 13-2-26 Ver 1_0.pdf" download class="group flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-primary/20 hover:border-primary/50 transition text-left w-full md:w-96">
+                    <div class="text-3xl text-gray-400 group-hover:text-primary transition"><i class="fas fa-file-download"></i></div>
+                    <div>
+                        <h4 class="font-bold text-white text-sm">Master Pricing Policy</h4>
+                        <p class="text-xs text-gray-400">Official Pricing & Services Policy v1.0</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section id="leadership" class="py-16 px-4 bg-gray-100 dark:bg-surface/50">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-serif font-bold text-gray-900 dark:text-white mb-2">Our Leadership</h2>
+                <p class="text-gray-500">“Building A Governance-First Real Estate Ecosystem.”</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+                
+                <div class="glass-panel p-8 rounded-2xl hover:-translate-y-2 transition duration-500 border-t-4 border-primary flex flex-col h-full">
+                    <div class="mb-4">
+                        <span class="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest">Founder & CEO</span>
+                    </div>
+                    <h3 class="text-2xl font-serif font-bold text-gray-900 dark:text-white mb-2">Vinayak R Tirlapur</h3>
+                    <p class="text-sm text-gray-500 mb-6 italic">The Visionary Architect</p>
+                    <div class="space-y-4 text-gray-600 dark:text-gray-300 text-sm leading-relaxed flex-grow">
+                        <p>Driving the strategic roadmap of Rajchavin, Vinayak brings deep expertise in analytics-driven real estate and corporate governance.</p>
+                        <p>His focus lies in integrating technology with traditional construction to create transparent, high-yield ecosystems.</p>
+                        <ul class="list-disc pl-4 space-y-1">
+                            <li>Architect of the RAAS™ Governance Model</li>
+                            <li>Driving Technology-Integrated Real Estate Systems</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-8 rounded-2xl hover:-translate-y-2 transition duration-500 border-t-4 border-primary flex flex-col h-full">
+                    <div class="mb-4">
+                        <span class="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest">Co-Founder & COO</span>
+                    </div>
+                    <h3 class="text-2xl font-serif font-bold text-gray-900 dark:text-white mb-2">Mr. Santosh S Shidling</h3>
+                    <p class="text-sm text-gray-500 mb-6 italic">The Strategic Growth Engine</p>
+                    <div class="space-y-4 text-gray-600 dark:text-gray-300 text-sm leading-relaxed flex-grow">
+                        <p>With over 16 years of versatile experience, Santosh spearheads Marketing and Strategic Planning at Rajchavin.</p>
+                        <ul class="list-disc pl-4 space-y-1">
+                            <li><strong>Expertise:</strong> Technical foundation in Electronics with over 5 years in service operations.</li>
+                            <li><strong>Impact:</strong> Since 2014, he has led Pan-India sales development, mastering market dynamics.</li>
+                            <li>Pan-India Sales & Strategic Execution Lead</li>
+                            <li>16+ Years in Market Development</li>
+                        </ul>
+                        <p>He transforms market insights into actionable growth strategies, ensuring Rajchavin connects deeply with every client.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <section class="pt-20 px-4">
+        <div class="max-w-7xl mx-auto">
+            
+            <div class="grid lg:grid-cols-2 gap-16 mb-20">
+                <div>
+                    <h2 class="text-3xl font-serif font-bold text-gray-900 dark:text-white mb-6">What Makes Us Different</h2>
+                    
+                    <div class="space-y-8">
+                        <div>
+                            <h4 class="font-bold text-primary text-lg mb-2">1. Governance-First Operating Framework</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Every engagement is backed by fail-proof MoUs, NDAs, and Master Agreements that prioritize safety, clarity, and accountability.</p>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-primary text-lg mb-2">2. Asset-Light, Control-Heavy</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">We do not hold client funds. We control processes, workflows, compliance, and delivery to ensure zero financial risk exposure.</p>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-primary text-lg mb-2">3. Integrated Growth Architecture</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Integrating Real Estate Advisory, Construction, Software Platforms, and Financial structuring under one roof.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-8 rounded-3xl relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-transparent"></div>
+                    <h2 class="text-2xl font-serif font-bold text-gray-900 dark:text-white mb-6">Commitment to Stakeholders</h2>
+                    <ul class="space-y-6">
+                        <li class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary text-lg"><i class="fas fa-user-shield"></i></div>
+                            <div>
+                                <h4 class="font-bold text-sm text-gray-900 dark:text-white">To Clients</h4>
+                                <p class="text-xs text-gray-500 mt-1">Clarity, legal protection and structured execution — without hidden financial exposure.</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary text-lg"><i class="fas fa-handshake"></i></div>
+                            <div>
+                                <h4 class="font-bold text-sm text-gray-900 dark:text-white">To Partners</h4>
+                                <p class="text-xs text-gray-500 mt-1">Defined roles, protected IP, and predictable revenue.</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary text-lg"><i class="fas fa-chart-line"></i></div>
+                            <div>
+                                <h4 class="font-bold text-sm text-gray-900 dark:text-white">To Investors</h4>
+                                <p class="text-xs text-gray-500 mt-1">Structured governance, financial visibility and disciplined growth — not speculative exposure.</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="relative bg-gray-100 dark:bg-surface pt-20 pb-10 px-4 transition-colors duration-300 font-sans" style="will-change: transform; transform: translateZ(0);">
+        <div class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
+
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+            <div class="space-y-6">
+                 <div class="flex items-center gap-2">
+                    <img src="rajchavin-removebg-preview.png" alt="Raj Chavin Logo" class="h-12 w-auto object-contain brightness-0 dark:filter-none transition-all duration-300">
+                </div>
+                <p class="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                    Building Governed Real Estate Ecosystems — From Land Acquisition to Structured exit.                </p>
+                <div class="flex gap-4">
+                    <a href="#" class="w-10 h-10 rounded-full bg-white dark:bg-white/5 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary hover:shadow-md transition-all">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="#" class="w-10 h-10 rounded-full bg-white dark:bg-white/5 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary hover:shadow-md transition-all">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="#" class="w-10 h-10 rounded-full bg-white dark:bg-white/5 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary hover:shadow-md transition-all">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div>
+                <h4 class="text-gray-900 dark:text-white font-serif font-bold text-lg mb-6">Quick Links</h4>
+                <ul class="space-y-3">
+                    <li><a href="/about.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">About Us</a></li>
+                    <li><a href="/leadership.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Leadership</a></li>
+                    <li><a href="/careers.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Careers</a></li>
+                    <li><a href="/contact.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Contact</a></li>
+                    <li><a href="#ecosystem" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Ecosystem</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="text-gray-900 dark:text-white font-serif font-bold text-lg mb-6">Our Services</h4>
+                <ul class="space-y-3">
+                    <li><a href="/layout & farmlands/index.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Plots & Farmlands</a></li>
+                    <li><a href="realestate/portal-buyer.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Buy Property</a></li>
+                    <li><a href="realestate/portal-seller.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Sell Property</a></li>
+                    <li><a href="ecommerce/portal-store.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Construction Materials</a></li>
+                    <li><a href="/legals.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Legal Services</a></li>
+                    <li><a href="/mortgage.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Mortgage Loans</a></li>
+                </ul>
+            </div>
+
+             <div>
+                <h4 class="text-gray-900 dark:text-white font-serif font-bold text-lg mb-6">Contact</h4>
+                <ul class="space-y-4 text-sm text-gray-600 dark:text-gray-400">
+                    
+                    <p>RAJCHAVIN REALTY RETREAT Shop No. 1, Survey No. 391, Tirlapur’s Premise, Basaveshwar Nagar, Shahapur Peth, Opp. Someshwara Temple, Ward No. 15.</p>
+                    <p>Gadag – 582101, Karnataka, India</p>
+                    
+                    <li class="flex items-center gap-3">
+                        <i class="fas fa-phone text-primary"></i>
+                        <span>+91 907 1188 118</span>
+                    </li>
+                    <li class="flex items-center gap-3">
+                        <i class="fas fa-phone text-primary"></i>
+                        <span>+91 8006800270</span>
+                    </li>
+                    <a href="mailto:contact@rajchavin.com"><li class="flex items-center gap-3">
+                        <i class="fas fa-envelope text-primary"></i>
+                        <span>contact@rajchavin.com</span>
+                    </li></a>
+                </ul>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto border-t border-gray-200 dark:border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500 dark:text-gray-400">
+            <p>&copy; 2026 Raj Chavin Realty Group. All rights reserved.</p>
+            <div class="flex gap-6 mt-4 md:mt-0">
+                <a href="#" class="hover:text-primary transition">Terms of Service</a>
+                <a href="#" class="hover:text-primary transition">Privacy Policy</a>
+            </div>
+        </div>
+    </footer>
+    <script>
+        const themeToggleBtn = document.getElementById('theme-toggle');
+
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            if (document.documentElement.classList.contains('dark')) {
+                localStorage.theme = 'dark';
+            } else {
+                localStorage.theme = 'light';
+            }
+        });
+    </script>
+</body>
+</html>

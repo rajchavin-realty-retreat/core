@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <title>Store Admin | Raj Chavin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { dark: '#050505', gold: '#D4AF37' } } }
+        }
+    </script>
+    <style>
+        .glass-panel { background: rgba(18, 18, 18, 0.9); border: 1px solid rgba(255, 255, 255, 0.1); }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #D4AF37; }
+    </style>
+</head>
+<body class="bg-dark text-white font-sans min-h-screen p-6">
+
+    <nav class="flex justify-between items-center mb-8">
+        <h1 class="text-2xl font-serif font-bold text-gold">Store Admin HQ</h1>
+        <button id="logoutBtn" class="text-sm font-bold uppercase hover:text-red-500">Logout</button>
+    </nav>
+
+    <div class="grid lg:grid-cols-12 gap-6">
+        
+        <div class="lg:col-span-4 space-y-6">
+            
+            <div class="glass-panel p-6 rounded-xl border-l-4 border-gold">
+                <h3 class="font-bold text-lg mb-4">Create Supplier</h3>
+                <form id="createSupplierForm" class="space-y-3">
+                    <input id="supName" type="text" placeholder="Business Name" class="w-full bg-white/5 border border-white/10 rounded p-2 text-sm outline-none focus:border-gold transition" required>
+                    <input id="supPhone" type="tel" placeholder="Phone Number" class="w-full bg-white/5 border border-white/10 rounded p-2 text-sm outline-none focus:border-gold" required>
+                    <input id="supEmail" type="email" placeholder="Login Email" class="w-full bg-white/5 border border-white/10 rounded p-2 text-sm outline-none focus:border-gold" required>
+                    <input id="supPass" type="password" placeholder="Login Password" class="w-full bg-white/5 border border-white/10 rounded p-2 text-sm outline-none focus:border-gold" required>
+                    <button type="submit" class="w-full bg-white text-black font-bold py-2 rounded hover:bg-gold transition">Create Account</button>
+                </form>
+            </div>
+            
+            <div class="glass-panel p-6 rounded-xl">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="font-bold text-lg">Users</h3>
+                    <select id="userFilterRole" onchange="filterUsers()" class="bg-black/20 text-[10px] p-1 rounded border border-white/10 text-white outline-none">
+                        <option value="all">All</option>
+                        <option value="supplier">Suppliers</option>
+                        <option value="customer">Customers</option>
+                    </select>
+                </div>
+                <input type="text" id="userSearch" onkeyup="filterUsers()" placeholder="Search name/email..." class="w-full bg-black/20 border border-white/10 rounded p-2 text-xs mb-3 outline-none focus:border-gold">
+                <div id="userList" class="space-y-2 max-h-[250px] overflow-y-auto pr-2">
+                    <p class="text-center text-xs text-gray-500">Loading users...</p>
+                </div>
+            </div>
+
+            <div class="glass-panel p-6 rounded-xl">
+                <h3 class="font-bold text-lg mb-2 text-red-400">Manage Products</h3>
+                <input type="text" id="prodSearch" onkeyup="filterProducts()" placeholder="Search products..." class="w-full bg-black/20 border border-white/10 rounded p-2 text-xs mb-3 outline-none focus:border-gold">
+                <div id="prodList" class="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                    <p class="text-center text-xs text-gray-500">Loading products...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-8 glass-panel p-6 rounded-xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-lg text-gold">All Orders</h3>
+                <div class="flex gap-2">
+                    <input type="text" id="orderSearch" onkeyup="filterAdminOrders()" placeholder="Search Order ID..." class="bg-black/20 border border-white/10 rounded p-2 text-xs w-32 outline-none focus:border-gold text-white">
+                    <select id="orderStatusFilter" onchange="filterAdminOrders()" class="bg-black/20 border border-white/10 rounded p-2 text-xs text-white outline-none">
+                        <option value="all">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="accepted">Accepted</option>
+                    </select>
+                </div>
+            </div>
+            <div id="allOrders" class="grid gap-4 max-h-[85vh] overflow-y-auto pr-2">
+                <p class="text-center text-xs text-gray-500">Loading orders...</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, db, firebaseConfig } from './firebase-config.js';
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        let userMap = {}, userArray = [];
+        let prodArray = [];
+        let orderArray = [];
+
+        // AUTH CHECK
+        onAuthStateChanged(auth, async (user) => {
+            if (!user || user.email !== 'admin@rajchavin.com') {
+                alert("Access Denied"); window.location.href = 'store-login.html';
+            } else {
+                await loadUserMap(); 
+                loadUsers(); // Just calls filter
+                loadProducts(); 
+                loadOrders(); 
+            }
+        });
+
+        // LOAD DATA
+        async function loadUserMap() {
+            try {
+                const snap = await getDocs(collection(db, "users"));
+                userArray = []; userMap = {};
+                snap.forEach(d => { 
+                    const u = { id: d.id, ...d.data() }; 
+                    userMap[d.id] = u; 
+                    userArray.push(u);
+                });
+                // Initial filter call
+                filterUsers();
+            } catch(e) { console.error("Error loading users:", e); }
+        }
+
+        function loadUsers() { filterUsers(); }
+
+        async function loadProducts() {
+            try {
+                const snap = await getDocs(collection(db, "products"));
+                prodArray = [];
+                snap.forEach(d => prodArray.push({ id: d.id, ...d.data() }));
+                filterProducts();
+            } catch(e) { console.error("Error loading products:", e); }
+        }
+
+        async function loadOrders() {
+            try {
+                const snap = await getDocs(collection(db, "orders"));
+                orderArray = [];
+                snap.forEach(d => orderArray.push({ id: d.id, ...d.data() }));
+                filterAdminOrders();
+            } catch(e) { console.error("Error loading orders:", e); }
+        }
+
+        // --- FILTERS ---
+
+        // 1. FILTER USERS
+        window.filterUsers = () => {
+            const roleEl = document.getElementById('userFilterRole');
+            const searchEl = document.getElementById('userSearch');
+            if(!roleEl || !searchEl) return; // Safety check
+
+            const role = roleEl.value;
+            const term = searchEl.value.toLowerCase();
+            const list = document.getElementById('userList');
+            
+            const filtered = userArray.filter(u => {
+                if(u.role === 'admin') return false;
+                const matchRole = role === 'all' || u.role === role;
+                const matchSearch = (u.name||'').toLowerCase().includes(term) || (u.email||'').toLowerCase().includes(term);
+                return matchRole && matchSearch;
+            });
+
+            list.innerHTML = filtered.map(u => {
+                const action = u.blocked 
+                    ? `<button onclick="window.blk('${u.id}',false)" class="text-green-500 text-[10px] font-bold">Unblock</button>` 
+                    : `<button onclick="window.blk('${u.id}',true)" class="text-red-500 text-[10px] font-bold">Block</button>`;
+                return `
+                    <div class="flex justify-between items-center p-2 bg-white/5 rounded border border-white/5 mb-1">
+                        <div>
+                            <p class="text-sm font-bold text-white">${u.name}</p>
+                            <p class="text-[10px] text-gold uppercase">${u.role} ${u.phone?`(${u.phone})`:''}</p>
+                        </div>
+                        ${action}
+                    </div>`;
+            }).join('');
+        };
+
+        // 2. FILTER PRODUCTS (With Delete Button)
+        window.filterProducts = () => {
+            const searchEl = document.getElementById('prodSearch');
+            if(!searchEl) return;
+
+            const term = searchEl.value.toLowerCase();
+            const list = document.getElementById('prodList');
+            const filtered = prodArray.filter(p => p.name.toLowerCase().includes(term));
+
+            list.innerHTML = filtered.map(p => {
+                const sup = userMap[p.supplierId]?.name || 'Unknown';
+                return `
+                    <div class="flex items-center gap-3 p-2 bg-white/5 rounded border border-white/5 group mb-1 hover:bg-white/10 transition">
+                        <img src="${p.image}" class="w-8 h-8 rounded object-cover">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-bold truncate text-white">${p.name}</p>
+                            <p class="text-[10px] text-gray-400">By: ${sup}</p>
+                        </div>
+                        <button onclick="window.delP('${p.id}')" class="w-6 h-6 rounded bg-red-500/10 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition" title="Delete Product">
+                            <i class="fas fa-trash text-xs"></i>
+                        </button>
+                    </div>`;
+            }).join('');
+        };
+
+        // 3. FILTER ORDERS
+        window.filterAdminOrders = () => {
+            const statusEl = document.getElementById('orderStatusFilter');
+            const searchEl = document.getElementById('orderSearch');
+            if(!statusEl || !searchEl) return;
+
+            const status = statusEl.value;
+            const term = searchEl.value.toLowerCase();
+            const list = document.getElementById('allOrders');
+
+            const filtered = orderArray.filter(o => {
+                const matchStatus = status === 'all' || o.status === status;
+                const matchId = o.id.toLowerCase().includes(term);
+                return matchStatus && matchId;
+            });
+
+            list.innerHTML = filtered.map(o => {
+                const custName = o.userName || userMap[o.userId]?.name || 'Unknown';
+                const custPhone = o.userPhone || userMap[o.userId]?.phone || 'No Phone';
+                
+                const itemsHtml = o.items.map(i => {
+                    const sup = userMap[i.supplierId];
+                    return `
+                    <div class="flex justify-between text-xs p-1 border-b border-white/5">
+                        <span class="text-gray-300">
+                            <span class="text-gold font-bold">${i.qty || 1}x</span> ${i.name} 
+                            <span class="text-[10px] text-gray-500">(${sup?.name || '?'})</span>
+                        </span>
+                        <span class="text-white">₹${((i.price) * (i.qty || 1)).toLocaleString()}</span>
+                    </div>`;
+                }).join('');
+
+                return `
+                    <div class="p-4 bg-white/5 rounded-xl border border-white/10 hover:border-gold/30 transition">
+                        <div class="flex justify-between mb-3 border-b border-white/10 pb-2">
+                            <span class="text-gold font-bold text-sm">Order #${o.id.slice(0,6)}</span>
+                            <span class="text-xs text-gray-400">${o.createdAt ? new Date(o.createdAt.seconds*1000).toLocaleDateString() : ''}</span>
+                        </div>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-[10px] text-gray-400 uppercase font-bold">Customer Info</p>
+                                <p class="text-sm font-bold text-white">${custName}</p>
+                                <p class="text-sm text-gold font-mono">${custPhone}</p>
+                                <p class="text-xs text-gray-500">${o.userEmail}</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] text-gray-400 uppercase font-bold">Items</p>
+                                <div class="space-y-1">${itemsHtml}</div>
+                                <p class="text-right font-bold mt-2 text-white">Total: ₹${o.totalAmount.toLocaleString()}</p>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-right">
+                             <span class="px-2 py-1 bg-white/10 text-xs rounded uppercase border border-white/20">${o.status}</span>
+                        </div>
+                    </div>`;
+            }).join('');
+        };
+
+        // --- ACTIONS ---
+        
+        // Create Supplier
+        const supForm = document.getElementById('createSupplierForm');
+        if(supForm) {
+            supForm.addEventListener('submit', async (e) => {
+                e.preventDefault(); 
+                const btn = e.target.querySelector('button'); 
+                btn.innerText = "Creating..."; btn.disabled = true;
+                try {
+                    const secApp = initializeApp(firebaseConfig, "Secondary");
+                    const cred = await createUserWithEmailAndPassword(getAuth(secApp), document.getElementById('supEmail').value, document.getElementById('supPass').value);
+                    await setDoc(doc(db, "users", cred.user.uid), {
+                        name: document.getElementById('supName').value,
+                        phone: document.getElementById('supPhone').value,
+                        email: document.getElementById('supEmail').value, 
+                        role: 'supplier', blocked: false, createdAt: new Date()
+                    });
+                    await signOut(getAuth(secApp));
+                    alert("Supplier Created!"); e.target.reset(); await loadUserMap(); filterUsers();
+                } catch (err) { alert(err.message); } 
+                finally { btn.innerText = "Create Account"; btn.disabled = false; }
+            });
+        }
+
+        // Global Actions
+        window.blk = async (uid, s) => { 
+            if(!confirm(s ? "Block User?" : "Unblock User?")) return;
+            await updateDoc(doc(db, "users", uid), { blocked: s }); 
+            await loadUserMap(); 
+        };
+
+        window.delP = async (id) => { 
+            if(confirm("Permanently delete this product from the store?")) { 
+                await deleteDoc(doc(db, "products", id)); 
+                loadProducts(); 
+            } 
+        };
+
+        // Logout
+        const logoutBtn = document.getElementById('logoutBtn');
+        if(logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                if(confirm("Log out?")) signOut(auth);
+            });
+        }
+    </script>
+</body>
+</html>

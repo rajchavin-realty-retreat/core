@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Rajchavin Nexus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { brand: '#3b82f6', bg: '#09090b', surface: '#18181b', border: '#27272a' }, fontFamily: { sans: ['Inter', 'sans-serif'] } } }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { background-color: #09090b; color: white; font-family: 'Inter', sans-serif; }
+        .glass-panel { background: rgba(24, 24, 27, 0.6); backdrop-filter: blur(20px); border: 1px solid #27272a; }
+        .login-bg { background-image: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.15) 0%, transparent 50%); }
+        
+        /* Session List Scrollbar */
+        #session-list::-webkit-scrollbar { width: 4px; }
+        #session-list::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 2px; }
+    </style>
+</head>
+<body class="h-screen flex items-center justify-center login-bg p-4">
+
+    <div class="glass-panel w-full max-w-sm p-8 rounded-2xl shadow-2xl relative overflow-hidden">
+        
+        <div class="text-center mb-8">
+            <div class="w-12 h-12 bg-brand rounded-xl flex items-center justify-center text-xl font-bold mx-auto mb-4 shadow-lg shadow-blue-500/20">R</div>
+            <h1 class="text-2xl font-bold tracking-tight">Welcome Back</h1>
+            <p class="text-xs text-gray-500 mt-2">Enter your credentials to access the nexus.</p>
+        </div>
+
+        <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+            <div class="space-y-1">
+                <label class="text-[10px] uppercase font-bold text-gray-500 tracking-wider ml-1">Email</label>
+                <div class="relative">
+                    <i class="ph-bold ph-envelope absolute left-3 top-3 text-gray-500"></i>
+                    <input type="email" id="email" class="w-full bg-black/40 border border-white/10 rounded-lg py-2.5 pl-9 pr-3 text-sm text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none transition" placeholder="name@company.com" required>
+                </div>
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] uppercase font-bold text-gray-500 tracking-wider ml-1">Password</label>
+                <div class="relative">
+                    <i class="ph-bold ph-lock-key absolute left-3 top-3 text-gray-500"></i>
+                    <input type="password" id="password" class="w-full bg-black/40 border border-white/10 rounded-lg py-2.5 pl-9 pr-3 text-sm text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none transition" placeholder="••••••••" required>
+                </div>
+            </div>
+            <button type="submit" id="btn-login" class="w-full bg-brand hover:bg-blue-600 text-white font-bold py-3 rounded-lg text-sm shadow-lg shadow-blue-900/20 transition flex items-center justify-center gap-2 group">
+                <span>Sign In</span>
+                <i class="ph-bold ph-arrow-right group-hover:translate-x-1 transition"></i>
+            </button>
+        </form>
+
+        <div id="session-manager" class="hidden absolute inset-0 bg-[#09090b] z-20 flex flex-col p-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div class="text-center mb-4">
+                <div class="w-10 h-10 bg-orange-500/10 text-orange-500 rounded-full flex items-center justify-center mb-2 mx-auto text-xl"><i class="ph-bold ph-devices"></i></div>
+                <h3 class="font-bold text-white text-sm">Device Limit Reached</h3>
+                <p class="text-[10px] text-gray-400 mt-1">Your plan allows <span id="limit-display" class="text-white font-bold">0</span> active sessions. Please log out a device to continue.</p>
+            </div>
+
+            <div id="session-list" class="flex-1 overflow-y-auto space-y-2 mb-4 pr-1 max-h-[200px]">
+                </div>
+
+            <div class="space-y-2 mt-auto">
+                <button id="btn-continue-login" onclick="finalizeLogin()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 rounded-lg text-xs hidden shadow-lg animate-pulse transition">
+                    <i class="ph-bold ph-check-circle"></i> Slot Available - Login Now
+                </button>
+                <button onclick="cancelLogin()" class="w-full bg-white/5 hover:bg-white/10 text-gray-400 font-bold py-2.5 rounded-lg text-xs transition">Cancel</button>
+            </div>
+        </div>
+
+        <div class="mt-8 text-center border-t border-white/5 pt-4">
+            <p class="text-[10px] text-gray-600">Restricted Access. Authorized Personnel Only.</p>
+        </div>
+
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAd8kVZEt919GfWvhhstgebLWxgwaunT5o",
+            authDomain: "rajchavin-raas.firebaseapp.com",
+            projectId: "rajchavin-raas",
+            storageBucket: "rajchavin-raas.firebasestorage.app",
+            messagingSenderId: "14499629170",
+            appId: "1:14499629170:web:1cd21aa2434df98afcdaeb"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        let pendingUser = null;
+        let activeSessionCount = 0;
+        let maxAllowed = 0;
+
+        window.handleLogin = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-login');
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-lg"></i>';
+            btn.disabled = true;
+
+            try {
+                // 1. Super Admin Hardcode
+                if(email === 'admin@rajchavin.com' && password === 'admin123') {
+                    const adminUser = { name: 'Super Admin', role: 'admin', id: 'admin_master', limits: { maxLogins: 999 }, sessionId: 'master' };
+                    localStorage.setItem('rajchavin_user', JSON.stringify(adminUser));
+                    window.location.href = 'admin-portal.html';
+                    return;
+                }
+
+                // 2. Auth Check
+                const q = query(collection(db, "users"), where("email", "==", email), where("password", "==", password));
+                const snap = await getDocs(q);
+
+                if (snap.empty) throw new Error("Invalid Email or Password");
+
+                const userDoc = snap.docs[0];
+                const userData = { id: userDoc.id, ...userDoc.data() };
+                pendingUser = userData; 
+
+                // 3. Expiry Check
+                if (userData.subscriptionEnd) {
+                    const now = new Date();
+                    const expiry = new Date(userData.subscriptionEnd.seconds * 1000);
+                    if (now > expiry) throw new Error("Subscription Plan Expired. Contact Admin.");
+                }
+
+                // 4. Session Count Check
+                maxAllowed = userData.role === 'admin' ? 99 : (userData.limits?.maxLogins || 1);
+                
+                const sessionQ = query(collection(db, "sessions"), where("userId", "==", userData.id));
+                const sessionSnap = await getDocs(sessionQ);
+                activeSessionCount = sessionSnap.size;
+                
+                // If Full -> Show Manager
+                if(activeSessionCount >= maxAllowed) {
+                    showSessionManager(sessionSnap.docs, maxAllowed);
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    return; 
+                }
+
+                await createSessionAndRedirect(userData);
+
+            } catch (error) {
+                console.error(error);
+                alert(error.message);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        };
+
+        function showSessionManager(sessionDocs, limit) {
+            document.getElementById('limit-display').innerText = limit;
+            const list = document.getElementById('session-list');
+            list.innerHTML = '';
+
+            sessionDocs.forEach(doc => {
+                const data = doc.data();
+                const deviceName = parseUserAgent(data.userAgent);
+                const time = data.loginTime?.toDate ? data.loginTime.toDate().toLocaleDateString() + ' ' + data.loginTime.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Just now';
+                const isCurrent = data.userAgent === navigator.userAgent; // Basic check
+
+                const el = document.createElement('div');
+                el.className = "flex justify-between items-center bg-white/5 p-3 rounded-lg border border-white/5 hover:border-brand/30 transition";
+                el.id = `sess-${doc.id}`;
+                el.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <i class="${getDeviceIcon(deviceName)} text-brand"></i>
+                            <span class="text-xs font-bold text-gray-200">${deviceName} ${isCurrent ? '(This)' : ''}</span>
+                        </div>
+                        <p class="text-[9px] text-gray-500 mt-0.5">Active since: ${time}</p>
+                    </div>
+                    <button onclick="terminateSession('${doc.id}')" class="text-[10px] text-red-400 bg-red-500/10 hover:bg-red-500 hover:text-white px-3 py-1.5 rounded transition font-bold">Logout</button>
+                `;
+                list.appendChild(el);
+            });
+
+            document.getElementById('session-manager').classList.remove('hidden');
+            checkLoginReady();
+        }
+
+        window.terminateSession = async (sessionId) => {
+            if(!confirm("Log out this device?")) return;
+            const btn = document.querySelector(`#sess-${sessionId} button`);
+            btn.innerHTML = "<i class='ph-bold ph-spinner animate-spin'></i>";
+            
+            try {
+                await deleteDoc(doc(db, "sessions", sessionId));
+                document.getElementById(`sess-${sessionId}`).remove();
+                activeSessionCount--;
+                checkLoginReady();
+            } catch(e) {
+                alert("Failed to logout device: " + e.message);
+                btn.innerHTML = "Retry";
+            }
+        };
+
+        function checkLoginReady() {
+            if(activeSessionCount < maxAllowed) {
+                document.getElementById('btn-continue-login').classList.remove('hidden');
+            } else {
+                document.getElementById('btn-continue-login').classList.add('hidden');
+            }
+        }
+
+        window.finalizeLogin = async () => {
+            if(pendingUser) await createSessionAndRedirect(pendingUser);
+        };
+
+        async function createSessionAndRedirect(userData) {
+            const sessionRef = await addDoc(collection(db, "sessions"), {
+                userId: userData.id,
+                email: userData.email,
+                loginTime: new Date(),
+                userAgent: navigator.userAgent
+            });
+
+            userData.sessionId = sessionRef.id;
+            localStorage.setItem('rajchavin_user', JSON.stringify(userData));
+
+            // ROUTER LOGIC
+            if (userData.role === 'admin') {
+                window.location.href = 'admin-portal.html';
+            } else {
+                const feats = userData.limits?.features || [];
+                if (feats.includes('Interactive Layout') || feats.includes('Master Plan')) {
+                    window.location.href = 'dev-interactive.html';
+                } else if (feats.includes('Grid View')) {
+                    window.location.href = 'dev-grid.html';
+                } else {
+                    window.location.href = 'dev-static.html';
+                }
+            }
+        }
+
+        // Helper: UA Parser
+        function parseUserAgent(ua) {
+            if (!ua) return "Unknown Device";
+            let os = "Device";
+            if (ua.includes("Windows")) os = "Windows PC";
+            else if (ua.includes("Mac")) os = "Mac";
+            else if (ua.includes("Android")) os = "Android";
+            else if (ua.includes("iOS") || ua.includes("iPhone")) os = "iPhone";
+            
+            let browser = "Browser";
+            if (ua.includes("Chrome")) browser = "Chrome";
+            else if (ua.includes("Firefox")) browser = "Firefox";
+            else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Safari";
+            else if (ua.includes("Edg")) browser = "Edge";
+
+            return `${os} - ${browser}`;
+        }
+
+        function getDeviceIcon(name) {
+            if (name.includes("Windows")) return "ph-bold ph-desktop";
+            if (name.includes("Mac")) return "ph-bold ph-laptop";
+            if (name.includes("iPhone") || name.includes("Android")) return "ph-bold ph-device-mobile";
+            return "ph-bold ph-globe";
+        }
+
+        window.cancelLogin = () => {
+            document.getElementById('session-manager').classList.add('hidden');
+            pendingUser = null;
+        };
+    </script>
+</body>
+</html>

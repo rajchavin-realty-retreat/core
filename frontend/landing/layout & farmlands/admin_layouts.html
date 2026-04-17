@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rajchavin | Layout Architect</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { fontFamily: { sans: ['Inter'], mono: ['JetBrains Mono'] }, extend: { colors: { bg: '#09090b', surface: '#18181b', border: '#27272a', brand: '#3b82f6' } } } }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; } ::-webkit-scrollbar-track { background: #18181b; } ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+        .glass-panel { background: rgba(24, 24, 27, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
+        .glass-sidebar { background: #18181b; border-right: 1px solid #27272a; }
+        .map-poly { stroke-width: 1; transition: 0.2s; cursor: pointer; stroke: rgba(255,255,255,0.3); } 
+        .map-poly:hover { stroke: white; stroke-width: 2; filter: brightness(1.2); }
+        .map-poly.active-selected { stroke: #eab308; stroke-width: 3; stroke-dasharray: 4; fill: rgba(234, 179, 8, 0.2); }
+        .type-plot { fill: #334155; } .type-road { fill: #27272a; stroke: #3f3f46; } .type-park { fill: #166534; opacity: 0.8; } .type-infra { fill: #3b82f6; opacity: 0.5; }
+        .status-sold { fill: #10b981 !important; } .status-booked { fill: #eab308 !important; }
+        .cursor-crosshair { cursor: crosshair; }
+        /* FIXED: Removed flex centering to prevent clipping, used block display */
+        #draw-area, #view-map-wrapper { overflow: auto; position: relative; touch-action: none; background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px; display: block; }
+        #canvas-container, #view-map-content { transform-origin: 0 0; transition: transform 0.05s linear; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .drawing-poly { fill: rgba(6, 182, 212, 0.4); stroke: #06b6d4; stroke-width: 2; vector-effect: non-scaling-stroke; }
+        .proj-line { stroke: #eab308; stroke-width: 2; stroke-dasharray: 5; pointer-events: none; }
+        .start-point { r: 6; fill: #eab308; cursor: pointer; stroke: black; stroke-width: 2; transition: r 0.2s; }
+        .start-point:hover { r: 9; }
+        .drawing-point { r: 3; fill: white; }
+        .rapid-popup { position: fixed; z-index: 100; background: rgba(15, 15, 18, 0.95); border: 1px solid #3b82f6; padding: 16px; border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 10px; width: 240px; backdrop-filter: blur(10px); }
+        .rapid-popup input, .rapid-popup select { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 8px 10px; border-radius: 6px; outline: none; font-family: 'JetBrains Mono'; font-size: 12px; width: 100%; }
+        .rapid-popup button { background: #3b82f6; color: white; border: none; padding: 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; text-transform: uppercase; }
+        .ss-container { position: relative; width: 100%; }
+        .ss-input { width: 100%; background: #18181b; border: 1px solid #27272a; padding: 8px 12px; border-radius: 8px; font-size: 12px; outline: none; color: white; cursor: text; transition: all 0.2s; }
+        .ss-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+        .ss-list { position: absolute; top: 110%; left: 0; width: 100%; max-height: 300px; overflow-y: auto; background: #18181b; border: 1px solid #3f3f46; border-radius: 8px; z-index: 999; display: none; margin-top: 4px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .ss-list.open { display: block; }
+        .ss-option { padding: 10px 12px; font-size: 12px; cursor: pointer; color: #a1a1aa; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .ss-option:hover { background: #3b82f6; color: white; }
+        .milestone-check { width: 16px; height: 16px; border: 2px solid #52525b; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
+        .milestone-check.checked { background: #10b981; border-color: #10b981; }
+        .milestone-check.checked::after { content: '✓'; font-size: 10px; color: white; font-weight: bold; }
+    </style>
+</head>
+<body class="bg-bg text-gray-200 h-screen w-full flex overflow-hidden">
+
+    <div id="modal-milestones" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 hidden backdrop-blur-sm">
+        <div class="glass-panel w-[400px] p-6 rounded-xl border border-white/10 flex flex-col max-h-[80vh]">
+            <div class="flex justify-between items-center mb-4"><h2 class="text-lg font-bold">Project Milestones</h2><button onclick="document.getElementById('modal-milestones').classList.add('hidden')" class="text-gray-500 hover:text-white"><i class="ph-bold ph-x"></i></button></div>
+            <div class="flex gap-2 mb-4"><input type="text" id="ms-input" placeholder="New Milestone..." class="flex-1 bg-surface border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-brand"><button onclick="addMilestone()" class="bg-brand text-white px-3 rounded-lg font-bold text-sm">+</button></div>
+            <div class="w-full bg-white/5 h-1.5 rounded-full mb-4 overflow-hidden"><div id="ms-progress" class="bg-green-500 h-full w-0 transition-all duration-500"></div></div>
+            <div id="ms-list" class="flex-1 overflow-y-auto space-y-2 pr-2"></div>
+        </div>
+    </div>
+
+    <div id="modal-new-layout" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 hidden backdrop-blur-sm">
+        <div class="glass-panel w-96 p-6 rounded-xl border border-white/10">
+            <h2 class="text-lg font-bold mb-4">Initialize New Layout</h2>
+            <div class="space-y-4">
+                <div><label class="text-[10px] font-bold text-gray-500 uppercase">Layout Name</label><input type="text" id="nl-name" class="w-full bg-[#18181b] border border-[#27272a] rounded-lg p-2.5 text-sm outline-none focus:border-brand"></div>
+                <div><label class="text-[10px] font-bold text-gray-500 uppercase">Location</label><input type="text" id="nl-location" placeholder="e.g. Bangalore" class="w-full bg-[#18181b] border border-[#27272a] rounded-lg p-2.5 text-sm outline-none focus:border-brand"></div>
+                <div><label class="text-[10px] font-bold text-gray-500 uppercase">Total Size (Acres)</label><input type="number" id="nl-size" class="w-full bg-[#18181b] border border-[#27272a] rounded-lg p-2.5 text-sm outline-none focus:border-brand"></div>
+                <div><label class="text-[10px] font-bold text-gray-500 uppercase">Assign Developer</label><select id="nl-dev" class="hidden-select"></select></div>
+                <div class="flex gap-2 pt-2"><button onclick="document.getElementById('modal-new-layout').classList.add('hidden')" class="flex-1 bg-white/5 hover:bg-white/10 py-2 rounded-lg text-sm transition">Cancel</button><button onclick="confirmCreateLayout()" class="flex-1 bg-brand hover:bg-blue-600 text-white font-bold py-2 rounded-lg text-sm transition">Create</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-layout-settings" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 hidden backdrop-blur-sm">
+        <div class="glass-panel w-[500px] p-6 rounded-xl border border-white/10">
+            <div class="flex justify-between items-center mb-6"><h2 class="text-lg font-bold">Layout Settings</h2><button onclick="closeLayoutSettings()" class="text-gray-500 hover:text-white"><i class="ph-bold ph-x"></i></button></div>
+            <div class="mb-6 p-3 bg-white/5 rounded-lg border border-white/5 grid grid-cols-2 gap-3">
+                <div><label class="text-[10px] font-bold text-gray-500 uppercase">Location</label><input type="text" id="set-loc" onchange="updateLayoutMeta()" class="w-full bg-transparent border-b border-white/10 py-1 text-sm outline-none"></div>
+                <div><label class="text-[10px] font-bold text-gray-500 uppercase">Size (Acres)</label><input type="text" id="set-size" onchange="updateLayoutMeta()" class="w-full bg-transparent border-b border-white/10 py-1 text-sm outline-none"></div>
+            </div>
+            <div class="mb-6">
+                <label class="text-[10px] font-bold text-gray-500 uppercase block mb-2">Project Documents</label>
+                <div class="bg-black/30 p-3 rounded-lg border border-white/5 mb-3">
+                    <div class="flex gap-2 items-center"><input type="file" id="ld-file" class="hidden" onchange="handleDocUpload(this, 'layout')"><button onclick="document.getElementById('ld-file').click()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 px-3 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2"><i class="ph-bold ph-upload-simple"></i> Select File</button></div>
+                </div>
+                <div id="layout-doc-list" class="space-y-2 max-h-48 overflow-y-auto pr-2"></div>
+            </div>
+            <div class="pt-6 border-t border-white/10"><button onclick="deleteCurrentLayout()" class="w-full border border-red-500/30 text-red-500 hover:bg-red-500/10 font-bold py-2.5 rounded-lg text-sm transition"><i class="ph-bold ph-trash"></i> Delete This Layout</button></div>
+        </div>
+    </div>
+
+    <div id="rapid-popup" class="rapid-popup hidden">
+        <div class="flex justify-between items-center text-[10px] font-bold text-gray-400 mb-1 px-1"><span>PLOT DETAILS</span><span class="text-brand">ENTER ↵</span></div>
+        <input type="text" id="rapid-id" placeholder="ID (e.g. A-101)">
+        <div id="rapid-details">
+            <input type="number" id="rapid-price" placeholder="Price (₹)">
+            <input type="number" id="rapid-size" placeholder="Size (Sqft)">
+            <select id="rapid-facing" class="bg-black/30 mt-2"><option value="">Facing...</option><option value="North">North</option><option value="South">South</option><option value="East">East</option><option value="West">West</option></select>
+        </div>
+        <div class="grid grid-cols-2 gap-2 mt-2"><button onclick="clearPoints()" class="bg-white/10 text-gray-400">Cancel</button><button onclick="confirmRapidSave()" class="bg-brand hover:bg-blue-600 text-white shadow-lg">Save</button></div>
+    </div>
+
+    <aside class="w-64 glass-sidebar flex flex-col justify-between" id="sidebar">
+        <div>
+            <div class="h-16 flex items-center px-6 border-b border-border gap-3"><div class="w-6 h-6 bg-brand rounded flex items-center justify-center text-white font-bold text-xs">R</div><span class="font-bold text-sm tracking-wide">RAJCHAVIN <span class="text-gray-600 font-normal">OS</span></span></div>
+            <nav class="p-4 space-y-1">
+                <a href="admin_users.html" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition"><i class="ph-duotone ph-users text-lg"></i> User Factory</a>
+                <a href="admin_layouts.html" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm bg-brand text-white transition"><i class="ph-duotone ph-map-trifold text-lg"></i> Layout Architect</a>
+                <a href="admin_assign.html" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition"><i class="ph-duotone ph-git-merge text-lg"></i> Assignment Nexus</a>
+            </nav>
+        </div>
+    </aside>
+
+    <main class="flex-1 bg-bg relative overflow-hidden flex flex-col">
+        <header class="h-16 border-b border-border flex justify-between items-center px-6 bg-bg/80 backdrop-blur z-20">
+            <div class="flex items-center gap-2 text-sm text-gray-500"><i class="ph-bold ph-house"></i><span>/</span><span class="text-white font-medium">Layout Architect</span></div>
+            <div class="flex items-center gap-3">
+                 <div class="w-56"><select id="layout-filter-dev" onchange="updateLayoutListByDev()" class="hidden-select"></select></div>
+                <div class="h-5 w-px bg-white/10"></div>
+                <div class="w-56"><select id="active-layout-select" onchange="switchLayout(this.value)" class="hidden-select"></select></div>
+                <button onclick="openNewLayoutModal()" class="ml-2 bg-brand hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-lg shadow-brand/20 transition"><i class="ph-bold ph-plus"></i> New Layout</button>
+            </div>
+        </header>
+
+        <div class="flex-1 p-6 flex flex-col overflow-hidden relative">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex bg-surface p-1 rounded-lg border border-border shadow-lg">
+                    <button onclick="toggleLayoutMode('view')" id="mode-view" class="px-5 py-1.5 text-xs font-bold rounded bg-brand text-white transition-all">View Mode</button>
+                    <button onclick="toggleLayoutMode('edit')" id="mode-edit" class="px-5 py-1.5 text-xs font-bold rounded text-gray-400 hover:text-white transition-all">Drawing Mode</button>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="openMilestonesModal()" class="bg-surface border border-border text-gray-400 hover:text-white hover:border-brand p-2 rounded-lg shadow-lg transition" title="Milestones"><i class="ph-bold ph-flag-banner text-lg"></i></button>
+                    <button onclick="openLayoutSettings()" class="bg-surface border border-border text-gray-400 hover:text-white hover:border-brand p-2 rounded-lg shadow-lg transition" title="Settings"><i class="ph-bold ph-gear text-lg"></i></button>
+                </div>
+            </div>
+
+            <div id="layout-view-panel" class="flex-1 flex gap-6 min-h-0 relative">
+                <div class="flex-1 glass-panel rounded-xl flex flex-col bg-[#050505] overflow-hidden relative shadow-2xl border border-white/5" id="view-map-wrapper" onwheel="handleWheel(event)">
+                    <div id="view-map-content" class="absolute top-0 left-0 origin-top-left">
+                        <img id="view-bg-img" src="" class="absolute top-0 left-0 hidden pointer-events-none opacity-50">
+                        <div id="view-map-container" class="absolute top-0 left-0 w-full h-full"></div>
+                    </div>
+                </div>
+                <div class="w-80 glass-panel rounded-xl p-5 flex flex-col border-l border-border bg-surface shadow-2xl overflow-y-auto">
+                    <div id="inspector-content" class="hidden flex-col h-full">
+                        <div class="mb-6 flex justify-between items-center">
+                            <span class="text-[10px] font-mono text-brand bg-brand/10 px-2 py-1 rounded border border-brand/20">SELECTED</span>
+                            <button onclick="deleteElement()" class="text-red-400 hover:text-red-500 bg-red-500/10 p-1.5 rounded transition"><i class="ph-bold ph-trash"></i></button>
+                        </div>
+                        <div id="insp-buyable" class="space-y-4 flex-1">
+                            <div class="grid grid-cols-2 gap-2">
+                                <div><label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Plot ID</label><input type="text" id="insp-id" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm font-bold text-white outline-none focus:border-brand"></div>
+                                <div><label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Size (Sqft)</label><input type="number" id="insp-size" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-blue-400 font-mono outline-none focus:border-blue-500"></div>
+                            </div>
+                            <div><label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Price (₹)</label><input type="number" id="insp-price" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-green-400 font-mono outline-none focus:border-green-500"></div>
+                            <div><label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Facing</label><select id="insp-facing" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none"><option value="">Select...</option><option value="North">North</option><option value="South">South</option><option value="East">East</option><option value="West">West</option></select></div>
+                            <div><label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Description</label><textarea id="insp-desc" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-300 outline-none h-20 resize-none"></textarea></div>
+                            <div class="border-t border-white/10 pt-4">
+                                <label class="text-[10px] uppercase font-bold text-gray-500 mb-2 block">Plot Documents (Upload)</label>
+                                <div class="flex gap-2 mb-2"><input type="file" id="p-doc-file" class="hidden" onchange="window.handleDocUpload(this, 'plot')"><button onclick="document.getElementById('p-doc-file').click()" class="w-full bg-white/5 border border-white/10 text-gray-300 px-2 py-1.5 rounded text-xs font-bold hover:bg-white/10"><i class="ph-bold ph-upload-simple"></i> Upload</button></div>
+                                <div id="plot-doc-list" class="space-y-1"></div>
+                            </div>
+                            <div class="pt-4 border-t border-white/10">
+                                <button onclick="saveInspectorChanges()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 rounded-lg text-sm mb-4 shadow-lg shadow-green-900/20 transition">Save Changes</button>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button onclick="updateStatus('open')" class="py-2 bg-gray-700/30 text-gray-400 border border-gray-600 rounded text-[10px] font-bold hover:bg-gray-700/50">OPEN</button>
+                                    <button onclick="updateStatus('booked')" class="py-2 bg-amber-500/10 text-amber-500 border border-amber-500/30 rounded text-[10px] font-bold hover:bg-amber-500/20">BOOK</button>
+                                    <button onclick="updateStatus('sold')" class="py-2 bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 rounded text-[10px] font-bold hover:bg-emerald-500/20">SOLD</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="insp-nonbuyable" class="hidden flex-1 text-center opacity-50 flex flex-col items-center justify-center gap-2"><i class="ph-duotone ph-cone text-5xl mb-2 text-gray-600"></i><p class="text-xs font-mono uppercase">Infrastructure<br>Element</p></div>
+                    </div>
+                    <div id="inspector-empty" class="flex-1 flex flex-col gap-3 items-center justify-center text-center opacity-30"><i class="ph-duotone ph-cursor-click text-4xl"></i><p class="text-xs uppercase font-bold tracking-wide">Select an element<br>to edit properties</p></div>
+                </div>
+            </div>
+
+            <div id="layout-edit-panel" class="flex-1 flex gap-6 min-h-0 hidden relative">
+                <div class="flex-1 relative bg-[#0a0a0a] overflow-auto cursor-crosshair rounded-xl border border-dashed border-white/10 select-none shadow-inner" id="draw-area" onwheel="handleWheel(event)">
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none" id="draw-placeholder"><div class="text-center opacity-40"><i class="ph-duotone ph-image text-4xl mb-2"></i><p class="text-xs uppercase font-bold">Upload Blueprint First</p></div></div>
+                    <div id="canvas-container" class="relative shadow-2xl origin-top-left">
+                        <img id="blueprint-img" src="" class="max-w-none opacity-50 pointer-events-none hidden absolute top-0 left-0">
+                        <svg id="draw-layer" class="absolute inset-0 w-full h-full" viewBox="0 0 2000 2000" onmousedown="onMouseDown(evt)" onmousemove="onMouseMove(evt)" onmouseup="onMouseUp(evt)">
+                            <g id="editor-ghost-layer"></g><rect id="tool-rect" x="0" y="0" width="0" height="0" class="drawing-poly hidden" /><line id="tool-proj" x1="0" y1="0" x2="0" y2="0" class="proj-line hidden" /><polyline id="tool-poly-line" points="" class="drawing-poly hidden" /><g id="tool-points"></g>
+                        </svg>
+                    </div>
+                </div>
+                <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10 bg-surface/80 p-1.5 rounded-xl border border-white/10 backdrop-blur shadow-2xl">
+                    <button onclick="changeZoom(-0.1)" class="p-2 hover:bg-white/10 rounded-lg text-gray-300 hover:text-white transition"><i class="ph-bold ph-minus"></i></button>
+                    <button onclick="resetZoom()" class="px-3 py-1.5 text-[10px] font-bold text-gray-400 hover:text-white transition">RESET</button>
+                    <button onclick="changeZoom(0.1)" class="p-2 hover:bg-white/10 rounded-lg text-gray-300 hover:text-white transition"><i class="ph-bold ph-plus"></i></button>
+                </div>
+                <div class="w-72 glass-panel p-6 flex flex-col border-l border-border bg-surface shadow-2xl">
+                    <div class="mb-6"><label class="text-[10px] font-bold text-gray-500 uppercase mb-2 block">1. Background Map</label><div class="border-2 border-dashed border-gray-700 rounded-xl h-24 flex flex-col items-center justify-center text-gray-500 hover:border-brand hover:text-brand hover:bg-brand/5 cursor-pointer transition-all duration-300 group" onclick="document.getElementById('file-upload').click()"><i class="ph-bold ph-upload-simple text-2xl mb-2 group-hover:scale-110 transition-transform"></i><span class="text-[10px] font-bold">UPLOAD IMAGE</span></div><input type="file" id="file-upload" class="hidden" onchange="window.loadImage(event)"></div>
+                    <div class="mb-6"><label class="text-[10px] font-bold text-gray-500 uppercase mb-2 block">2. Draw Type</label><div class="grid grid-cols-2 gap-2 bg-black/40 p-1 rounded-lg border border-white/5"><button onclick="setDrawType('plot')" class="py-2 text-[10px] font-bold rounded bg-brand text-white shadow-lg flex-1 transition" id="btn-type-plot">PLOT</button><button onclick="setDrawType('road')" class="py-2 text-[10px] font-bold rounded text-gray-500 hover:text-white transition flex-1" id="btn-type-road">ROAD</button><button onclick="setDrawType('park')" class="py-2 text-[10px] font-bold rounded text-gray-500 hover:text-white transition flex-1" id="btn-type-park">PARK</button><button onclick="setDrawType('infra')" class="py-2 text-[10px] font-bold rounded text-gray-500 hover:text-white transition flex-1" id="btn-type-infra">INFRA</button></div></div>
+                    <div class="mt-auto pt-4 border-t border-white/10"><label class="text-[10px] font-bold text-gray-500 uppercase mb-2 block">3. Drawing Tool</label><div class="grid grid-cols-3 gap-2 mb-4"><button onclick="setTool('box')" id="btn-tool-box" class="h-9 w-full flex items-center justify-center text-[10px] font-bold rounded bg-brand text-white shadow-lg border border-white/10 transition"><i class="ph-bold ph-bounding-box text-lg"></i></button><button onclick="setTool('pen')" id="btn-tool-pen" class="h-9 w-full flex items-center justify-center text-[10px] font-bold rounded text-gray-500 border border-white/10 hover:bg-white/5 transition"><i class="ph-bold ph-pen-nib text-lg"></i></button><button onclick="setTool('free')" id="btn-tool-free" class="h-9 w-full flex items-center justify-center text-[10px] font-bold rounded text-gray-500 border border-white/10 hover:bg-white/5 transition"><i class="ph-bold ph-scribble-loop text-lg"></i></button></div>
+                    <button id="btn-finish-pen" onclick="closeShape(null)" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded-lg text-xs shadow-lg transition mb-2 hidden"><i class="ph-bold ph-check"></i> Finish Shape</button>
+                    <button onclick="clearPoints()" class="w-full bg-transparent border border-white/10 text-gray-400 font-bold py-2.5 rounded-lg text-xs hover:bg-white/5 transition">Clear / Reset</button></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDHHQXki7JAzDsnsKH6LoLNRYlySfnxW7Y",
+            authDomain: "rajchavin-live.firebaseapp.com",
+            projectId: "rajchavin-live",
+            storageBucket: "rajchavin-live.firebasestorage.app",
+            messagingSenderId: "626552794688",
+            appId: "1:626552794688:web:92988d178bde6c8e6439a5"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.appState = {
+            users: [], layouts: [], currentLayoutId: null, drawType: 'plot', 
+            localBlueprints: {}, selectedElementId: null, tempDocs: [],
+            activeTool: 'box', isDrawing: false, points: [], startPt: null, tempBox: null, lastId: 100, lastPrice: '',
+            zoom: 1.0, currentMapWidth: 2000, currentMapHeight: 2000,
+            panX: 0, panY: 0
+        };
+
+        window.createSearchableSelect = function(id, placeholder) {
+            const select = document.getElementById(id);
+            if(!select || select.nextElementSibling?.classList.contains('ss-container')) return; 
+            select.style.display = 'none'; 
+            const wrapper = document.createElement('div'); wrapper.className = 'ss-container';
+            const input = document.createElement('input'); input.type = 'text'; input.className = 'ss-input'; input.placeholder = placeholder;
+            const list = document.createElement('div'); list.className = 'ss-list';
+            const populate = () => {
+                list.innerHTML = '';
+                let hasOptions = false;
+                Array.from(select.options).forEach(opt => {
+                    if(opt.value === "" && opt.innerText.includes("Select")) return;
+                    hasOptions = true;
+                    const item = document.createElement('div');
+                    item.className = 'ss-option';
+                    item.innerText = opt.innerText;
+                    item.onmousedown = (e) => { e.preventDefault(); input.value = opt.innerText; select.value = opt.value; select.dispatchEvent(new Event('change')); list.classList.remove('open'); };
+                    list.appendChild(item);
+                });
+                if(!hasOptions) list.innerHTML = '<div class="p-3 text-[10px] text-gray-500 italic">No options found</div>';
+            };
+            input.onfocus = () => { populate(); list.classList.add('open'); };
+            input.onblur = () => setTimeout(() => list.classList.remove('open'), 200);
+            input.onkeyup = (e) => { const term = e.target.value.toLowerCase(); Array.from(list.children).forEach(item => { item.style.display = item.innerText.toLowerCase().includes(term) ? 'block' : 'none'; }); };
+            wrapper.appendChild(input); wrapper.appendChild(list); select.parentNode.insertBefore(wrapper, select.nextSibling);
+            const observer = new MutationObserver(() => { input.value = ''; populate(); });
+            observer.observe(select, {childList: true});
+        }
+
+        window.initSearchables = function() {
+            window.createSearchableSelect('nl-dev', 'Search Developer...');
+            window.createSearchableSelect('layout-filter-dev', 'Filter Developer...'); 
+            window.createSearchableSelect('active-layout-select', 'Search Layout...');
+        }
+
+        window.updateCanvasDimensions = (w, h) => {
+            window.appState.currentMapWidth = w;
+            window.appState.currentMapHeight = h;
+            const editCont = document.getElementById('canvas-container');
+            const viewCont = document.getElementById('view-map-content');
+            const svg = document.getElementById('draw-layer');
+            const viewSvgContainer = document.getElementById('view-map-container');
+            
+            editCont.style.width = `${w}px`; editCont.style.height = `${h}px`;
+            viewCont.style.width = `${w}px`; viewCont.style.height = `${h}px`;
+            svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+        };
+
+        // FIXED: Added missing loadImage function
+        window.loadImage = (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!window.appState.currentLayoutId) {
+                alert("Please select or create a layout first.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const result = e.target.result;
+                const img = document.getElementById('blueprint-img');
+                img.src = result;
+                img.onload = async () => {
+                    const width = img.naturalWidth;
+                    const height = img.naturalHeight;
+                    window.updateCanvasDimensions(width, height);
+                    img.classList.remove('hidden');
+                    document.getElementById('view-bg-img').src = result;
+                    document.getElementById('view-bg-img').classList.remove('hidden');
+                    document.getElementById('draw-placeholder').classList.add('hidden');
+
+                    try {
+                         await updateDoc(doc(db, "layouts", window.appState.currentLayoutId), { 
+                            bgImage: result,
+                            width: width,
+                            height: height
+                        });
+                    } catch (err) {
+                        console.error("Error saving image:", err);
+                        alert("Failed to save blueprint.");
+                    }
+                };
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.renderMap = () => {
+            const l = window.appState.layouts.find(x => x.id === window.appState.currentLayoutId);
+            if(!l) return;
+            const w = window.appState.currentMapWidth;
+            const h = window.appState.currentMapHeight;
+            let svg = `<svg viewBox="0 0 ${w} ${h}" width="${w}px" height="${h}px" class="absolute top-0 left-0 w-full h-full">`;
+            if(l.elements) {
+                l.elements.forEach(e => {
+                    let cls = `map-poly type-${e.type}`;
+                    if(e.type==='plot') { if(e.status==='sold') cls+=' status-sold'; if(e.status==='booked') cls+=' status-booked'; }
+                    const isSel = e.id === window.appState.selectedElementId;
+                    const activeClass = isSel ? 'active-selected' : '';
+                    svg += `<polygon points="${e.points}" class="${cls} ${activeClass}" onclick="window.inspectElement('${e.id}')"/>`;
+                    if(e.type==='plot') { 
+                        const pts=e.points.split(' ').map(p=>p.split(',').map(Number)); 
+                        const cx=pts.reduce((a,b)=>a+b[0],0)/pts.length; const cy=pts.reduce((a,b)=>a+b[1],0)/pts.length;
+                        svg += `<text x="${cx}" y="${cy}" fill="white" font-size="10" text-anchor="middle" dominant-baseline="middle" pointer-events="none">${e.id}</text>`;
+                    }
+                });
+            }
+            document.getElementById('view-map-container').innerHTML = svg + `</svg>`;
+        };
+
+        window.renderGhostLayer = () => {
+            const l = window.appState.layouts.find(x => x.id === window.appState.currentLayoutId);
+            document.getElementById('editor-ghost-layer').innerHTML = l && l.elements ? l.elements.map(e => {
+                const isSel = e.id === window.appState.selectedElementId;
+                const style = isSel ? 'stroke:#eab308; stroke-width:3; stroke-dasharray:5;' : '';
+                return `<polygon points="${e.points}" fill="rgba(59, 130, 246, 0.2)" stroke="rgba(59, 130, 246, 0.5)" stroke-width="1" style="${style}" onclick="window.inspectElementEdit('${e.id}')" class="cursor-pointer"/>`;
+            }).join('') : '';
+        };
+
+        window.switchLayout = (id) => { 
+            window.appState.currentLayoutId = id; 
+            const l = window.appState.layouts.find(x => x.id === id);
+            const imgEdit = document.getElementById('blueprint-img');
+            const imgView = document.getElementById('view-bg-img');
+            const bgSrc = l?.bgImage || window.appState.localBlueprints[id];
+            
+            if (!l) {
+                imgEdit.classList.add('hidden'); imgView.classList.add('hidden');
+                document.getElementById('draw-placeholder').classList.remove('hidden');
+                document.getElementById('view-map-container').innerHTML = '';
+                document.getElementById('layout-doc-list').innerHTML = '';
+                return;
+            }
+
+            if(l.width && l.height) window.updateCanvasDimensions(l.width, l.height);
+            else window.updateCanvasDimensions(800, 500);
+
+            if (bgSrc) { 
+                imgEdit.src = bgSrc; imgEdit.classList.remove('hidden'); 
+                imgView.src = bgSrc; imgView.classList.remove('hidden');
+                document.getElementById('draw-placeholder').classList.add('hidden');
+                if(!l || !l.width) { const i = new Image(); i.src = bgSrc; i.onload = () => window.updateCanvasDimensions(i.naturalWidth, i.naturalHeight); }
+            } else {
+                imgEdit.classList.add('hidden'); imgView.classList.add('hidden');
+                document.getElementById('draw-placeholder').classList.remove('hidden');
+            }
+            window.renderMap(); window.renderGhostLayer(); window.renderLayoutDocs();
+        };
+
+        window.updateLayoutListByDev = () => {
+            const devId = document.getElementById('layout-filter-dev').value;
+            let filtered = window.appState.layouts;
+            if(devId) filtered = filtered.filter(l => l.devId === devId);
+            const layoutSelect = document.getElementById('active-layout-select');
+            layoutSelect.innerHTML = `<option value="">Select Layout</option>` + filtered.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+        };
+
+        window.changeZoom = (delta) => {
+            const newZoom = Math.max(0.1, Math.min(5.0, window.appState.zoom + delta));
+            window.appState.zoom = newZoom;
+            window.applyZoom();
+        };
+        window.resetZoom = () => { window.appState.zoom = 1.0; window.applyZoom(); };
+        window.applyZoom = () => {
+            const scale = window.appState.zoom;
+            document.getElementById('canvas-container').style.transform = `scale(${scale})`;
+            document.getElementById('view-map-content').style.transform = `scale(${scale})`;
+        };
+        window.handleWheel = (e) => {
+            if (e.ctrlKey || e.metaKey || document.getElementById('layout-edit-panel').classList.contains('hidden') === false) { 
+                e.preventDefault(); window.changeZoom(e.deltaY > 0 ? -0.1 : 0.1); 
+            }
+        };
+
+        window.getSvgPoint = (evt) => {
+            const svg = document.getElementById('draw-layer');
+            const pt = svg.createSVGPoint();
+            pt.x = evt.clientX; pt.y = evt.clientY;
+            return pt.matrixTransform(svg.getScreenCTM().inverse());
+        };
+
+        window.onMouseDown = (e) => {
+            if(document.getElementById('layout-edit-panel').classList.contains('hidden')) return;
+            window.appState.isDrawing = true;
+            const pt = window.getSvgPoint(e);
+            if(window.appState.activeTool === 'box') {
+                window.appState.startPt = pt;
+            } else if(window.appState.activeTool === 'free') {
+                window.appState.points = [pt];
+                window.renderPolyPoints();
+            } else if(window.appState.activeTool === 'pen') {
+                window.appState.points.push(pt);
+                window.renderPolyPoints();
+            }
+        };
+
+        window.onMouseMove = (e) => {
+            if(!window.appState.isDrawing && window.appState.activeTool !== 'pen') return;
+            const currPt = window.getSvgPoint(e);
+            if(window.appState.activeTool === 'box' && window.appState.isDrawing) {
+                const start = window.appState.startPt;
+                const x = Math.min(start.x, currPt.x);
+                const y = Math.min(start.y, currPt.y);
+                const w = Math.abs(start.x - currPt.x);
+                const h = Math.abs(start.y - currPt.y);
+                const box = document.getElementById('tool-rect');
+                box.setAttribute('x', x); box.setAttribute('y', y); box.setAttribute('width', w); box.setAttribute('height', h);
+                box.classList.remove('hidden');
+                window.appState.tempBox = {x, y, w, h};
+            } else if(window.appState.activeTool === 'free' && window.appState.isDrawing) {
+                const last = window.appState.points[window.appState.points.length-1];
+                if(Math.hypot(currPt.x-last.x, currPt.y-last.y) > 5) {
+                    window.appState.points.push(currPt);
+                    window.renderPolyPoints();
+                }
+            } else if(window.appState.activeTool === 'pen' && window.appState.points.length > 0) {
+                const lastPt = window.appState.points[window.appState.points.length-1];
+                const line = document.getElementById('tool-proj');
+                line.setAttribute('x1', lastPt.x); line.setAttribute('y1', lastPt.y);
+                line.setAttribute('x2', currPt.x); line.setAttribute('y2', currPt.y);
+                line.classList.remove('hidden');
+            }
+        };
+
+        window.onMouseUp = (e) => {
+            if(window.appState.activeTool === 'box') {
+                window.appState.isDrawing = false;
+                if(window.appState.tempBox) window.showRapidPopup(e.clientX, e.clientY);
+            } else if (window.appState.activeTool === 'free') {
+                window.appState.isDrawing = false;
+                window.renderPolyPoints();
+                window.showRapidPopup(e.clientX, e.clientY);
+            }
+        };
+
+        window.renderPolyPoints = () => {
+            const pts = window.appState.points;
+            const line = document.getElementById('tool-poly-line');
+            const group = document.getElementById('tool-points');
+            if(pts.length > 0) {
+                const ptsStr = pts.map(p => `${p.x},${p.y}`).join(' ');
+                line.setAttribute('points', ptsStr);
+                line.classList.remove('hidden');
+                if(window.appState.activeTool === 'pen') {
+                    group.innerHTML = pts.map((p, i) => {
+                        const cls = i===0 ? 'start-point' : 'drawing-point';
+                        const click = i===0 ? `onclick="window.closeShape(event)"` : '';
+                        return `<circle cx="${p.x}" cy="${p.y}" class="${cls}" ${click}/>`;
+                    }).join('');
+                }
+            } else {
+                line.classList.add('hidden');
+                group.innerHTML = '';
+            }
+        };
+
+        window.closeShape = (e) => { if(e) e.stopPropagation(); window.showRapidPopup(); };
+
+        window.showRapidPopup = (cx, cy) => {
+            const popup = document.getElementById('rapid-popup');
+            const type = window.appState.drawType;
+            const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+            
+            let nextId = "P-" + window.appState.lastId;
+            if(layout && layout.elements && layout.elements.length > 0) {
+                const lastEl = layout.elements[layout.elements.length-1];
+                if(lastEl.type === 'plot') {
+                    const num = parseInt(lastEl.id.replace(/\D/g, ''));
+                    if(!isNaN(num)) nextId = lastEl.id.replace(num, num+1);
+                }
+            }
+            document.getElementById('rapid-id').value = nextId;
+            
+            if(type !== 'plot') {
+                document.getElementById('rapid-details').classList.add('hidden');
+                if(type === 'road') document.getElementById('rapid-id').value = 'ROAD';
+                if(type === 'park') document.getElementById('rapid-id').value = 'PARK';
+            } else {
+                document.getElementById('rapid-details').classList.remove('hidden');
+            }
+
+            if(cx && cy) {
+                popup.style.left = cx + 'px'; popup.style.top = cy + 'px';
+            } else {
+                popup.style.left = '50%'; popup.style.top = '50%';
+                popup.style.transform = 'translate(-50%, -50%)';
+            }
+            popup.classList.remove('hidden');
+            setTimeout(() => document.getElementById('rapid-id').select(), 50);
+            
+            const handleEnter = (e) => { if(e.key === 'Enter') { window.confirmRapidSave(); document.removeEventListener('keydown', handleEnter); } };
+            document.addEventListener('keydown', handleEnter);
+        };
+
+        window.confirmRapidSave = async () => {
+            let ptsStr = "";
+            if(window.appState.activeTool === 'box' && window.appState.tempBox) {
+                const {x, y, w, h} = window.appState.tempBox;
+                if(w < 5 || h < 5) return;
+                ptsStr = `${x},${y} ${x+w},${y} ${x+w},${y+h} ${x},${y+h}`;
+            } else if (window.appState.points.length > 2) {
+                ptsStr = window.appState.points.map(p => `${p.x},${p.y}`).join(' ');
+            } else { return; }
+
+            const id = document.getElementById('rapid-id').value;
+            const price = document.getElementById('rapid-price').value;
+            const size = document.getElementById('rapid-size').value;
+            const facing = document.getElementById('rapid-facing').value;
+            
+            const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+            
+            if(window.appState.drawType === 'plot' && layout.elements && layout.elements.find(e => e.id === id)) {
+                return alert("Plot ID already exists!");
+            }
+
+            const num = parseInt(id.replace(/\D/g, ''));
+            if(!isNaN(num)) window.appState.lastId = num + 1;
+
+            const newEl = { id, type: window.appState.drawType, points: ptsStr, status: 'open', price, size, facing, docs: [] };
+            const updated = [...(layout.elements||[]), newEl];
+            
+            await updateDoc(doc(db, "layouts", window.appState.currentLayoutId), { elements: updated });
+            
+            document.getElementById('rapid-popup').classList.add('hidden');
+            window.clearPoints();
+            window.renderGhostLayer();
+        };
+
+        window.clearPoints = () => {
+            window.appState.tempBox = null;
+            window.appState.points = [];
+            window.appState.isDrawing = false;
+            window.appState.startPt = null;
+            document.getElementById('tool-rect').classList.add('hidden');
+            document.getElementById('tool-poly-line').classList.add('hidden');
+            document.getElementById('tool-points').innerHTML = '';
+            document.getElementById('tool-proj').classList.add('hidden');
+            document.getElementById('rapid-popup').classList.add('hidden');
+        };
+
+        window.handleDocUpload = (input, type) => {
+            const file = input.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = async () => {
+                const base64 = reader.result;
+                const docObj = { name: file.name, url: base64, date: new Date().toLocaleDateString() };
+                
+                if(type === 'layout') {
+                    const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+                    const newDocs = [...(layout.docs || []), docObj];
+                    await updateDoc(doc(db, "layouts", window.appState.currentLayoutId), { docs: newDocs });
+                    const layoutRefreshed = {...layout, docs: newDocs}; 
+                    const list = document.getElementById('layout-doc-list');
+                    list.innerHTML = layoutRefreshed.docs.map((d, i) => `
+                        <div class="flex justify-between items-center bg-white/5 p-2 rounded mb-1">
+                            <a href="${d.url}" download="${d.name}" class="text-xs text-blue-400 hover:underline truncate w-4/5">${d.name}</a>
+                            <button onclick="deleteLayoutDoc(${i})" class="text-red-400 hover:text-white"><i class="ph-bold ph-trash"></i></button>
+                        </div>`).join('');
+                } else {
+                    const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+                    const updated = layout.elements.map(e => {
+                        if(e.id === window.appState.selectedElementId) {
+                            e.docs = [...(e.docs || []), docObj];
+                            window.renderPlotDocs(e);
+                        }
+                        return e;
+                    });
+                    await updateDoc(doc(db, "layouts", window.appState.currentLayoutId), { elements: updated });
+                }
+            };
+            reader.readAsDataURL(file);
+        };
+        
+        window.renderLayoutDocs = () => {
+             const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+             if(!layout || !layout.docs) return document.getElementById('layout-doc-list').innerHTML = '';
+             document.getElementById('layout-doc-list').innerHTML = layout.docs.map((d, i) => `
+                <div class="flex justify-between items-center bg-white/5 p-2 rounded mb-1">
+                    <a href="${d.url}" download="${d.name}" class="text-xs text-blue-400 hover:underline truncate w-4/5">${d.name}</a>
+                    <button onclick="deleteLayoutDoc(${i})" class="text-red-400 hover:text-white"><i class="ph-bold ph-trash"></i></button>
+                </div>
+             `).join('');
+        };
+        window.deleteLayoutDoc = async (idx) => {
+            const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+            const newDocs = layout.docs.filter((_, i) => i !== idx);
+            await updateDoc(doc(db, "layouts", window.appState.currentLayoutId), { docs: newDocs });
+        };
+        window.renderPlotDocs = (element) => {
+            const list = document.getElementById('plot-doc-list');
+            if(!element.docs || element.docs.length === 0) return list.innerHTML = '<span class="text-[10px] text-gray-600 italic">No docs</span>';
+            list.innerHTML = element.docs.map((d, i) => `
+                <div class="flex justify-between items-center bg-white/5 px-2 py-1 rounded mb-1">
+                     <a href="${d.url}" download="${d.name}" class="text-[10px] text-blue-400 hover:underline truncate w-32">${d.name}</a>
+                     <button onclick="deletePlotDoc(${i})" class="text-red-400 hover:text-white text-[10px]"><i class="ph-bold ph-trash"></i></button>
+                </div>
+            `).join('');
+        };
+        window.deletePlotDoc = async (idx) => {
+             const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+             const updated = layout.elements.map(e => {
+                if(e.id === window.appState.selectedElementId) {
+                    e.docs = e.docs.filter((_, i) => i !== idx);
+                    window.renderPlotDocs(e);
+                }
+                return e;
+            });
+            await updateDoc(doc(db, "layouts", window.appState.currentLayoutId), { elements: updated });
+        };
+
+        window.openMilestonesModal = () => {
+            if(!window.appState.currentLayoutId) return alert("Select layout first");
+            document.getElementById('modal-milestones').classList.remove('hidden');
+            window.renderMilestones();
+        };
+        window.renderMilestones = () => {
+             const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+             if(!layout) return;
+             const ms = layout.milestones || [];
+             const completed = ms.filter(m => m.done).length;
+             const pct = ms.length ? (completed/ms.length)*100 : 0;
+             document.getElementById('ms-progress').style.width = `${pct}%`;
+             document.getElementById('ms-list').innerHTML = ms.map((m, i) => `
+                <div class="flex items-center justify-between bg-white/5 p-3 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <div onclick="window.toggleMilestone(${i})" class="milestone-check ${m.done ? 'checked' : ''}"></div>
+                        <span class="${m.done ? 'line-through text-gray-500' : 'text-gray-200'} text-sm">${m.title}</span>
+                    </div>
+                    <button onclick="deleteMilestone(${i})" class="text-gray-500 hover:text-red-500"><i class="ph-bold ph-trash"></i></button>
+                </div>
+             `).join('');
+        };
+        window.addMilestone = async () => {
+            const title = document.getElementById('ms-input').value;
+            if(!title) return;
+            const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+            const updated = [...(layout.milestones || []), {title, done: false}];
+            window.appState.layouts.find(l => l.id === window.appState.currentLayoutId).milestones = updated;
+            window.renderMilestones();
+            await updateDoc(doc(db, "layouts", window.appState.currentLayoutId), { milestones: updated });
+            document.getElementById('ms-input').value = '';
+        };
+        window.toggleMilestone = async (i) => {
+            const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+            const updated = [...layout.milestones];
+            updated[i].done = !updated[i].done;
+            window.appState.layouts.find(l => l.id === window.appState.currentLayoutId).milestones = updated;
+            window.renderMilestones();
+            await updateDoc(doc(db, "layouts", window.appState.currentLayoutId), { milestones: updated });
+        };
+        window.deleteMilestone = async (i) => {
+            const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+            const updated = layout.milestones.filter((_, idx) => idx !== i);
+            window.appState.layouts.find(l => l.id === window.appState.currentLayoutId).milestones = updated;
+            window.renderMilestones();
+            await updateDoc(doc(db, "layouts", window.appState.currentLayoutId), { milestones: updated });
+        };
+
+        window.updateLayoutMeta = async () => {
+            const location = document.getElementById('set-loc').value;
+            const size = document.getElementById('set-size').value;
+            await updateDoc(doc(db, "layouts", window.appState.currentLayoutId), { location, size });
+        };
+
+        window.setRole = (r) => { window.currentRole = r; };
+        window.setDrawType = (t) => { window.appState.drawType = t; 
+            ['plot','road','park','infra'].forEach(type => { document.getElementById(`btn-type-${type}`).className = 'flex-1 py-2 text-[10px] font-bold rounded text-gray-500 hover:text-white transition'; });
+            document.getElementById(`btn-type-${t}`).className = 'flex-1 py-2 text-[10px] font-bold rounded bg-brand text-white shadow-lg transition';
+        };
+        window.openNewLayoutModal = () => { document.getElementById('modal-new-layout').classList.remove('hidden'); };
+        window.openLayoutSettings = () => { 
+            const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+            if(layout) {
+                document.getElementById('set-loc').value = layout.location || '';
+                document.getElementById('set-size').value = layout.size || '';
+            }
+            document.getElementById('modal-layout-settings').classList.remove('hidden'); 
+            window.renderLayoutDocs(); 
+        };
+        window.closeLayoutSettings = () => { document.getElementById('modal-layout-settings').classList.add('hidden'); };
+        window.toggleLayoutMode = (m) => {
+            document.getElementById('layout-view-panel').classList.toggle('hidden', m==='edit');
+            document.getElementById('layout-edit-panel').classList.toggle('hidden', m==='view');
+            const active = 'px-4 py-1.5 text-xs font-bold rounded bg-brand text-white transition';
+            const inactive = 'px-4 py-1.5 text-xs font-bold rounded text-gray-400 hover:text-white transition';
+            document.getElementById('mode-view').className = m === 'view' ? active : inactive;
+            document.getElementById('mode-edit').className = m === 'edit' ? active : inactive;
+            if(m==='view') window.renderMap(); if(m==='edit') window.renderGhostLayer();
+        };
+        window.setTool = (t) => {
+            window.appState.activeTool = t;
+            ['box','pen','free'].forEach(tool => { document.getElementById(`btn-tool-${tool}`).className = 'h-9 w-full flex items-center justify-center text-[10px] font-bold rounded text-gray-500 border border-white/10 hover:bg-white/5 transition'; });
+            document.getElementById(`btn-tool-${t}`).className = 'h-9 w-full flex items-center justify-center text-[10px] font-bold rounded bg-brand text-white shadow-lg border border-white/10 transition';
+            document.getElementById('btn-finish-pen').classList.toggle('hidden', t !== 'pen');
+            window.clearPoints();
+        };
+        window.deleteElement = async () => {
+            if(!confirm("Delete?")) return;
+            const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+            if (!layout || !window.appState.selectedElementId) return;
+            const updated = layout.elements.filter(e => e.id !== window.appState.selectedElementId);
+            await updateDoc(doc(db, "layouts", window.appState.currentLayoutId), { elements: updated });
+            document.getElementById('inspector-content').classList.add('hidden');
+            document.getElementById('inspector-empty').classList.remove('hidden');
+            window.renderMap();
+        };
+        window.inspectElement = (id) => {
+            window.appState.selectedElementId = id;
+            const l = window.appState.layouts.find(x => x.id === window.appState.currentLayoutId);
+            const e = l.elements.find(x => x.id === id);
+            document.getElementById('inspector-empty').classList.add('hidden');
+            document.getElementById('inspector-content').classList.remove('hidden');
+            document.getElementById('inspector-content').classList.add('flex');
+            document.getElementById('insp-id').value = e.id;
+            document.getElementById('insp-price').value = e.price || '';
+            document.getElementById('insp-size').value = e.size || '';
+            document.getElementById('insp-facing').value = e.facing || '';
+            document.getElementById('insp-desc').value = e.desc || '';
+            window.renderPlotDocs(e);
+            
+            if(e.type==='plot') {
+                document.getElementById('insp-buyable').classList.remove('hidden'); document.getElementById('insp-nonbuyable').classList.add('hidden');
+            } else {
+                document.getElementById('insp-buyable').classList.add('hidden'); document.getElementById('insp-nonbuyable').classList.remove('hidden');
+            }
+            window.renderMap();
+        };
+        window.saveInspectorChanges = async () => {
+             const newId = document.getElementById('insp-id').value;
+             const newPrice = document.getElementById('insp-price').value;
+             const newSize = document.getElementById('insp-size').value;
+             const newFacing = document.getElementById('insp-facing').value;
+             const newDesc = document.getElementById('insp-desc').value;
+             const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+             const updated = layout.elements.map(e => e.id === window.appState.selectedElementId ? {...e, id: newId, price: newPrice, size: newSize, facing: newFacing, desc: newDesc} : e);
+             await updateDoc(doc(db, "layouts", window.appState.currentLayoutId), { elements: updated });
+             alert("Saved!");
+        };
+        window.updateStatus = async (status) => {
+            const layout = window.appState.layouts.find(l => l.id === window.appState.currentLayoutId);
+            const updated = layout.elements.map(e => e.id === window.appState.selectedElementId ? {...e, status} : e);
+            await updateDoc(doc(db, "layouts", window.appState.currentLayoutId), { elements: updated });
+        };
+        window.inspectElementEdit = (id) => {
+            if(document.getElementById('layout-edit-panel').classList.contains('hidden')) return;
+            window.appState.selectedElementId = id;
+            const l = window.appState.layouts.find(x => x.id === window.appState.currentLayoutId);
+            const e = l.elements.find(x => x.id === id);
+            document.getElementById('new-plot-id').value = e.id;
+            document.getElementById('new-plot-price').value = e.price || 0;
+            document.getElementById('btn-update-shape').classList.remove('hidden');
+            document.getElementById('btn-save-shape').classList.add('hidden');
+            window.renderGhostLayer(); 
+        };
+
+        window.confirmCreateLayout = async () => {
+            const name = document.getElementById('nl-name').value;
+            const location = document.getElementById('nl-location').value;
+            const size = document.getElementById('nl-size').value;
+            const devId = document.getElementById('nl-dev').value;
+            if(!name) return alert("Fill Name");
+            try {
+                const docRef = await addDoc(collection(db, "layouts"), { name, location, size, devId, elements: [], milestones: [], docs: [], bgImage: null, createdAt: new Date() });
+                document.getElementById('modal-new-layout').classList.add('hidden');
+                window.appState.currentLayoutId = docRef.id;
+                alert("Layout Created");
+            } catch(e) { alert("Error"); }
+        };
+
+        window.deleteCurrentLayout = async () => {
+            if(!window.appState.currentLayoutId) return alert("No layout selected");
+            if(!confirm("Delete this layout permanently?")) return;
+            try {
+                await deleteDoc(doc(db, "layouts", window.appState.currentLayoutId));
+                window.appState.currentLayoutId = null;
+                window.switchLayout(null);
+                alert("Deleted");
+            } catch(e) { alert("Error"); }
+        };
+        
+        // Listeners for startup
+        onSnapshot(collection(db, "users"), snap => {
+            window.appState.users = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            const devs = window.appState.users.filter(u=>u.role==='developer');
+            document.getElementById('nl-dev').innerHTML = '<option value="Unassigned">Unassigned</option>' + devs.map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
+            document.getElementById('layout-filter-dev').innerHTML = `<option value="">All Developers</option>` + devs.map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
+            window.initSearchables(); // Explicitly call init
+        });
+        onSnapshot(collection(db, "layouts"), snap => {
+            window.appState.layouts = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            window.updateLayoutListByDev();
+            if(window.appState.currentLayoutId) {
+                if(!document.getElementById('modal-milestones').classList.contains('hidden')) window.renderMilestones();
+                if(!document.getElementById('modal-layout-settings').classList.contains('hidden')) window.renderLayoutDocs();
+                window.renderMap();
+                window.renderGhostLayer();
+                if(window.appState.selectedElementId) {
+                   const l = window.appState.layouts.find(x => x.id === window.appState.currentLayoutId);
+                   const e = l.elements.find(x => x.id === window.appState.selectedElementId);
+                   if(e) window.renderPlotDocs(e);
+                }
+            }
+        });
+        
+        // Explicit globals
+        window.saveShape = window.confirmRapidSave; 
+        window.closeShape = window.closeShape;
+        window.confirmCreateLayout = window.confirmCreateLayout;
+        window.addLayoutDoc = window.addLayoutDoc;
+        window.deleteLayoutDoc = window.deleteLayoutDoc;
+        window.deleteCurrentLayout = window.deleteCurrentLayout;
+        window.loadImage = window.loadImage;
+        window.setDrawType = window.setDrawType;
+        window.setTool = window.setTool;
+        window.clearPoints = window.clearPoints;
+        window.deleteElement = window.deleteElement;
+        window.inspectElement = window.inspectElement;
+        window.saveInspectorChanges = window.saveInspectorChanges;
+        window.updateStatus = window.updateStatus;
+        window.handleDocUpload = window.handleDocUpload;
+        window.updateLayoutMeta = window.updateLayoutMeta;
+        window.openMilestonesModal = window.openMilestonesModal;
+        window.addMilestone = window.addMilestone;
+        window.toggleMilestone = window.toggleMilestone;
+        window.deleteMilestone = window.deleteMilestone;
+        window.openLayoutSettings = window.openLayoutSettings;
+        window.closeLayoutSettings = window.closeLayoutSettings;
+        window.openNewLayoutModal = window.openNewLayoutModal;
+        window.switchLayout = window.switchLayout;
+        window.toggleLayoutMode = window.toggleLayoutMode;
+        window.changeZoom = window.changeZoom;
+        window.resetZoom = window.resetZoom;
+        window.inspectElementEdit = window.inspectElementEdit;
+        window.updateLayoutListByDev = window.updateLayoutListByDev;
+        window.handleWheel = window.handleWheel;
+
+    </script>
+</body>
+</html>

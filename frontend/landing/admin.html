@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Rajchavin OS</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: { 
+                    colors: { brand: '#1C58A1', darkBg: '#020617', surface: '#0F172A', lightBg: '#f8fafc' },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; transition: background-color 0.3s, color 0.3s; }
+        
+        /* Fixed Auto-Switching Glass styling */
+        .glass { 
+            background: rgba(255, 255, 255, 0.95); 
+            backdrop-filter: blur(12px); 
+            border: 1px solid rgba(0, 0, 0, 0.05); 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); 
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        
+        /* When Dark Mode is active, apply these deep colors to the glass */
+        .dark .glass { 
+            background: rgba(15, 23, 42, 0.85); /* Deep slate to match the surface theme */
+            backdrop-filter: blur(12px); 
+            border: 1px solid rgba(255, 255, 255, 0.05); 
+            box-shadow: 0 10px 20px -5px rgba(0,0,0,0.5);
+        }
+        
+        /* Custom Scrollbar for table */
+        .table-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+        .table-scroll::-webkit-scrollbar-track { background: transparent; }
+        .table-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark .table-scroll::-webkit-scrollbar-thumb { background: #334155; }
+    </style>
+</head>
+<body class="bg-lightBg text-gray-900 dark:bg-darkBg dark:text-gray-100 min-h-screen flex flex-col">
+
+    <div id="login-screen" class="flex-grow flex items-center justify-center p-6 transition-opacity duration-300">
+        <div class="glass w-full max-w-md p-8 rounded-2xl relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-brand/20 rounded-full blur-2xl"></div>
+            
+            <div class="relative z-10 text-center mb-8">
+                <div class="w-16 h-16 bg-brand/10 text-brand rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 border border-brand/20">
+                    <i class="ph-fill ph-shield-check"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Admin Login</h2>
+                <p class="text-sm text-gray-500 mt-1">Rajchavin OS Command Center</p>
+            </div>
+
+            <form id="login-form" class="space-y-5 relative z-10">
+                <div id="login-error" class="hidden bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/50 text-red-600 dark:text-red-400 text-sm p-3 rounded-lg text-center font-medium"></div>
+                
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-500 mb-2">Email</label>
+                    <input type="email" id="email" class="w-full bg-white dark:bg-darkBg border border-gray-200 dark:border-white/10 dark:text-white rounded-lg p-3 outline-none focus:border-brand transition" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-500 mb-2">Password</label>
+                    <input type="password" id="password" class="w-full bg-white dark:bg-darkBg border border-gray-200 dark:border-white/10 dark:text-white rounded-lg p-3 outline-none focus:border-brand transition" required>
+                </div>
+                <button type="submit" id="login-btn" class="w-full py-3 bg-brand text-white font-bold rounded-lg hover:bg-blue-700 transition shadow-lg shadow-brand/25">Secure Login</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="dashboard-screen" class="hidden flex-col min-h-screen">
+        
+        <nav class="border-b border-gray-200 dark:border-white/5 bg-white/80 dark:bg-surface/80 backdrop-blur-md sticky top-0 z-50 transition-colors">
+            <div class="max-w-[100rem] mx-auto px-6 py-4 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-brand flex items-center justify-center text-white"><i class="ph-bold ph-database"></i></div>
+                    <span class="font-bold text-lg tracking-tight text-gray-900 dark:text-white">Rajchavin <span class="opacity-50 font-normal">Admin</span></span>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <button onclick="document.documentElement.classList.toggle('dark')" class="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center hover:scale-110 transition text-gray-700 dark:text-yellow-400">
+                        <i class="ph-fill ph-sun hidden dark:block"></i>
+                        <i class="ph-fill ph-moon block dark:hidden"></i>
+                    </button>
+                    <button id="logout-btn" class="px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 text-sm font-bold text-gray-700 dark:text-gray-300 hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400 hover:border-red-500/50 transition flex items-center gap-2">
+                        <i class="ph-bold ph-sign-out"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <main class="flex-grow p-6 max-w-[100rem] mx-auto w-full">
+            
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Inquiry Management</h1>
+                    <p class="text-gray-500 text-sm mt-1">Showing latest 100 entries. Organized by newest first.</p>
+                </div>
+                <button id="refresh-btn" class="px-4 py-2 bg-brand text-white text-sm font-bold rounded-lg shadow-lg shadow-brand/20 hover:bg-blue-700 transition flex items-center gap-2">
+                    <i class="ph-bold ph-arrows-clockwise"></i> Refresh Data
+                </button>
+            </div>
+
+            <div class="glass rounded-2xl overflow-hidden">
+                <div class="overflow-x-auto table-scroll">
+                    <table class="w-full text-left whitespace-nowrap">
+                        <thead class="bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
+                            <tr>
+                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Contact</th>
+                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Service Opted</th>
+                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Address</th>
+                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider max-w-xs">Message</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="divide-y divide-gray-200 dark:divide-white/5">
+                            <tr>
+                                <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                                    <i class="ph-bold ph-spinner animate-spin text-2xl mb-2"></i>
+                                    <p>Loading inquiries...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+        </main>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBGTf9PvLHeb2z7-SDKmpEMr4xDjUgoBzI",
+            authDomain: "rajchavin-contact.firebaseapp.com",
+            projectId: "rajchavin-contact",
+            storageBucket: "rajchavin-contact.firebasestorage.app",
+            messagingSenderId: "810262661983",
+            appId: "1:810262661983:web:4650b1c1137996e57c84ea"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // UI Elements
+        const loginScreen = document.getElementById('login-screen');
+        const dashboardScreen = document.getElementById('dashboard-screen');
+        const loginForm = document.getElementById('login-form');
+        const loginError = document.getElementById('login-error');
+        const logoutBtn = document.getElementById('logout-btn');
+        const tableBody = document.getElementById('table-body');
+        const refreshBtn = document.getElementById('refresh-btn');
+
+        // Check Auth State
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // User is signed in.
+                loginScreen.classList.add('hidden');
+                dashboardScreen.classList.remove('hidden');
+                dashboardScreen.classList.add('flex');
+                fetchInquiries();
+            } else {
+                // No user is signed in.
+                loginScreen.classList.remove('hidden');
+                dashboardScreen.classList.add('hidden');
+                dashboardScreen.classList.remove('flex');
+            }
+        });
+
+        // Login Logic
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('login-btn');
+            
+            btn.innerText = "Authenticating...";
+            btn.disabled = true;
+            loginError.classList.add('hidden');
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                console.error(error);
+                loginError.innerText = "Invalid credentials. Please try again.";
+                loginError.classList.remove('hidden');
+            } finally {
+                btn.innerText = "Secure Login";
+                btn.disabled = false;
+            }
+        });
+
+        // Logout Logic
+        logoutBtn.addEventListener('click', () => {
+            signOut(auth);
+        });
+
+        // Fetch Data Logic
+        async function fetchInquiries() {
+            tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500"><i class="ph-bold ph-spinner animate-spin text-2xl mb-2 inline-block"></i><p>Fetching secure data...</p></td></tr>`;
+            
+            try {
+                // Query: Get inquiries, order by newest, limit to 100 for scalability
+                const q = query(collection(db, "inquiries"), orderBy("submittedAt", "desc"), limit(100));
+                const querySnapshot = await getDocs(q);
+                
+                if (querySnapshot.empty) {
+                    tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">No inquiries found in the database.</td></tr>`;
+                    return;
+                }
+
+                tableBody.innerHTML = ''; // Clear loading state
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    
+                    // Format Date Safely
+                    let dateStr = "Pending...";
+                    if (data.submittedAt) {
+                        const date = data.submittedAt.toDate();
+                        dateStr = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    }
+
+                    // Handle null/undefined fields safely
+                    const name = `${data.firstName || ''} ${data.lastName || ''}`.trim() || 'N/A';
+                    const email = data.email || 'N/A';
+                    const phone = data.phone || 'N/A';
+                    const service = data.serviceOpted || '<span class="text-gray-500 italic">Not Selected</span>';
+                    const address = data.address || '<span class="text-gray-500 italic">No Address</span>';
+                    const message = data.message || '<span class="text-gray-500 italic">No Message</span>';
+
+                    // Create Row
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-gray-50 dark:hover:bg-white/5 transition";
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">${dateStr}</td>
+                        <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">${name}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                            <div>${phone}</div>
+                            <div class="text-xs text-brand hover:underline cursor-pointer"><a href="mailto:${email}">${email}</a></div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                            <span class="px-2 py-1 rounded bg-brand/10 text-brand text-xs font-bold border border-brand/20">${service}</span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap truncate max-w-[200px]" title="${address}">${address}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 truncate max-w-xs" title="${message}">${message}</td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+
+            } catch (error) {
+                console.error("Error fetching documents: ", error);
+                tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-red-500 bg-red-500/10">Failed to load data. Ensure Firestore permissions allow reading.</td></tr>`;
+            }
+        }
+
+        refreshBtn.addEventListener('click', fetchInquiries);
+
+    </script>
+</body>
+</html>

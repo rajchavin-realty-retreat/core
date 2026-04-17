@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Internship Program | Raj Chavin</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class', 
+            theme: {
+                extend: {
+                    colors: { 
+                        dark: '#020617', // Deep Blue
+                        surface: '#0F172A', // Slate Blue Surface
+                        primary: '#1C58A1', // Rich Blue Accent
+                        secondary: '#60A5FA', // Subtle Blue Accent
+                        pearl: '#F8FAFC' 
+                    },
+                    fontFamily: { sans: ['Manrope', 'sans-serif'], serif: ['Playfair Display', 'serif'] },
+                    backgroundImage: {
+                        'hero-intern': "url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80')",
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #1C58A1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #60A5FA; }
+
+        /* Glass Panel - Blue Tint */
+        .glass-panel { 
+            background: rgba(255, 255, 255, 0.9); 
+            backdrop-filter: blur(12px); 
+            border: 1px solid rgba(28, 88, 161, 0.2); 
+            box-shadow: 0 4px 6px -1px rgba(28, 88, 161, 0.1);
+        }
+        .dark .glass-panel { 
+            background: rgba(15, 23, 42, 0.85); 
+            border: 1px solid rgba(28, 88, 161, 0.2); 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        .form-input { 
+            width: 100%; 
+            background: rgba(255, 255, 255, 0.05); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            border-radius: 0.5rem; 
+            padding: 0.75rem; 
+            outline: none; 
+            transition: all 0.3s; 
+        }
+        .form-input:focus { 
+            border-color: #1C58A1; 
+            background: rgba(255, 255, 255, 0.1); 
+        }
+        .light .form-input { 
+            background: rgba(28, 88, 161, 0.05); 
+            border-color: rgba(28, 88, 161, 0.1); 
+        }
+        
+        .nav-dropdown { opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.2s ease-out; }
+        .group:hover .nav-dropdown { opacity: 1; visibility: visible; transform: translateY(0); }
+    </style>
+</head>
+<body class="bg-pearl text-slate-900 dark:bg-dark dark:text-gray-300 font-sans antialiased transition-colors duration-300">
+
+    <nav class="fixed top-2 left-0 right-0 z-50 px-2 lg:px-6">
+        <div class="max-w-7xl mx-auto glass-panel rounded-xl px-4 py-2 flex justify-between items-center transition-all">
+            
+            <div class="flex items-center gap-2 flex-shrink-0 mr-4">
+                <a href="index.html"><img src="rajchavin-removebg-preview.png" alt="Raj Chavin Logo" class="h-10 w-auto object-contain brightness-0 dark:filter-none transition-all duration-300"></a>
+            </div>
+            
+            <div class="hidden xl:flex items-center space-x-1 text-sm font-semibold tracking-wide flex-grow justify-center">
+
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 hover:text-primary transition dark:text-gray-200 flex items-center gap-1"><a href="about.html">About</a><i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full left-0 w-48 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden">
+                            <a href="/about.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">About Company</a>
+                            <a href="/leadership.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Leadership</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 text-xs hover:text-primary transition dark:text-gray-200 flex items-center gap-1"><a href="layout-farm-exp.html">Layouts & Farmlands</a> <i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full left-0 w-48 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden">
+                            <a href="/layout & farmlands/index.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Layouts</a>
+                            <a href="/farmland.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Farmlands</a>
+                        </div>
+                    </div>
+                </div>
+                <a href="/ras.html" class="px-3 py-2 text-gray-700 hover:text-primary transition dark:text-gray-200">RaaS™</a>
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 hover:text-primary transition dark:text-gray-200 flex items-center gap-1"> <a href="realestate-exp.html">Real Estate </a><i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full left-0 w-56 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden">
+                            <a href="realestate/portal-seller.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Sell Property</a>
+                            <a href="realestate/portal-buyer.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Buy Property</a>
+                            <a href="realestate/portal-seller.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Rent</a>
+                            <a href="realestate/portal-buyer.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Lease</a>
+                            <div class="h-px bg-gray-200 dark:bg-white/10 my-1"></div>
+                            <a href="#" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Add Properties</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 hover:text-primary transition dark:text-gray-200 flex items-center gap-1"><a href="marketplace-exp.html">Marketplace </a><i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full left-1/2 -translate-x-1/2 w-72 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden max-h-[80vh] overflow-y-auto">
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Construction Materials</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Plumbing Products</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Electrical & Wiring</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Flooring Materials</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">POP & Ceiling</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Carpentry & Woodwork</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Aluminium & Glass</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Paints & Wall Finishes</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Interior Accessories</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 text-xs hover:text-primary transition dark:text-gray-200 flex items-center gap-1"> <a href="design-construction-renovation-exp.html">Design & Construction </a><i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full left-0 w-56 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden">
+                            <a href="design.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Design</a>
+                            <a href="construction.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Construction & Services</a>
+                            <a href="renovation.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Renovation</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 text-xs hover:text-primary transition dark:text-gray-200 flex items-center gap-1"><a href="legals-loans-exp.html">Legals & Loans </a><i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full left-1/2 -translate-x-1/2 w-48 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden">
+                            <a href="/legals.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Legal Services</a>
+                            <a href="/mortgage.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Mortgage Loans</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 hover:text-primary transition dark:text-gray-200 flex items-center gap-1">Careers <i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full right-0 w-48 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden">
+                            <a href="/careers.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Join Us</a>
+                            <a href="/internships.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Internship</a>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="/contact.html" class="px-3 py-2 text-gray-700 hover:text-primary transition dark:text-gray-200">Contact</a>
+            </div>
+
+            <div class="flex items-center gap-4 flex-shrink-0">
+                <button id="theme-toggle" class="w-9 h-9 rounded-full bg-white border border-gray-200 dark:border-white/10 dark:bg-white/10 flex items-center justify-center text-primary dark:text-white hover:bg-primary hover:text-white transition shadow-sm">
+                    <i class="fas fa-sun hidden dark:block text-xs"></i> 
+                    <i class="fas fa-moon block dark:hidden text-xs"></i> 
+                </button>
+                
+                <button class="xl:hidden text-2xl text-gray-800 dark:text-white" onclick="document.getElementById('mob-menu').classList.toggle('hidden')">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div id="mob-menu" class="hidden absolute top-20 left-4 right-4 glass-panel rounded-2xl p-4 shadow-xl z-50 max-h-[80vh] overflow-y-auto bg-white/95 dark:bg-surface/95">
+            <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                    About <i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="/about.html" class="block p-2">About Company</a>
+                    <a href="/leadership.html" class="block p-2">About Leadership</a>
+                </div>
+            </details>
+            <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                   <a href="layout-farm-exp.html"> Layouts & Farmlands </a><i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="/layout & farmlands/index.html" class="block p-2">Layouts</a>
+                    <a href="/farmland.html" class="block p-2">Farmlands</a>
+                </div>
+            </details>
+            <a href="/ras.html" class="block font-bold text-primary p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">RaaS™</a>
+            <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                   <a href="realestate-exp.html"> Real Estate </a><i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="realestate/portal-seller.html" class="block p-2">Sell</a>
+                    <a href="realestate/portal-buyer.html" class="block p-2">Buy</a>
+                    <a href="realestate/portal-seller.html" class="block p-2">Rent</a>
+                    <a href="realestate/portal-buyer.html" class="block p-2">Lease</a>
+                    <a href="#" class="block p-2 text-primary">Add Properties</a>
+                </div>
+            </details>
+            <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                   <a href="design-construction-renovation-exp.html"> Design & Construction</a> <i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="/design.html" class="block p-2">Design</a>
+                    <a href="/construction.html" class="block p-2">Construction & Services</a>
+                    <a href="/renovation.html" class="block p-2">Renovation</a>
+                </div>
+            </details>
+            <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                   <a href="marketplace-exp.html"> Marketplace </a><i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="https://marketplace.rajchavin.com" class="block p-2">All Categories</a>
+                </div>
+            </details>
+            <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                   <a href="legals-loans-exp.html"> Legals & Loans </a><i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="/legals.html" class="block p-2">Legal Services</a>
+                    <a href="/mortgage.html" class="block p-2">Mortgage Loans</a>
+                </div>
+            </details>
+             <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                    Careers <i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="/careers.html" class="block p-2">Join Us</a>
+                    <a href="/internships.html" class="block p-2">Internship</a>
+                </div>
+            </details>
+            <a href="/contact.html" class="block font-bold text-primary p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">Contact Us</a>
+        </div>
+    </nav>
+
+
+    <header class="relative pt-40 pb-20 px-4 min-h-[60vh] flex items-center justify-center text-center">
+        <div class="absolute inset-0 bg-hero-intern bg-cover bg-center bg-fixed opacity-30 pointer-events-none"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-pearl dark:to-dark pointer-events-none"></div>
+
+        <div class="relative z-10 max-w-4xl mx-auto">
+            <span class="inline-block py-1 px-3 rounded-full bg-primary/10 border border-primary/30 text-primary text-xs font-bold uppercase tracking-widest mb-4">Student & Graduate Program</span>
+            <h1 class="text-4xl md:text-6xl font-serif font-bold text-gray-900 dark:text-white mb-6 leading-tight">
+                Kickstart Your Career <br><span class="text-primary">With Real Impact</span>
+            </h1>
+            <p class="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
+                Join a company that gives you real responsibilities, mentorship, and visibility. From construction sites to digital marketing strategies — gain hands-on experience at Rajchavin.
+            </p>
+            <div class="mt-8 flex justify-center gap-4">
+                <a href="#apply" class="px-8 py-3 bg-primary text-white font-bold rounded-full shadow-lg hover:bg-secondary transition uppercase tracking-widest text-sm">Apply Now</a>
+                <a href="#roles" class="px-8 py-3 border border-gray-300 dark:border-white/10 hover:bg-white/5 font-bold rounded-full transition text-sm">View Roles</a>
+            </div>
+        </div>
+    </header>
+
+    <section class="py-12 px-4 bg-gray-100 dark:bg-surface/50">
+        <div class="max-w-7xl mx-auto grid md:grid-cols-3 gap-8 text-center">
+            <div class="glass-panel p-6 rounded-2xl">
+                <i class="fas fa-clock text-3xl text-primary mb-3"></i>
+                <h3 class="font-bold text-lg mb-1">Duration</h3>
+                <p class="text-sm text-gray-500">6 weeks to 6 months (Flexible)</p>
+            </div>
+            <div class="glass-panel p-6 rounded-2xl">
+                <i class="fas fa-map-marker-alt text-3xl text-primary mb-3"></i>
+                <h3 class="font-bold text-lg mb-1">Locations</h3>
+                <p class="text-sm text-gray-500">Bangalore, Gadag, Hybrid Options</p>
+            </div>
+            <div class="glass-panel p-6 rounded-2xl">
+                <i class="fas fa-gift text-3xl text-primary mb-3"></i>
+                <h3 class="font-bold text-lg mb-1">Perks</h3>
+                <p class="text-sm text-gray-500">Certificate, Live Projects, PPO Potential</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="roles" class="py-16 px-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-serif font-bold text-gray-900 dark:text-white">Available Internships</h2>
+                <p class="text-gray-500">Select a role to apply.</p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition duration-300 border-t-4 border-primary">
+                    <i class="fas fa-home text-2xl text-gray-400 mb-4"></i>
+                    <h3 class="text-lg font-bold mb-2">Real Estate Sales Intern</h3>
+                    <p class="text-sm text-gray-500 mb-4">Learn lead generation, client handling, and property documentation.</p>
+                    <button onclick="selectJob('Real Estate Sales Intern')" class="text-primary text-sm font-bold uppercase hover:underline">Apply This Role &rarr;</button>
+                </div>
+
+                <div class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition duration-300 border-t-4 border-primary">
+                    <i class="fas fa-hard-hat text-2xl text-gray-400 mb-4"></i>
+                    <h3 class="text-lg font-bold mb-2">Construction Intern</h3>
+                    <p class="text-sm text-gray-500 mb-4">On-site management, vendor coordination, and quality checks.</p>
+                    <button onclick="selectJob('Construction & Site Mgmt Intern')" class="text-primary text-sm font-bold uppercase hover:underline">Apply This Role &rarr;</button>
+                </div>
+
+                <div class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition duration-300 border-t-4 border-primary">
+                    <i class="fas fa-swatchbook text-2xl text-gray-400 mb-4"></i>
+                    <h3 class="text-lg font-bold mb-2">Interior Design Trainee</h3>
+                    <p class="text-sm text-gray-500 mb-4">Assist in 2D/3D layouts, material selection, and site execution.</p>
+                    <button onclick="selectJob('Interior Design Trainee')" class="text-primary text-sm font-bold uppercase hover:underline">Apply This Role &rarr;</button>
+                </div>
+
+                <div class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition duration-300 border-t-4 border-primary">
+                    <i class="fas fa-hashtag text-2xl text-gray-400 mb-4"></i>
+                    <h3 class="text-lg font-bold mb-2">Digital Marketing Intern</h3>
+                    <p class="text-sm text-gray-500 mb-4">Social media content, lead funnels, SEO, and campaign analytics.</p>
+                    <button onclick="selectJob('Digital Marketing Intern')" class="text-primary text-sm font-bold uppercase hover:underline">Apply This Role &rarr;</button>
+                </div>
+
+                <div class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition duration-300 border-t-4 border-primary">
+                    <i class="fas fa-file-contract text-2xl text-gray-400 mb-4"></i>
+                    <h3 class="text-lg font-bold mb-2">Documentation Intern</h3>
+                    <p class="text-sm text-gray-500 mb-4">Learn registration processes, NAK conversion, and legal paperwork.</p>
+                    <button onclick="selectJob('Documentation Support Intern')" class="text-primary text-sm font-bold uppercase hover:underline">Apply This Role &rarr;</button>
+                </div>
+
+                <div class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition duration-300 border-t-4 border-primary">
+                    <i class="fas fa-seedling text-2xl text-gray-400 mb-4"></i>
+                    <h3 class="text-lg font-bold mb-2">Land Management Intern</h3>
+                    <p class="text-sm text-gray-500 mb-4">Farmland research, soil analysis basics, and layout planning.</p>
+                    <button onclick="selectJob('Land Management Intern')" class="text-primary text-sm font-bold uppercase hover:underline">Apply This Role &rarr;</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-16 px-4">
+        <div class="max-w-4xl mx-auto text-center">
+            <h2 class="text-2xl font-serif font-bold text-gray-900 dark:text-white mb-8">Who We Are Looking For</h2>
+            <div class="grid md:grid-cols-2 gap-4 text-left">
+                <div class="glass-panel p-4 rounded-xl flex gap-3 items-center">
+                    <div class="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center"><i class="fas fa-heart"></i></div>
+                    <span class="text-sm">Passionate about real estate & design.</span>
+                </div>
+                <div class="glass-panel p-4 rounded-xl flex gap-3 items-center">
+                    <div class="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center"><i class="fas fa-rocket"></i></div>
+                    <span class="text-sm">Hungry to learn & ready to take initiative.</span>
+                </div>
+                <div class="glass-panel p-4 rounded-xl flex gap-3 items-center">
+                    <div class="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center"><i class="fas fa-bolt"></i></div>
+                    <span class="text-sm">Comfortable in fast-paced environments.</span>
+                </div>
+                <div class="glass-panel p-4 rounded-xl flex gap-3 items-center">
+                    <div class="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center"><i class="fas fa-handshake"></i></div>
+                    <span class="text-sm">Honest, responsible, and people-first.</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="apply" class="py-20 px-4 bg-pearl dark:bg-black transition-colors">
+        <div class="max-w-3xl mx-auto glass-panel p-8 md:p-12 rounded-3xl shadow-2xl relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl"></div>
+
+            <div class="text-center mb-10 relative z-10">
+                <h2 class="text-3xl font-serif font-bold text-gray-900 dark:text-white mb-2">Apply for Internship</h2>
+                <p class="text-gray-500">Fill this form and our HR team will revert in 24hrs.</p>
+            </div>
+
+            <form id="internForm" class="space-y-6 relative z-10">
+                <input type="hidden" id="c-position" value="General Internship">
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div><label class="block text-xs font-bold uppercase text-gray-500 mb-2">First Name</label><input type="text" id="c-fname" class="form-input" placeholder="John" required></div>
+                    <div><label class="block text-xs font-bold uppercase text-gray-500 mb-2">Last Name</label><input type="text" id="c-lname" class="form-input" placeholder="Doe" required></div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div><label class="block text-xs font-bold uppercase text-gray-500 mb-2">Phone No.</label><input type="tel" id="c-phone" class="form-input" placeholder="+91" required></div>
+                    <div><label class="block text-xs font-bold uppercase text-gray-500 mb-2">Email</label><input type="email" id="c-email" class="form-input" placeholder="john@example.com" required></div>
+                </div>
+
+                <div><label class="block text-xs font-bold uppercase text-gray-500 mb-2">Address</label><input type="text" id="c-address" class="form-input" placeholder="Full Address"></div>
+
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
+                    <div><label class="block text-xs font-bold uppercase text-gray-500 mb-2">City</label><input type="text" id="c-city" class="form-input" placeholder="City"></div>
+                    <div><label class="block text-xs font-bold uppercase text-gray-500 mb-2">State</label><input type="text" id="c-state" class="form-input" placeholder="State"></div>
+                    <div class="col-span-2 md:col-span-1"><label class="block text-xs font-bold uppercase text-gray-500 mb-2">Pin Code</label><input type="text" id="c-zip" class="form-input" placeholder="ZIP"></div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-500 mb-2">Upload Resume (PDF/DOC)</label>
+                    <div class="relative border-2 border-dashed border-gray-300 dark:border-white/10 rounded-xl p-6 text-center hover:border-primary transition cursor-pointer bg-white/5">
+                        <input type="file" id="c-resume" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept=".pdf,.doc,.docx" required>
+                        <i class="fas fa-cloud-upload-alt text-2xl text-primary mb-2"></i>
+                        <p class="text-xs text-gray-500" id="file-label">Click to upload resume</p>
+                    </div>
+                </div>
+
+                <div><label class="block text-xs font-bold uppercase text-gray-500 mb-2">Message</label><textarea id="c-msg" class="form-input h-32" placeholder="Why do you want to intern with us?"></textarea></div>
+
+                <button type="submit" class="w-full py-4 bg-primary text-white font-bold rounded-xl hover:bg-secondary transition shadow-lg uppercase tracking-widest">Submit Application</button>
+            </form>
+
+            <div class="mt-8 pt-8 border-t border-gray-200 dark:border-white/10 text-center text-sm text-gray-500">
+                <p class="mb-2">Prefer email? Send your resume to:</p>
+                <a href="mailto:careers@rajchavin.com" class="text-primary font-bold hover:underline block mb-4">careers@rajchavin.com</a>
+                <p>Or WhatsApp: <a href="https://wa.me/91907 1188 118" class="text-slate-900 dark:text-white hover:text-primary">+91 907 1188 118</a></p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="relative bg-gray-100 dark:bg-surface pt-20 pb-10 px-4 transition-colors duration-300 font-sans" style="will-change: transform; transform: translateZ(0);">
+        <div class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
+
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+            <div class="space-y-6">
+                 <div class="flex items-center gap-2">
+                    <img src="rajchavin-removebg-preview.png" alt="Raj Chavin Logo" class="h-12 w-auto object-contain brightness-0 dark:filter-none transition-all duration-300">
+                </div>
+                <p class="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                    Building Governed Real Estate Ecosystems — From Land Acquisition to Structured exit.                </p>
+                <div class="flex gap-4">
+                    <a href="#" class="w-10 h-10 rounded-full bg-white dark:bg-white/5 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary hover:shadow-md transition-all">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="#" class="w-10 h-10 rounded-full bg-white dark:bg-white/5 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary hover:shadow-md transition-all">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="#" class="w-10 h-10 rounded-full bg-white dark:bg-white/5 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary hover:shadow-md transition-all">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div>
+                <h4 class="text-gray-900 dark:text-white font-serif font-bold text-lg mb-6">Quick Links</h4>
+                <ul class="space-y-3">
+                    <li><a href="/about.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">About Us</a></li>
+                    <li><a href="/leadership.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Leadership</a></li>
+                    <li><a href="/careers.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Careers</a></li>
+                    <li><a href="/contact.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Contact</a></li>
+                    <li><a href="#ecosystem" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Ecosystem</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="text-gray-900 dark:text-white font-serif font-bold text-lg mb-6">Our Services</h4>
+                <ul class="space-y-3">
+                    <li><a href="/layout & farmlands/index.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Plots & Farmlands</a></li>
+                    <li><a href="realestate/portal-buyer.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Buy Property</a></li>
+                    <li><a href="realestate/portal-seller.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Sell Property</a></li>
+                    <li><a href="ecommerce/portal-store.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Construction Materials</a></li>
+                    <li><a href="/legals.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Legal Services</a></li>
+                    <li><a href="/mortgage.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Mortgage Loans</a></li>
+                </ul>
+            </div>
+
+             <div>
+                <h4 class="text-gray-900 dark:text-white font-serif font-bold text-lg mb-6">Contact</h4>
+                <ul class="space-y-4 text-sm text-gray-600 dark:text-gray-400">
+                    
+                    <p>RAJCHAVIN REALTY RETREAT Shop No. 1, Survey No. 391, Tirlapur’s Premise, Basaveshwar Nagar, Shahapur Peth, Opp. Someshwara Temple, Ward No. 15.</p>
+                    <p>Gadag – 582101, Karnataka, India</p>
+                    
+                    <li class="flex items-center gap-3">
+                        <i class="fas fa-phone text-primary"></i>
+                        <span>+91 907 1188 118</span>
+                    </li>
+                    <li class="flex items-center gap-3">
+                        <i class="fas fa-phone text-primary"></i>
+                        <span>+91 8006800270</span>
+                    </li>
+                    <a href="mailto:contact@rajchavin.com"><li class="flex items-center gap-3">
+                        <i class="fas fa-envelope text-primary"></i>
+                        <span>contact@rajchavin.com</span>
+                    </li></a>
+                </ul>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto border-t border-gray-200 dark:border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500 dark:text-gray-400">
+            <p>&copy; 2026 Raj Chavin Realty Group. All rights reserved.</p>
+            <div class="flex gap-6 mt-4 md:mt-0">
+                <a href="#" class="hover:text-primary transition">Terms of Service</a>
+                <a href="#" class="hover:text-primary transition">Privacy Policy</a>
+            </div>
+        </div>
+    </footer>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+        // CONFIG (Replace with your actual keys)
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        // JOB SELECTOR LOGIC (Scrolls + Fills Hidden Input)
+        window.selectJob = (title) => {
+            document.getElementById('c-position').value = title;
+            document.getElementById('c-msg').placeholder = `I am interested in the ${title} role because...`;
+            document.getElementById('apply').scrollIntoView({ behavior: 'smooth' });
+        };
+
+        // FILE NAME DISPLAY
+        document.getElementById('c-resume').addEventListener('change', function() {
+            const fileName = this.files[0] ? this.files[0].name : "Click to upload resume";
+            document.getElementById('file-label').innerText = fileName;
+            document.getElementById('file-label').classList.add('text-primary');
+        });
+
+        // FORM SUBMISSION
+        document.getElementById('internForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const originalText = btn.innerText;
+            btn.innerText = "Submitting..."; btn.disabled = true;
+
+            try {
+                // 1. Upload Resume
+                const file = document.getElementById('c-resume').files[0];
+                let resumeUrl = "";
+                
+                if (file) {
+                    const storageRef = ref(storage, 'intern_resumes/' + Date.now() + '_' + file.name);
+                    await uploadBytes(storageRef, file);
+                    resumeUrl = await getDownloadURL(storageRef);
+                }
+
+                // 2. Save Data
+                await addDoc(collection(db, "inquiries"), {
+                    position: document.getElementById('c-position').value,
+                    firstName: document.getElementById('c-fname').value,
+                    lastName: document.getElementById('c-lname').value,
+                    phone: document.getElementById('c-phone').value,
+                    email: document.getElementById('c-email').value,
+                    address: document.getElementById('c-address').value,
+                    city: document.getElementById('c-city').value,
+                    state: document.getElementById('c-state').value,
+                    zip: document.getElementById('c-zip').value,
+                    message: document.getElementById('c-msg').value,
+                    resumeUrl: resumeUrl,
+                    type: 'Internship Application',
+                    status: 'new',
+                    submittedAt: serverTimestamp()
+                });
+
+                alert("Internship Application Submitted! HR will contact you shortly.");
+                e.target.reset();
+                document.getElementById('file-label').innerText = "Click to upload resume";
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Submission failed. Ensure your file is under 5MB.");
+            } finally {
+                btn.innerText = originalText; btn.disabled = false;
+            }
+        });
+
+        // Theme Toggle
+        const themeBtn = document.getElementById('theme-toggle');
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
+        themeBtn.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+        });
+    </script>
+</body>
+</html>

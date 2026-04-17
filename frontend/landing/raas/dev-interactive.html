@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rajchavin | Nexus</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { 
+                extend: { 
+                    colors: { brand: '#3b82f6', dark: '#050505', glass: 'rgba(24, 24, 27, 0.95)' },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                } 
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { background-color: #050505; color: white; font-family: 'Inter', sans-serif; overflow: hidden; height: 100vh; width: 100vw; }
+        .glass-panel { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3); }
+        .glass-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; transition: 0.3s; position: relative; }
+        .glass-card:hover { border-color: rgba(59, 130, 246, 0.5); transform: translateY(-2px); box-shadow: 0 10px 40px -10px rgba(59, 130, 246, 0.3); }
+
+        #modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+        .modal-content { background: #0e0e10; border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 24px; max-width: 500px; width: 95%; max-height: 90vh; overflow-y: auto; }
+        
+        #map-viewport { background-color: #0e0e10; position: relative; overflow: hidden; cursor: default; touch-action: none; background-image: radial-gradient(#27272a 1px, transparent 1px); background-size: 24px 24px; }
+        #canvas-container { transform-origin: 0 0; position: absolute; top: 0; left: 0; backface-visibility: hidden; will-change: transform; }
+        #draw-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: visible; pointer-events: all; }
+
+        .map-poly { fill: rgba(59, 130, 246, 0.1); stroke: rgba(255,255,255,0.4); stroke-width: 1px; vector-effect: non-scaling-stroke; cursor: pointer; transition: 0.15s; }
+        .map-poly:hover { stroke: white; stroke-width: 2px; fill: rgba(59, 130, 246, 0.4); }
+        .active-selected { stroke: #eab308; stroke-width: 3px; stroke-dasharray: 6; fill: rgba(234, 179, 8, 0.25); filter: drop-shadow(0 0 10px rgba(234, 179, 8, 0.4)); }
+        
+        .type-road { fill: #27272a !important; stroke: transparent !important; }
+        .type-park { fill: rgba(16, 185, 129, 0.2) !important; stroke: #10b981 !important; }
+
+        @keyframes pulse-highlight { 50% { stroke: white; stroke-width: 5px; } }
+        .highlight-pulse { animation: pulse-highlight 1.5s infinite; }
+
+        .status-sold { fill: rgba(16, 185, 129, 0.5) !important; stroke: #10b981 !important; }
+        .status-booked { fill: rgba(234, 179, 8, 0.5) !important; stroke: #eab308 !important; }
+
+        .drawing-poly { fill: rgba(59, 130, 246, 0.2); stroke: #3b82f6; stroke-width: 2px; vector-effect: non-scaling-stroke; pointer-events: none; }
+        #temp-draw-poly { fill: rgba(59, 130, 246, 0.4); stroke: #3b82f6; stroke-width: 2px; vector-effect: non-scaling-stroke; pointer-events: none; }
+        
+        .proj-line { stroke: #eab308; stroke-width: 1px; stroke-dasharray: 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+        .vertex-point { fill: white; stroke: #3b82f6; stroke-width: 2px; r: 4px; vector-effect: non-scaling-stroke; pointer-events: none; }
+
+        .grid-box { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-weight: 600; font-size: 10px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); transition: 0.2s; }
+        .grid-box:hover { transform: scale(1.1); z-index: 10; border-color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+        .bg-sold { background: #10b981; color: black; border-color: #10b981; }
+        .bg-booked { background: #eab308; color: black; border-color: #eab308; }
+        .bg-open { background: #18181b; color: #9ca3af; }
+
+        .milestone-timeline { position: relative; padding-left: 20px; border-left: 2px solid rgba(255,255,255,0.1); margin-left: 8px; margin-top: 10px; }
+        .milestone-item { position: relative; margin-bottom: 16px; transition: 0.2s; }
+        .milestone-dot { position: absolute; left: -27px; top: 4px; width: 12px; height: 12px; background: #09090b; border: 2px solid #52525b; border-radius: 50%; cursor: pointer; transition: 0.2s; }
+        .milestone-item:hover .milestone-dot { border-color: #3b82f6; box-shadow: 0 0 10px rgba(59, 130, 246, 0.4); }
+        .milestone-item.done .milestone-dot { background: #10b981; border-color: #10b981; }
+        .milestone-item.done span { text-decoration: line-through; color: #71717a; }
+
+        .hidden-view { display: none !important; }
+        .tool-btn.active { background-color: #3b82f6; color: white; border-color: #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); }
+        .read-only .admin-only { display: none !important; }
+        
+        /* TOGGLE SWITCH CSS */
+        .toggle-checkbox:checked { right: 0; border-color: #22c55e; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #22c55e; }
+        
+        /* PANIC MODE: HIDE TOGGLE, HIDE ADMIN CONTROLS */
+        body.panic-active #mode-toggle-wrapper { display: none !important; }
+        body.panic-active .admin-only-trigger { display: none !important; }
+        body.panic-active .glass-panel { border-color: rgba(255,255,255,0.1) !important; }
+
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+        #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #10b981; color: black; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 12px; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 200; box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3); }
+        #toast.show { opacity: 1; bottom: 40px; }
+    </style>
+</head>
+<body class="flex flex-col h-screen">
+
+    <nav class="h-16 border-b border-white/5 flex justify-between items-center px-6 bg-[#050505] z-30 shrink-0">
+        <div class="flex items-center gap-4">
+            <div class="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">R</div>
+            <div>
+                <h1 class="font-bold text-sm tracking-wide text-white">RAJCHAVIN <span class="text-gray-500 font-normal">NEXUS</span></h1>
+                <p class="text-[9px] text-gray-500 font-mono tracking-wider" id="header-subtitle">INTERACTIVE SUITE</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-4">
+            <div id="nav-controls">
+                <div id="mode-toggle-wrapper" class="hidden md:flex items-center mr-4">
+                    <span class="text-[10px] font-bold text-gray-500 mr-2 uppercase tracking-wide">Database</span>
+                    <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" name="toggle" id="dummy-toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer" style="top:2px; left:2px; transition: all 0.3s;" onchange="toggleDummyData(this)">
+                        <label for="dummy-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-700 cursor-pointer border border-gray-600"></label>
+                    </div>
+                    <span class="text-[10px] font-bold text-white" id="toggle-label-text">REAL</span>
+                </div>
+            </div>
+            
+            <div id="nav-auth"></div>
+        </div>
+    </nav>
+
+    <div id="view-dashboard" class="app-view flex-1 min-h-0 overflow-y-auto p-6 md:p-10 flex flex-col gap-8 bg-gradient-to-b from-[#050505] to-[#0a0a0c]">
+        <div class="flex flex-col md:flex-row justify-between items-end gap-6 border-b border-white/5 pb-8">
+            <div><h2 class="text-3xl font-bold text-white tracking-tight">Overview</h2><p class="text-sm text-gray-400 mt-1">Manage your layouts, track sales, and share blueprints.</p></div>
+            <div class="flex gap-2">
+                <button onclick="openPanicModal()" class="admin-only admin-only-trigger bg-gray-800 hover:bg-gray-700 text-white text-xs font-bold px-4 py-3 rounded-xl shadow-lg transition"><i class="ph-bold ph-shield-warning text-lg"></i></button>
+                <button onclick="openCreateModal()" class="admin-only admin-only-trigger bg-brand hover:bg-blue-600 text-white text-xs font-bold px-6 py-3 rounded-xl shadow-lg shadow-blue-500/20 transition flex items-center gap-2"><i class="ph-bold ph-plus"></i> Create New Project</button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div class="lg:col-span-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div class="glass-panel p-5 border-l-2 border-brand"><div><p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider cursor-pointer select-none" ondblclick="resetPanicMode()">Revenue</p><h3 class="text-2xl font-bold text-white mt-1" id="dash-revenue">₹ 0</h3></div></div>
+                <div class="glass-panel p-5 border-l-2 border-green-500"><div><p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Inventory</p><h3 class="text-2xl font-bold text-white mt-1" id="dash-sold-booked">0 / 0</h3><p class="text-[9px] text-gray-500 mt-1">Sold / Booked</p></div></div>
+                <div class="glass-panel p-5"><p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Plot Usage</p><div class="flex justify-between items-end mt-2"><span class="text-lg font-bold text-white" id="dash-usage-plots">0</span><span class="text-xs text-gray-500 font-bold">/ <span id="dash-limit-plots">0</span> Plots</span></div></div>
+                <div class="glass-panel p-5"><p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Project Limit</p><div class="flex justify-between items-end mt-2"><span class="text-lg font-bold text-white" id="dash-usage-layouts">0</span><span class="text-xs text-gray-500 font-bold">/ <span id="dash-limit-layouts">0</span></span></div></div>
+            </div>
+
+            <div class="lg:col-span-3">
+                <div class="flex justify-between items-center mb-4"><h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider">Active Projects</h3></div>
+                <div id="project-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+            </div>
+            
+            <div class="lg:col-span-1 space-y-4">
+                <div class="glass-panel p-5"><h3 class="text-[10px] font-bold text-gray-500 uppercase mb-4">Sales Distribution</h3><div class="h-40 relative w-full flex justify-center"><canvas id="dashPieChart"></canvas></div></div>
+                <div class="glass-panel p-5"><h3 class="text-[10px] font-bold text-gray-500 uppercase mb-4">Revenue Trend</h3><div class="h-32 relative w-full"><canvas id="dashBarChart"></canvas></div></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-layout" class="app-view hidden-view flex flex-col h-full bg-[#050505]">
+        <div class="h-14 border-b border-white/10 flex justify-between items-center px-4 bg-white/5 shrink-0 z-30 backdrop-blur-md">
+            <div class="flex items-center gap-4">
+                <button onclick="showDashboard()" class="text-xs text-gray-400 hover:text-white font-bold flex items-center gap-2 group transition admin-only"><div class="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/10"><i class="ph-bold ph-caret-left"></i></div> Back</button>
+                <div class="h-6 w-px bg-white/10 admin-only"></div>
+                <h2 class="font-bold text-white text-sm truncate max-w-[200px]" id="nav-layout-title">Project Name</h2>
+                <span id="read-only-badge" class="hidden text-[9px] bg-white/10 text-gray-400 px-2 py-1 rounded border border-white/5">VIEW ONLY</span>
+            </div>
+            <div class="flex bg-black/40 rounded-lg p-1 border border-white/10">
+                <button onclick="toggleView('map')" id="btn-view-map" class="px-4 py-1.5 rounded-md text-[10px] font-bold bg-brand text-white transition">Map</button>
+                <button onclick="toggleView('grid')" id="btn-view-grid" class="px-4 py-1.5 rounded-md text-[10px] font-bold text-gray-400 transition hover:text-white">Grid</button>
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col lg:grid lg:grid-cols-12 gap-0 overflow-hidden min-h-0">
+            <div class="col-span-12 lg:col-span-9 flex flex-col h-[60vh] lg:h-full border-b lg:border-b-0 lg:border-r border-white/10 relative bg-[#0e0e10]">
+                <div id="container-map" class="flex-1 relative overflow-hidden flex flex-col">
+                    <div class="absolute top-6 left-6 z-40 flex flex-wrap gap-3 pointer-events-none">
+                        <div class="glass-panel p-1.5 flex gap-1 pointer-events-auto shadow-2xl admin-only admin-only-trigger">
+                            <button onclick="setTool('select')" id="tool-select" class="tool-btn active p-2.5 rounded-lg hover:bg-white/10 text-gray-300 transition"><i class="ph-bold ph-cursor text-lg"></i></button>
+                            <div class="w-px h-6 bg-white/10 mx-1 self-center"></div>
+                            <button onclick="setTool('box')" id="tool-box" class="tool-btn p-2.5 rounded-lg hover:bg-white/10 text-gray-300 transition"><i class="ph-bold ph-square text-lg"></i></button>
+                            <button onclick="setTool('circle')" id="tool-circle" class="tool-btn p-2.5 rounded-lg hover:bg-white/10 text-gray-300 transition"><i class="ph-bold ph-circle text-lg"></i></button>
+                            <button onclick="setTool('pen')" id="tool-pen" class="tool-btn p-2.5 rounded-lg hover:bg-white/10 text-gray-300 transition"><i class="ph-bold ph-pencil-simple-line text-lg"></i></button>
+                            <select id="draw-type" class="bg-black/50 text-[10px] text-white border border-white/10 rounded px-2 outline-none h-9 font-bold uppercase ml-1"><option value="plot">Plot</option><option value="park">Park</option><option value="road">Road</option></select>
+                            <button onclick="finishPoly()" id="btn-finish-poly" class="hidden text-[10px] bg-green-600 hover:bg-green-500 text-white px-3 ml-2 rounded font-bold uppercase tracking-wide animate-pulse">Finish</button>
+                        </div>
+                        <div class="glass-panel p-1.5 flex gap-1 pointer-events-auto shadow-2xl">
+                            <button onclick="zoomMap(0.2)" class="p-2.5 rounded-lg hover:bg-white/10"><i class="ph-bold ph-plus text-lg"></i></button>
+                            <button onclick="resetView()" class="p-2.5 rounded-lg hover:bg-white/10"><i class="ph-bold ph-corners-out text-lg"></i></button>
+                            <button onclick="zoomMap(-0.2)" class="p-2.5 rounded-lg hover:bg-white/10"><i class="ph-bold ph-minus text-lg"></i></button>
+                        </div>
+                        <div class="pointer-events-auto admin-only admin-only-trigger">
+                            <button onclick="document.getElementById('map-upload').click()" class="bg-brand hover:bg-blue-600 px-4 py-3 rounded-xl text-[10px] font-bold text-white shadow-xl flex items-center gap-2 transition transform hover:scale-105"><i class="ph-bold ph-upload-simple text-lg"></i> Upload Plan</button>
+                            <input type="file" id="map-upload" class="hidden" accept="image/*" onchange="handleMapUpload(this)">
+                        </div>
+                    </div>
+                    <div id="map-viewport" class="w-full h-full" onwheel="handleWheel(event)" onmousedown="onMouseDown(event)" onmousemove="onMouseMove(event)" onmouseup="onMouseUp(event)" onclick="onClick(event)">
+                        <div id="canvas-container">
+                            <img id="layout-map-img" class="hidden pointer-events-none select-none">
+                            <svg id="draw-layer">
+                                <g id="layer-shapes"></g>
+                                <polygon id="temp-draw-poly" class="drawing-poly hidden"></polygon>
+                                <rect id="ghost-rect" x="0" y="0" width="0" height="0" class="drawing-poly hidden" />
+                                <line id="proj-line" x1="0" y1="0" x2="0" y2="0" class="proj-line hidden" />
+                                <polyline id="ghost-line" points="" class="drawing-poly hidden" />
+                                <g id="vertex-points"></g>
+                            </svg>
+                        </div>
+                        <div id="no-map-msg" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <div class="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-4"><i class="ph-duotone ph-image text-4xl text-gray-500"></i></div>
+                            <p class="text-sm font-bold text-gray-400">No Blueprint Uploaded</p>
+                        </div>
+                    </div>
+                </div>
+                <div id="container-grid" class="hidden-view flex-1 flex flex-col p-6 overflow-hidden bg-[#0e0e10]">
+                    <div id="grid-content" class="grid grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-3 overflow-y-auto custom-scrollbar flex-1 pb-10 content-start"></div>
+                </div>
+            </div>
+
+            <div class="col-span-12 lg:col-span-3 bg-[#050505] flex flex-col lg:h-full border-l border-white/10 overflow-y-auto custom-scrollbar">
+                
+                <div id="create-panel" class="p-6 border-b border-white/10 hidden bg-brand/5 admin-only admin-only-trigger">
+                    <h3 class="text-xs font-bold text-white mb-3 flex items-center gap-2"><i class="ph-fill ph-check-circle text-brand"></i> Save New Element</h3>
+                    <div class="space-y-3">
+                        <input type="text" id="new-id" placeholder="ID (e.g. A-101)" class="w-full bg-black/40 border border-white/10 rounded-lg p-2.5 text-sm text-white outline-none focus:border-brand">
+                        <input type="number" id="new-price" placeholder="Price" class="w-full bg-black/40 border border-white/10 rounded-lg p-2.5 text-sm text-white outline-none focus:border-brand">
+                        <input type="text" id="new-dim" placeholder="Dimensions (e.g. 30x40)" class="w-full bg-black/40 border border-white/10 rounded-lg p-2.5 text-sm text-white outline-none focus:border-brand">
+                        <textarea id="new-desc" placeholder="Short Description..." rows="2" class="w-full bg-black/40 border border-white/10 rounded-lg p-2.5 text-sm text-white outline-none focus:border-brand"></textarea>
+                        <div class="flex gap-2 pt-2"><button onclick="fullResetDraw()" class="flex-1 bg-white/5 py-2.5 rounded-lg text-xs font-bold text-gray-400 hover:bg-white/10">Discard</button><button onclick="confirmDraw()" class="flex-1 bg-brand py-2.5 rounded-lg text-xs font-bold text-white hover:bg-blue-600">Save</button></div>
+                    </div>
+                </div>
+                
+                <div id="inspector-panel" class="p-6 border-b border-white/10 hidden bg-white/[0.02]">
+                    <div class="flex justify-between mb-4">
+                        <span class="text-[10px] font-bold text-brand uppercase tracking-wider bg-brand/10 px-2 py-1 rounded">Selected</span>
+                        <div class="flex gap-1 admin-only admin-only-trigger"><button onclick="openShareModal()" class="text-blue-400 hover:bg-blue-500/10 p-1.5 rounded transition"><i class="ph-bold ph-share-network"></i></button><button onclick="deleteSelected()" class="text-red-500 hover:bg-red-500/10 p-1.5 rounded transition"><i class="ph-bold ph-trash"></i></button></div>
+                    </div>
+                    
+                    <div id="inspector-plot-data" class="space-y-3">
+                        <input type="text" id="insp-id" class="w-full bg-black/40 border border-white/10 rounded-lg p-2.5 text-lg font-bold text-white outline-none focus:border-brand disabled:opacity-50">
+                        <input type="number" id="insp-price" class="w-full bg-black/40 border border-white/10 rounded-lg p-2.5 text-sm text-gray-300 outline-none focus:border-brand disabled:opacity-50">
+                        <input type="text" id="insp-dim" placeholder="Dimensions" class="w-full bg-black/40 border border-white/10 rounded-lg p-2.5 text-sm text-gray-300 outline-none focus:border-brand disabled:opacity-50">
+                        <textarea id="insp-desc" placeholder="Description" rows="2" class="w-full bg-black/40 border border-white/10 rounded-lg p-2.5 text-sm text-gray-300 outline-none focus:border-brand disabled:opacity-50"></textarea>
+
+                        <div class="grid grid-cols-3 gap-2 mt-2 admin-only admin-only-trigger">
+                            <button onclick="changeStatus('open')" class="py-2 text-[9px] font-bold rounded-lg bg-gray-800 text-gray-400 border border-white/5">OPEN</button>
+                            <button onclick="changeStatus('booked')" class="py-2 text-[9px] font-bold rounded-lg bg-yellow-900/30 text-yellow-500 border border-yellow-500/30">BOOKED</button>
+                            <button onclick="changeStatus('sold')" class="py-2 text-[9px] font-bold rounded-lg bg-green-900/30 text-green-500 border border-green-500/30">SOLD</button>
+                        </div>
+                        <div id="public-status-badge" class="hidden text-center py-2 rounded-lg text-xs font-bold border mt-2"></div>
+                    </div>
+
+                    <div id="inspector-infra-data" class="hidden text-center py-4 opacity-50">
+                        <i class="ph-duotone ph-cone text-3xl mb-2"></i>
+                        <p class="text-xs">Infrastructure Element</p>
+                        <p id="infra-type-label" class="text-[10px] font-bold uppercase mt-1 text-gray-500"></p>
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-white/10" id="insp-custom-fields">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-[9px] font-bold text-gray-500 uppercase">Custom Fields</span>
+                            <div class="flex gap-1 admin-only admin-only-trigger">
+                                <button onclick="addCustomField('text')" class="text-[9px] bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-white font-bold">+ Text</button>
+                                <button onclick="document.getElementById('custom-media-up').click()" class="text-[9px] bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-white font-bold">+ Media</button>
+                                <input type="file" id="custom-media-up" class="hidden" onchange="addCustomMedia(this)">
+                            </div>
+                        </div>
+                        <div id="custom-fields-list" class="space-y-2"></div>
+                    </div>
+                    
+                    <div id="insp-customer-info" class="hidden mt-6 pt-6 border-t border-white/10 admin-only admin-only-trigger">
+                        <div class="bg-white/5 p-3 rounded-xl border border-white/5 mb-3">
+                            <p class="text-xs text-gray-500 mb-1 font-bold uppercase">Customer Info</p>
+                            <input type="text" id="insp-cust-name" class="w-full bg-transparent text-sm text-white font-bold outline-none mb-2 border-b border-white/10 pb-1" placeholder="Customer Name">
+                            <input type="text" id="insp-cust-phone" class="w-full bg-transparent text-xs text-gray-400 outline-none border-b border-white/10 pb-1" placeholder="Phone Number">
+                        </div>
+                        <div class="mt-4"><div class="flex justify-between items-center mb-2"><span class="text-[9px] font-bold text-gray-500 uppercase">Files</span><button onclick="document.getElementById('insp-doc-upload').click()" class="text-brand text-[10px] font-bold hover:underline">+ Add</button><input type="file" id="insp-doc-upload" class="hidden" onchange="uploadInspDoc(this)"></div><div id="insp-doc-list" class="space-y-2"></div></div>
+                    </div>
+                    <button onclick="saveInspector()" id="btn-save-inspector" class="w-full bg-white/10 hover:bg-white/20 py-2.5 rounded-lg text-xs font-bold text-white mt-6 transition admin-only admin-only-trigger">Update</button>
+                </div>
+                
+                <div class="p-6 space-y-8">
+                    <div><h3 class="text-[10px] font-bold text-gray-500 uppercase mb-3 tracking-wider">Analytics</h3><div class="h-32 relative w-full flex justify-center"><canvas id="miniChart"></canvas></div></div>
+                    <div class="admin-only admin-only-trigger space-y-8">
+                        <div>
+                            <div class="flex justify-between items-center mb-3"><h3 class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Map Settings</h3></div>
+                            <div class="flex items-center justify-between bg-white/5 p-3 rounded-lg"><span class="text-xs text-gray-400">Public Map Visible</span><input type="checkbox" id="public-map-toggle" onchange="togglePublicMap(this)" class="accent-brand"></div>
+                        </div>
+                        <div><div class="flex justify-between items-center mb-3"><h3 class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Milestones</h3><button onclick="addMilestone()" class="text-brand text-xs font-bold hover:bg-brand/10 px-2 py-1 rounded">+ Add</button></div><div id="ms-list" class="milestone-timeline"></div></div>
+                        <div><div class="flex justify-between items-center mb-3"><h3 class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Master Docs</h3><button onclick="document.getElementById('doc-upload').click()" class="text-brand text-xs font-bold hover:bg-brand/10 px-2 py-1 rounded">+ Upload</button><input type="file" id="doc-upload" class="hidden" onchange="uploadDoc(this)"></div><div id="doc-list" class="space-y-2"></div></div>
+                        <div class="pb-10"><h3 class="text-[10px] font-bold text-gray-500 uppercase mb-3 tracking-wider">Directory</h3><div id="customer-list" class="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-brand text-white px-4 py-2 rounded-full text-xs font-bold shadow-2xl opacity-0 transition-opacity pointer-events-none z-50">Action Complete</div>
+    
+    <div id="modal-backdrop" class="hidden">
+        <div id="modal-create" class="modal-content hidden">
+            <h2 class="text-lg font-bold mb-4">Create Project</h2>
+            <input id="create-name" type="text" class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white outline-none mb-4 focus:border-brand" placeholder="Layout Name">
+            <div class="flex gap-2"><button onclick="closeModals()" class="flex-1 bg-white/10 py-2.5 rounded-lg text-xs font-bold">Cancel</button><button onclick="confirmCreate()" class="flex-1 bg-brand py-2.5 rounded-lg text-xs font-bold">Create</button></div>
+        </div>
+        <div id="modal-panic-config" class="modal-content hidden">
+            <h2 class="text-lg font-bold mb-1 text-red-500">Security Protocol</h2>
+            <p class="text-xs text-gray-500 mb-4">Configure dummy data for emergency masking.</p>
+            <div class="space-y-3">
+                <input type="number" id="conf-safe-rev" placeholder="Safe Revenue" class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white outline-none">
+                <input type="text" id="conf-safe-name" placeholder="Safe Client Name" class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white outline-none">
+                <button onclick="savePanicConfig()" class="w-full bg-white/10 hover:bg-white/20 py-2.5 rounded-lg text-xs font-bold text-white">Save Configuration</button>
+                <div class="h-px bg-white/10 my-2"></div>
+                <button onclick="triggerPanicLocal()" class="w-full bg-red-900/50 hover:bg-red-800/50 text-red-400 py-3 rounded-lg text-xs font-bold border border-red-900 animate-pulse">ACTIVATE PANIC PROTOCOL</button>
+            </div>
+            <button onclick="closeModals()" class="w-full mt-4 py-2 text-xs text-gray-500 hover:text-white transition">Close</button>
+        </div>
+        <div id="modal-transaction" class="modal-content hidden">
+            <h2 class="text-lg font-bold mb-1">Mark as <span id="trans-type" class="uppercase text-brand">SOLD</span></h2>
+            <div class="space-y-3 mt-4">
+                <input type="text" id="trans-name" placeholder="Customer Name" class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white outline-none">
+                <input type="text" id="trans-phone" placeholder="Phone" class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white outline-none">
+                <input type="number" id="trans-price" placeholder="Final Price" class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white outline-none">
+                <div class="border-t border-white/10 pt-2"><div class="flex justify-between items-center mb-2"><label class="text-[10px] font-bold text-gray-500 uppercase">Documents</label><button onclick="document.getElementById('trans-doc').click()" class="text-[10px] text-brand font-bold">+ Attach</button><input type="file" id="trans-doc" class="hidden" onchange="handleTransactionDoc(this)"></div><div id="trans-doc-list" class="space-y-1"></div></div>
+                <div class="flex gap-2 mt-4"><button onclick="closeModals()" class="flex-1 bg-white/10 py-3 rounded-lg text-xs font-bold">Cancel</button><button onclick="confirmTransaction()" class="flex-1 bg-brand py-3 rounded-lg text-xs font-bold">Confirm</button></div>
+            </div>
+        </div>
+        <div id="modal-share" class="modal-content hidden">
+            <h2 class="text-lg font-bold mb-1 text-white">Share Plot</h2>
+            <p class="text-xs text-gray-500 mb-4">Anyone with this link can view this plot.</p>
+            <div class="flex items-center gap-2 bg-black/40 p-2 rounded-lg border border-white/10 mb-4">
+                <input type="text" id="share-link-input" readonly class="bg-transparent text-xs text-white w-full outline-none">
+                <button onclick="copyShareLink()" class="text-brand hover:text-white px-2"><i class="ph-bold ph-copy"></i></button>
+            </div>
+            <div class="flex flex-col gap-2 mb-4 bg-white/5 p-2 rounded-lg">
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="share-show-price" checked onchange="updateShareLink()" class="accent-brand">
+                    <span class="text-xs text-gray-400">Show Price to Public</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="share-show-details" onchange="updateShareLink()" class="accent-brand">
+                    <span class="text-xs text-gray-400">Show All Details (Customer Info)</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-4 gap-2">
+                <button onclick="shareVia('whatsapp')" class="bg-[#25D366]/20 hover:bg-[#25D366]/30 text-[#25D366] p-3 rounded-xl flex flex-col items-center gap-1 transition"><i class="ph-bold ph-whatsapp-logo text-xl"></i><span class="text-[10px]">WhatsApp</span></button>
+                <button onclick="shareVia('telegram')" class="bg-[#0088cc]/20 hover:bg-[#0088cc]/30 text-[#0088cc] p-3 rounded-xl flex flex-col items-center gap-1 transition"><i class="ph-bold ph-telegram-logo text-xl"></i><span class="text-[10px]">Telegram</span></button>
+                <button onclick="shareVia('mail')" class="bg-white/10 hover:bg-white/20 text-white p-3 rounded-xl flex flex-col items-center gap-1 transition"><i class="ph-bold ph-envelope text-xl"></i><span class="text-[10px]">Email</span></button>
+                <button onclick="shareVia('native')" class="bg-white/10 hover:bg-white/20 text-white p-3 rounded-xl flex flex-col items-center gap-1 transition md:hidden"><i class="ph-bold ph-share text-xl"></i><span class="text-[10px]">More</span></button>
+            </div>
+            <button onclick="closeModals()" class="w-full mt-4 py-2 text-xs text-gray-500 hover:text-white transition">Close</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, query, where, onSnapshot, doc, updateDoc, addDoc, deleteDoc, setDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = { apiKey: "AIzaSyAd8kVZEt919GfWvhhstgebLWxgwaunT5o", authDomain: "rajchavin-raas.firebaseapp.com", projectId: "rajchavin-raas", storageBucket: "rajchavin-raas.firebasestorage.app", messagingSenderId: "14499629170", appId: "1:14499629170:web:1cd21aa2434df98afcdaeb" };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const linkLayout = urlParams.get('layout');
+        const linkPlot = urlParams.get('plot');
+        
+        let session = null;
+        try { session = JSON.parse(localStorage.getItem('rajchavin_user')); } catch(e){}
+        const isReadOnly = !session;
+
+        const navContainer = document.getElementById('nav-auth');
+        if(isReadOnly) {
+            document.body.classList.add('read-only');
+            const style = document.createElement('style'); style.innerHTML = `.admin-only { display: none !important; }`; document.head.appendChild(style);
+            if(navContainer) navContainer.innerHTML = `<a href="login.html" class="bg-white/10 px-4 py-2 rounded-lg text-xs font-bold text-white hover:bg-white/20 transition">Login</a>`;
+            document.getElementById('header-subtitle').innerText = "PUBLIC VIEW";
+            if(!linkLayout) window.location.href = 'login.html';
+        } else {
+            if(navContainer) navContainer.innerHTML = `<div class="hidden md:block text-right"><p class="text-xs font-bold text-white">${session.name}</p><p class="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Admin</p></div><button onclick="logout()" class="bg-white/5 text-gray-400 hover:text-red-400 p-2.5 rounded-xl transition"><i class="ph-bold ph-sign-out text-lg"></i></button>`;
+        }
+
+        const safeSetText = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
+
+        // GENERIC SAFE LAYOUT NAMES
+        const SAFE_NAMES = ["Green Valley Phase 1", "Sunny Acres", "Lakeside Gardens", "Metro City", "Urban Woods", "Royal Residency"];
+
+        let appState = {
+            layouts: [], currentLayout: null, selectedId: null, chart: null, dashPie: null, dashBar: null,
+            scale: 1, panX: 0, panY: 0, isDragging: false, dragStart: {x:0,y:0},
+            tool: 'select', points: [], isDrawing: false, startPt: null, tempShape: null,
+            transaction: { status: '', docs: [] },
+            panicMode: false,
+            // 1. ADDED: activeCollection state
+            activeCollection: 'layouts' 
+        };
+
+        const LIMITS = { plots: session?.limits?.maxPlots || 50, layouts: session?.limits?.maxLayouts || 5 };
+        if(!isReadOnly) { safeSetText('dash-limit-plots', LIMITS.plots); safeSetText('dash-limit-layouts', LIMITS.layouts); }
+
+        let configRef = null;
+        if (!isReadOnly && session && session.id) {
+             configRef = doc(db, "settings", session.id);
+        }
+
+        // 2. DYNAMIC LISTENER MANAGER
+        let unsubscribeLayouts = null;
+
+        function subscribeToData(isDummy) {
+            // Unsubscribe previous listener if exists
+            if (unsubscribeLayouts) unsubscribeLayouts();
+
+            // Set new collection target
+            appState.activeCollection = isDummy ? 'layouts_dummy' : 'layouts';
+
+            // Start new listener
+            if (isReadOnly && linkLayout) {
+                // Public View Single Doc Listener
+                unsubscribeLayouts = onSnapshot(doc(db, appState.activeCollection, linkLayout), (docSnap) => {
+                    if(docSnap.exists()) {
+                        const data = {id: docSnap.id, ...docSnap.data()};
+                        appState.layouts = [data];
+                        openLayout(data.id);
+                        if(linkPlot) setTimeout(() => { selectPoly(linkPlot, {stopPropagation:()=>{}}); }, 800);
+                    }
+                });
+            } else if (!isReadOnly) {
+                // Admin View All Docs Listener
+                unsubscribeLayouts = onSnapshot(query(collection(db, appState.activeCollection), where("devId", "==", session.id)), (snap) => {
+                    appState.layouts = snap.docs.map(d => ({id:d.id, ...d.data()}));
+                    updateDashboard();
+                    if(appState.currentLayout) {
+                        const fresh = appState.layouts.find(l => l.id === appState.currentLayout.id);
+                        if(fresh) { appState.currentLayout = fresh; renderMap(); }
+                        else showDashboard(); // Kick to dash if layout doesn't exist in new mode
+                    }
+                });
+            }
+        }
+
+        // 3. GLOBAL PANIC LISTENER (Only for Logged In Admins)
+        if (configRef) {
+            onSnapshot(configRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    const toggle = document.getElementById('dummy-toggle');
+                    
+                    if (data.panicMode) {
+                        appState.panicMode = true;
+                        document.body.classList.add('panic-active');
+                        // Force switch to dummy collection
+                        subscribeToData(true);
+                        
+                        // Lock Toggle
+                        if(toggle) {
+                            toggle.checked = true;
+                            toggle.disabled = true;
+                            document.getElementById('toggle-label-text').innerText = "SAFE MODE";
+                        }
+                    } else {
+                        appState.panicMode = false;
+                        document.body.classList.remove('panic-active');
+                        // Revert based on local toggle state
+                        const isLocalDummy = toggle ? toggle.checked : false;
+                        subscribeToData(isLocalDummy);
+                        
+                        // Unlock Toggle
+                        if(toggle) {
+                            toggle.disabled = false;
+                            document.getElementById('toggle-label-text').innerText = isLocalDummy ? "DUMMY" : "REAL";
+                        }
+                    }
+                    appState.dummyData = { 
+                        revenue: data.dummyRevenue || 150000, 
+                        name: data.dummyName || "Verified Client" 
+                    };
+                } else {
+                    // Default init if no config exists
+                    subscribeToData(false);
+                }
+            });
+        } else {
+            // For public read-only, just load real data by default
+            subscribeToData(false);
+        }
+
+        // 4. LOCAL TOGGLE HANDLER
+        window.toggleDummyData = (checkbox) => {
+            if(appState.panicMode) return; // Prevent toggle in panic mode
+            const isDummy = checkbox.checked;
+            document.getElementById('toggle-label-text').innerText = isDummy ? "DUMMY" : "REAL";
+            // Visual feedback
+            document.getElementById('toggle-label-text').className = isDummy ? "text-[10px] font-bold text-green-400" : "text-[10px] font-bold text-white";
+            subscribeToData(isDummy);
+        };
+
+        // Config & Trigger
+        window.openPanicModal = () => { document.getElementById('modal-backdrop').style.display='flex'; document.getElementById('modal-panic-config').classList.remove('hidden'); };
+        window.savePanicConfig = async () => {
+             const rev = document.getElementById('conf-safe-rev').value;
+             const name = document.getElementById('conf-safe-name').value;
+             // SAVE TO USER SPECIFIC CONFIG
+             await setDoc(configRef, { dummyRevenue: rev, dummyName: name }, { merge: true });
+             alert("Safe config saved.");
+        };
+        window.triggerPanicLocal = async () => {
+             await updateDoc(configRef, { panicMode: true });
+             closeModals();
+        };
+
+        // Admin Reset
+        window.resetPanicMode = () => { if(isReadOnly) return; updateDoc(configRef, { panicMode: false }); };
+        window.addEventListener('keydown', (e) => { if(e.shiftKey && e.key === 'D' && !isReadOnly) window.resetPanicMode(); });
+
+        const viewport = document.getElementById('map-viewport');
+        const container = document.getElementById('canvas-container');
+        const svg = document.getElementById('draw-layer');
+        const imgEl = document.getElementById('layout-map-img');
+
+        window.getSvgPoint = (evt) => { const pt = svg.createSVGPoint(); pt.x = evt.clientX; pt.y = evt.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); };
+        window.updateTransform = () => container.style.transform = `translate(${appState.panX}px, ${appState.panY}px) scale(${appState.scale})`;
+        window.handleWheel = (e) => { e.preventDefault(); const delta = -e.deltaY * 0.001; const newScale = Math.min(Math.max(0.1, appState.scale + delta), 20); appState.scale = newScale; updateTransform(); };
+
+        window.setTool = (t) => { if(isReadOnly && t !== 'select') return; appState.tool = t; document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active')); const btn = document.getElementById(`tool-${t}`); if(btn) btn.classList.add('active'); document.getElementById('map-viewport').style.cursor = t === 'select' ? 'default' : 'crosshair'; fullResetDraw(); };
+
+        window.onMouseDown = (e) => {
+            if(appState.tool === 'select') { if(e.target.classList.contains('map-poly')) return; appState.isDragging = true; appState.dragStart = { x: e.clientX - appState.panX, y: e.clientY - appState.panY }; viewport.style.cursor = 'grabbing'; }
+            else if (!isReadOnly) { 
+                const plotCount = (appState.currentLayout.elements||[]).filter(e=>e.type==='plot').length;
+                if(document.getElementById('draw-type').value === 'plot' && plotCount >= LIMITS.plots) return alert("Plot Limit Reached");
+                const pt = window.getSvgPoint(e); 
+                if(appState.tool === 'box' || appState.tool === 'circle') { appState.isDrawing = true; appState.startPt = pt; } 
+                else if(appState.tool === 'pen') { appState.points.push(pt); renderGhost(); document.getElementById('btn-finish-poly').classList.remove('hidden'); } 
+            }
+        };
+        window.onMouseMove = (e) => {
+            if(appState.isDragging) { appState.panX = e.clientX - appState.dragStart.x; appState.panY = e.clientY - appState.dragStart.y; updateTransform(); return; }
+            if(!isReadOnly && appState.isDrawing) {
+                const pt = window.getSvgPoint(e); const start = appState.startPt; const rect = document.getElementById('ghost-rect'); const poly = document.getElementById('ghost-line');
+                if(appState.tool === 'box') { const x=Math.min(start.x,pt.x), y=Math.min(start.y,pt.y), w=Math.abs(start.x-pt.x), h=Math.abs(start.y-pt.y); rect.setAttribute('x',x); rect.setAttribute('y',y); rect.setAttribute('width',w); rect.setAttribute('height',h); rect.classList.remove('hidden'); }
+                else if(appState.tool === 'circle') { const r=Math.sqrt(Math.pow(pt.x-start.x,2)+Math.pow(pt.y-start.y,2)); const pts=[]; for(let i=0;i<32;i++){ const a=(i/32)*Math.PI*2; pts.push(`${start.x+Math.cos(a)*r},${start.y+Math.sin(a)*r}`); } poly.setAttribute('points',pts.join(' ')); poly.classList.remove('hidden'); }
+            } else if(!isReadOnly && appState.tool === 'pen' && appState.points.length > 0) { const pt = window.getSvgPoint(e); const last = appState.points[appState.points.length-1]; const line = document.getElementById('proj-line'); line.setAttribute('x1',last.x); line.setAttribute('y1',last.y); line.setAttribute('x2',pt.x); line.setAttribute('y2',pt.y); line.classList.remove('hidden'); }
+        };
+        window.onMouseUp = (e) => {
+            if(appState.isDragging) { appState.isDragging = false; viewport.style.cursor = 'default'; }
+            else if(!isReadOnly && appState.isDrawing) { appState.isDrawing = false; const pt = window.getSvgPoint(e); let ptsStr = ""; 
+            if(appState.tool === 'box') { 
+                const start=appState.startPt, x=Math.min(start.x,pt.x), y=Math.min(start.y,pt.y), w=Math.abs(start.x-pt.x), h=Math.abs(start.y-pt.y); 
+                if(w>5) 
+                    ptsStr=`${x.toFixed(1)},${y.toFixed(1)} ${(x+w).toFixed(1)},${y.toFixed(1)} ${(x+w).toFixed(1)},${(y+h).toFixed(1)} ${x.toFixed(1)},${(y+h).toFixed(1)}`; 
+            } 
+            else if(appState.tool === 'circle') { 
+                const start=appState.startPt, r=Math.sqrt(Math.pow(pt.x-start.x,2)+Math.pow(pt.y-start.y,2)); 
+                if(r>5){ const pts=[]; for(let i=0;i<32;i++){ const a=(i/32)*Math.PI*2; pts.push(`${(start.x+Math.cos(a)*r).toFixed(1)},${(start.y+Math.sin(a)*r).toFixed(1)}`); } ptsStr=pts.join(' '); } 
+            } 
+            if(ptsStr) openCreatePanel(ptsStr); else fullResetDraw(); }
+        };
+        window.onClick = (e) => { if(appState.tool === 'select' && !e.target.classList.contains('map-poly')) deselectAll(); };
+
+        function renderGhost() { const poly = document.getElementById('ghost-line'); poly.setAttribute('points', appState.points.map(p=>`${p.x},${p.y}`).join(' ')); poly.classList.remove('hidden'); document.getElementById('vertex-points').innerHTML = appState.points.map(p=>`<circle cx="${p.x}" cy="${p.y}" class="vertex-point" />`).join(''); }
+        window.finishPoly = () => { if(appState.points.length>2) openCreatePanel(appState.points.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')); else fullResetDraw(); };
+        function clearGhost() { ['ghost-rect','ghost-line','proj-line'].forEach(id=>document.getElementById(id).classList.add('hidden')); document.getElementById('vertex-points').innerHTML=''; document.getElementById('btn-finish-poly').classList.add('hidden'); }
+        window.fullResetDraw = () => { appState.points = []; appState.isDrawing = false; clearGhost(); document.getElementById('create-panel').classList.add('hidden'); };
+        
+        function openCreatePanel(pts) { 
+            appState.tempShape = pts; 
+            const tempPoly = document.getElementById('temp-draw-poly');
+            tempPoly.setAttribute('points', pts);
+            tempPoly.classList.remove('hidden');
+
+            const t = document.getElementById('draw-type').value; 
+            document.getElementById('new-id').value = t==='plot' ? `P-${(appState.currentLayout.elements||[]).filter(e=>e.type==='plot').length+1}` : t.toUpperCase();
+            document.getElementById('new-price').value = '';
+            document.getElementById('new-dim').value = '';
+            document.getElementById('new-desc').value = '';
+            document.getElementById('create-panel').classList.remove('hidden'); 
+            document.getElementById('inspector-panel').classList.add('hidden'); 
+            clearGhost(); 
+        }
+
+        window.confirmDraw = async () => { 
+            if(!appState.tempShape) return; 
+            const type = document.getElementById('draw-type').value; 
+            const newEl = JSON.parse(JSON.stringify({
+                id: document.getElementById('new-id').value, 
+                price: type==='plot' ? (document.getElementById('new-price').value || 0) : 0, 
+                type: type, 
+                status: type==='plot' ? 'open' : 'none', 
+                points: appState.tempShape,
+                dimensions: document.getElementById('new-dim').value || '',
+                description: document.getElementById('new-desc').value || '',
+                customFields: []
+            }));
+
+            // 5. UPDATE: Use Dynamic Collection
+            await updateDoc(doc(db,appState.activeCollection,appState.currentLayout.id),{elements:arrayUnion(newEl)}); 
+            fullResetDraw(); 
+            document.getElementById('temp-draw-poly').classList.add('hidden'); 
+            window.setTool('select'); 
+        };
+
+        function renderMap() {
+            const l = appState.currentLayout;
+            
+            // DYNAMIC NAME RENDERING
+            const layoutIdx = appState.layouts.findIndex(x => x.id === l.id);
+            // safeSetText('nav-layout-title', getSafeLayoutName(l, layoutIdx)); // Not needed with dual collection
+            safeSetText('nav-layout-title', l.name);
+
+            const url = new URLSearchParams(window.location.search);
+            const hidePrice = url.get('hidePrice');
+            if (isReadOnly && hidePrice) {
+                document.body.classList.add('hide-price-mode');
+            }
+
+            if(l.bgImage && (l.publicMapVisible !== false || !isReadOnly)) { 
+                imgEl.src = l.bgImage; 
+                imgEl.classList.remove('hidden'); 
+                document.getElementById('no-map-msg').classList.add('hidden'); 
+                imgEl.onload = () => { 
+                    svg.setAttribute('viewBox', `0 0 ${imgEl.naturalWidth} ${imgEl.naturalHeight}`); 
+                    container.style.width = imgEl.naturalWidth+'px'; 
+                    container.style.height = imgEl.naturalHeight+'px'; 
+                }; 
+            } else if (l.publicMapVisible === false && isReadOnly) {
+                 imgEl.classList.add('hidden'); 
+                 document.getElementById('no-map-msg').classList.add('hidden');
+                 container.style.width = '5000px'; 
+                 container.style.height = '5000px'; 
+                 svg.setAttribute('viewBox', `0 0 5000 5000`); 
+            } else { 
+                imgEl.classList.add('hidden'); 
+                document.getElementById('no-map-msg').classList.remove('hidden'); 
+            }
+            
+            const toggle = document.getElementById('public-map-toggle'); if(toggle) toggle.checked = l.publicMapVisible !== false;
+
+            document.getElementById('layer-shapes').innerHTML = (l.elements||[]).map(e => {
+                let cls = `map-poly type-${e.type}`; 
+                if(e.type==='plot') { 
+                    if(e.status==='sold') cls+=' status-sold'; 
+                    else if(e.status==='booked') cls+=' status-booked'; 
+                } 
+                if(e.id === appState.selectedId) cls+=' active-selected';
+                
+                let label = ''; 
+                if(e.type==='plot' && e.points) { 
+                    const pts=e.points.split(' ').map(p=>p.split(',').map(Number)); 
+                    const cx=pts.reduce((s,p)=>s+p[0],0)/pts.length, cy=pts.reduce((s,p)=>s+p[1],0)/pts.length; 
+                    label=`<text x="${cx}" y="${cy}" fill="white" font-size="16" font-weight="bold" text-anchor="middle" dominant-baseline="middle" pointer-events="none" style="text-shadow:0 1px 3px black">${e.id}</text>`; 
+                }
+                return `<g onclick="selectPoly('${e.id}', event)"><polygon points="${e.points}" class="${cls}" />${label}</g>`;
+            }).join('');
+            
+            if(linkPlot && appState.selectedId === linkPlot) { const el = document.querySelector('.active-selected'); if(el) el.classList.add('highlight-pulse'); }
+            updateRightPanel();
+        }
+
+        function updateRightPanel() {
+            const l = appState.currentLayout; const els = l.elements||[];
+            document.getElementById('grid-content').innerHTML = els.filter(e=>e.type==='plot').map((p, idx) => `<div onclick="selectPoly('${p.id}', event)" class="grid-box ${p.id===appState.selectedId?'border-brand border-2':''} bg-${p.status==='sold'?'sold':(p.status==='booked'?'booked':'open')}">${p.id}</div>`).join('');
+            const ctx = document.getElementById('miniChart'); if(appState.chart) appState.chart.destroy();
+            const sold = els.filter(e=>e.status==='sold').length, booked = els.filter(e=>e.status==='booked').length, open = els.filter(e=>e.type==='plot').length - sold - booked;
+            
+            appState.chart = new Chart(ctx, { type: 'doughnut', data: { labels: ['S','B','O'], datasets: [{ data: [sold, booked, open], backgroundColor: ['#10b981', '#eab308', '#3f3f46'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false, grid: {display: false} }, y: { display: false, grid: {display: false} } } } });
+            
+            if(!isReadOnly) {
+                document.getElementById('ms-list').innerHTML = (l.milestones||[]).map((m,i) => `<div class="milestone-item ${m.done?'done':''} flex justify-between items-center text-xs pl-2"><div class="flex gap-2 items-center"><div class="milestone-dot" onclick="toggleMilestone(${i})"></div><span>${m.title}</span></div><button class="text-red-500/50 hover:text-red-500" onclick="deleteMilestone(${i})"><i class="ph-bold ph-trash"></i></button></div>`).join('');
+                document.getElementById('doc-list').innerHTML = (l.docs||[]).map((d,i) => `
+                    <div class="flex justify-between items-center text-[10px] bg-white/5 p-2 rounded hover:bg-white/10 transition">
+                        <div class="flex items-center gap-2"><i class="ph-file-pdf text-brand"></i> <span class="truncate w-24">${d.name}</span></div>
+                        <div class="flex gap-2">
+                            <a href="${d.url}" download="${d.name}" class="text-white hover:text-brand"><i class="ph-bold ph-download-simple"></i></a>
+                            <i class="ph-trash text-red-500 cursor-pointer" onclick="deleteLayoutDoc(${i})"></i>
+                        </div>
+                    </div>`).join('');
+                
+                document.getElementById('customer-list').innerHTML = els.filter(e=>e.type==='plot'&&e.status!=='open').map(p => `<div onclick="selectPoly('${p.id}', event)" class="glass-card p-2 flex justify-between items-center cursor-pointer border-l-2 ${p.status==='sold'?'border-green-500':'border-yellow-500'}"><div class="flex items-center gap-2"><span class="font-mono text-xs font-bold bg-white/10 px-1 rounded">${p.id}</span><span class="text-xs">${p.customerName}</span></div><span class="text-[9px] uppercase font-bold text-gray-500">${p.status}</span></div>`).join('');
+            }
+        }
+
+        window.selectPoly = (id, e) => {
+            if(e && e.stopPropagation) e.stopPropagation();
+            if(appState.tool !== 'select') return;
+            appState.selectedId = id; const el = appState.currentLayout.elements.find(x => x.id === id);
+            document.getElementById('create-panel').classList.add('hidden'); document.getElementById('inspector-panel').classList.remove('hidden');
+            
+            if(el.type !== 'plot') {
+                document.getElementById('inspector-plot-data').classList.add('hidden');
+                document.getElementById('inspector-infra-data').classList.remove('hidden');
+                document.getElementById('infra-type-label').innerText = el.type;
+                document.getElementById('btn-save-inspector').innerText = "Delete Element";
+                document.getElementById('btn-save-inspector').onclick = deleteSelected;
+                document.getElementById('insp-custom-fields').classList.add('hidden');
+            } else {
+                document.getElementById('inspector-plot-data').classList.remove('hidden');
+                document.getElementById('inspector-infra-data').classList.add('hidden');
+                
+                const url = new URLSearchParams(window.location.search);
+                const hidePrice = url.get('hidePrice');
+                const showDetails = url.get('showDetails');
+
+                if (isReadOnly) {
+                    document.getElementById('insp-custom-fields').classList.add('hidden');
+                    // FIX: Reset display before hiding specific
+                    document.getElementById('insp-price').parentNode.style.display = 'block'; 
+
+                    // Hide ONLY the price input, not the parent container
+                    if(hidePrice) document.getElementById('insp-price').classList.add('hidden');
+                    else document.getElementById('insp-price').classList.remove('hidden');
+                    
+                } else {
+                    document.getElementById('insp-custom-fields').classList.remove('hidden');
+                    renderCustomFields(el);
+                    // Ensure price is visible for admin
+                    document.getElementById('insp-price').classList.remove('hidden');
+                }
+                
+                document.getElementById('btn-save-inspector').innerText = "Update Info";
+                document.getElementById('btn-save-inspector').onclick = saveInspector;
+                
+                const inpId = document.getElementById('insp-id'); const inpPrice = document.getElementById('insp-price');
+                const inpDim = document.getElementById('insp-dim'); const inpDesc = document.getElementById('insp-desc');
+
+                inpId.value = el.id; 
+                inpPrice.value = el.price || '';
+                inpDim.value = el.dimensions || '';
+                inpDesc.value = el.description || '';
+                
+                inpId.disabled = isReadOnly; 
+                inpPrice.disabled = isReadOnly;
+                inpDim.disabled = isReadOnly;
+                inpDesc.disabled = isReadOnly;
+
+                const badge = document.getElementById('public-status-badge');
+                if(isReadOnly) { badge.classList.remove('hidden'); badge.innerText = el.status.toUpperCase(); badge.className = `text-center py-2 rounded-lg text-xs font-bold border ${el.status==='sold'?'bg-green-900/20 text-green-500 border-green-500/30':(el.status==='booked'?'bg-yellow-900/20 text-yellow-500 border-yellow-500/30':'bg-white/5 text-gray-400 border-white/10')}`; } else { badge.classList.add('hidden'); }
+                
+                const custPanel = document.getElementById('insp-customer-info');
+                if(el.status !== 'open') { 
+                    if (!isReadOnly || (isReadOnly && showDetails)) {
+                        custPanel.classList.remove('hidden'); 
+                        document.getElementById('insp-cust-name').value = el.customerName || ''; 
+                        document.getElementById('insp-cust-phone').value = el.customerPhone || ''; 
+                        if(isReadOnly) {
+                            document.getElementById('insp-cust-name').disabled = true;
+                            document.getElementById('insp-cust-phone').disabled = true;
+                        }
+                    } else if (isReadOnly && !showDetails) {
+                         custPanel.classList.remove('hidden');
+                         document.getElementById('insp-cust-name').value = '******';
+                         document.getElementById('insp-cust-phone').value = '******';
+                         document.getElementById('insp-cust-name').disabled = true;
+                         document.getElementById('insp-cust-phone').disabled = true;
+                    }
+
+                    document.getElementById('insp-doc-list').innerHTML = (el.documents||[]).map((d, i) => `
+                        <div class="flex justify-between items-center text-[9px] bg-white/5 p-1 rounded mt-1">
+                            <span class="truncate w-20">${d.name}</span>
+                            <div class="flex gap-1">
+                                <a href="${d.url}" download="${d.name}" class="text-white hover:text-brand"><i class="ph-bold ph-download-simple"></i></a>
+                                <i class="ph-trash text-red-500 cursor-pointer ${isReadOnly?'hidden':''}" onclick="deletePlotDoc(${i})"></i>
+                            </div>
+                        </div>`).join(''); 
+                } else { custPanel.classList.add('hidden'); }
+            }
+            if(window.innerWidth < 768) { const insp = document.getElementById('inspector-panel'); insp.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+            renderMap(); 
+        };
+
+        function renderCustomFields(el) {
+            const container = document.getElementById('custom-fields-list');
+            container.innerHTML = (el.customFields || []).map((field, i) => {
+                if(field.type === 'text') {
+                    return `<div class="flex gap-2 items-center bg-white/5 p-2 rounded"><input type="text" value="${field.label}" class="bg-transparent text-xs w-1/3 text-gray-500 outline-none font-bold" placeholder="Label" onchange="updateCustomField(${i}, 'label', this.value)" ${isReadOnly?'disabled':''}><input type="text" value="${field.value}" class="bg-transparent text-sm w-1/2 text-white outline-none" placeholder="Value" onchange="updateCustomField(${i}, 'value', this.value)" ${isReadOnly?'disabled':''}><button onclick="removeCustomField(${i})" class="text-red-500 ${isReadOnly?'hidden':''}"><i class="ph-bold ph-x"></i></button></div>`;
+                } else if(field.type === 'media') {
+                    return `<div class="relative group h-20 w-full bg-cover bg-center rounded border border-white/10" style="background-image:url('${field.value}')">
+                        <a href="${field.value}" download="media-${i}" class="absolute top-1 left-1 bg-black/50 text-brand p-1 rounded hover:bg-black"><i class="ph-bold ph-download-simple"></i></a>
+                        <button onclick="removeCustomField(${i})" class="absolute top-1 right-1 bg-black/50 text-red-500 p-1 rounded hover:bg-black ${isReadOnly?'hidden':''}"><i class="ph-bold ph-trash"></i></button>
+                    </div>`;
+                }
+            }).join('');
+        }
+
+        window.addCustomField = (type) => {
+            const els = JSON.parse(JSON.stringify([...appState.currentLayout.elements]));
+            const idx = els.findIndex(x=>x.id===appState.selectedId);
+            if(!els[idx].customFields) els[idx].customFields = [];
+            if(type === 'text') els[idx].customFields.push({ type: 'text', label: '', value: '' });
+            updateDoc(doc(db, appState.activeCollection, appState.currentLayout.id), { elements: els });
+            // Optimistic update for custom fields
+            appState.currentLayout.elements = els;
+            renderCustomFields(els[idx]);
+        };
+
+        window.addCustomMedia = (input) => {
+            if (!input.files || !input.files[0]) return;
+            const f = input.files[0];
+            const r = new FileReader();
+            r.onload = (e) => {
+                const els = JSON.parse(JSON.stringify([...appState.currentLayout.elements]));
+                const idx = els.findIndex(x=>x.id===appState.selectedId);
+                if(!els[idx].customFields) els[idx].customFields = [];
+                els[idx].customFields.push({ type: 'media', value: e.target.result });
+                updateDoc(doc(db, appState.activeCollection, appState.currentLayout.id), { elements: els });
+                appState.currentLayout.elements = els;
+                renderCustomFields(els[idx]);
+            };
+            r.readAsDataURL(f);
+        };
+
+        window.updateCustomField = (fIdx, key, val) => {
+            const els = JSON.parse(JSON.stringify([...appState.currentLayout.elements]));
+            const idx = els.findIndex(x=>x.id===appState.selectedId);
+            els[idx].customFields[fIdx][key] = val;
+            updateDoc(doc(db, appState.activeCollection, appState.currentLayout.id), { elements: els });
+        };
+
+        window.removeCustomField = (fIdx) => {
+            const els = JSON.parse(JSON.stringify([...appState.currentLayout.elements]));
+            const idx = els.findIndex(x=>x.id===appState.selectedId);
+            els[idx].customFields.splice(fIdx, 1);
+            updateDoc(doc(db, appState.activeCollection, appState.currentLayout.id), { elements: els });
+            appState.currentLayout.elements = els;
+            renderCustomFields(els[idx]);
+        };
+
+        // ... [Rest of Functions] ...
+        window.openShareModal = () => { 
+            const showPrice = document.getElementById('share-show-price').checked;
+            const url = `${window.location.origin}${window.location.pathname}?layout=${appState.currentLayout.id}&plot=${appState.selectedId}${!showPrice ? '&hidePrice=1' : ''}`;
+            document.getElementById('share-link-input').value = url;
+            document.getElementById('modal-backdrop').style.display='flex'; 
+            document.getElementById('modal-share').classList.remove('hidden'); 
+        };
+        
+        window.updateShareLink = () => {
+             const showPrice = document.getElementById('share-show-price').checked;
+             const showDetails = document.getElementById('share-show-details').checked;
+             let baseUrl = `${window.location.origin}${window.location.pathname}?layout=${appState.currentLayout.id}&plot=${appState.selectedId}`;
+             if (!showPrice) baseUrl += '&hidePrice=1';
+             if (showDetails) baseUrl += '&showDetails=1';
+             document.getElementById('share-link-input').value = baseUrl;
+        };
+
+        window.copyShareLink = () => { const t = document.getElementById("share-link-input"); t.select(); navigator.clipboard.writeText(t.value); document.getElementById('toast').classList.add('show'); setTimeout(()=>document.getElementById('toast').classList.remove('show'),2000); };
+        window.shareVia = (app) => { const u = document.getElementById('share-link-input').value; const m = `Check plot: ${u}`; if(app==='whatsapp') window.open(`https://wa.me/?text=${encodeURIComponent(m)}`); else if(app==='telegram') window.open(`https://t.me/share/url?url=${encodeURIComponent(u)}`); else if(app==='mail') window.open(`mailto:?body=${encodeURIComponent(m)}`); else if(navigator.share) navigator.share({title:'Nexus',text:m,url:u}); };
+        
+        // 5. UPDATE WRITE FUNCTIONS TO USE activeCollection
+        window.changeStatus = (status) => { if(isReadOnly) return; if(status==='open'){ if(!confirm("Reset?")) return; const u=appState.currentLayout.elements.map(e=>e.id===appState.selectedId?{...e,status:'open',customerName:null,customerPhone:null,documents:[]}:e); updateDoc(doc(db,appState.activeCollection,appState.currentLayout.id),{elements:u}); deselectAll(); return; } appState.transaction.status=status; appState.transaction.docs=[]; document.getElementById('trans-type').innerText=status; document.getElementById('trans-type').className=status==='sold'?'text-green-500':'text-yellow-500'; document.getElementById('trans-price').value=document.getElementById('insp-price').value; document.getElementById('trans-doc-list').innerHTML=''; document.getElementById('modal-backdrop').style.display='flex'; document.getElementById('modal-transaction').classList.remove('hidden'); };
+        window.confirmTransaction = async () => { const n=document.getElementById('trans-name').value; if(!n) return alert("Name req"); const u=appState.currentLayout.elements.map(e=>e.id===appState.selectedId?{...e,status:appState.transaction.status,customerName:n,customerPhone:document.getElementById('trans-phone').value,price:document.getElementById('trans-price').value,documents:[...(e.documents||[]),...appState.transaction.docs]}:e); await updateDoc(doc(db,appState.activeCollection,appState.currentLayout.id),{elements:u}); closeModals(); deselectAll(); };
+        window.handleTransactionDoc = (i) => { if(!i.files[0]) return; const f=i.files[0], r=new FileReader(); r.onload=(e)=>{ appState.transaction.docs.push({name:f.name,url:e.target.result}); document.getElementById('trans-doc-list').innerHTML+=`<div class="text-[10px] mt-1 text-green-400">Attached: ${f.name}</div>`; }; r.readAsDataURL(f); };
+        
+        window.saveInspector = async () => { 
+            if(isReadOnly) return; 
+            const updated = appState.currentLayout.elements.map(e => e.id === appState.selectedId ? {
+                ...e, 
+                id: document.getElementById('insp-id').value, 
+                price: document.getElementById('insp-price').value,
+                dimensions: document.getElementById('insp-dim').value,
+                description: document.getElementById('insp-desc').value,
+                customerName: document.getElementById('insp-cust-name').value, 
+                customerPhone: document.getElementById('insp-cust-phone').value
+            } : e); 
+            await updateDoc(doc(db, appState.activeCollection, appState.currentLayout.id), { elements: updated }); 
+            deselectAll(); 
+        };
+        window.deleteSelected = async () => { if(isReadOnly || !confirm("Delete?")) return; const updated = appState.currentLayout.elements.filter(e => e.id !== appState.selectedId); await updateDoc(doc(db, appState.activeCollection, appState.currentLayout.id), { elements: updated }); deselectAll(); };
+        function deselectAll() { appState.selectedId = null; document.getElementById('inspector-panel').classList.add('hidden'); renderMap(); }
+
+        window.openLayout = (id) => { appState.currentLayout = appState.layouts.find(l => l.id === id); document.getElementById('view-dashboard').classList.add('hidden-view'); document.getElementById('view-layout').classList.remove('hidden-view'); renderMap(); };
+        window.showDashboard = () => { document.getElementById('view-layout').classList.add('hidden-view'); document.getElementById('view-dashboard').classList.remove('hidden-view'); appState.currentLayout = null; };
+        window.handleMapUpload = (i) => { const f=i.files[0]; const r=new FileReader(); r.onload=async()=>{ await updateDoc(doc(db,appState.activeCollection,appState.currentLayout.id),{bgImage:r.result}); }; r.readAsDataURL(f); };
+        window.zoomMap = (d) => { appState.scale = Math.max(0.1, appState.scale+d); updateTransform(); };
+        window.resetView = () => { appState.scale=1; appState.panX=0; appState.panY=0; updateTransform(); };
+        window.toggleView = (m) => { document.getElementById('container-map').classList.toggle('hidden-view', m!=='map'); document.getElementById('container-grid').classList.toggle('hidden-view', m!=='grid'); document.getElementById('btn-view-map').className = m==='map'?'px-4 py-1.5 rounded-md text-[10px] font-bold bg-brand text-white transition':'px-4 py-1.5 rounded-md text-[10px] font-bold text-gray-400 transition hover:text-white'; document.getElementById('btn-view-grid').className = m==='grid'?'px-4 py-1.5 rounded-md text-[10px] font-bold bg-brand text-white transition':'px-4 py-1.5 rounded-md text-[10px] font-bold text-gray-400 transition hover:text-white'; };
+        window.openCreateModal = () => { if(appState.layouts.length >= LIMITS.layouts) return alert("Limit Reached"); document.getElementById('modal-backdrop').style.display='flex'; document.getElementById('modal-create').classList.remove('hidden'); };
+        window.closeModals = () => { document.getElementById('modal-backdrop').style.display='none'; document.querySelectorAll('.modal-content').forEach(e=>e.classList.add('hidden')); };
+        window.confirmCreate = async () => { const n=document.getElementById('create-name').value; if(n){ await addDoc(collection(db,appState.activeCollection),{name:n, devId:session.id, elements:[], createdAt:new Date()}); closeModals(); } };
+        window.logout = async () => { try{await deleteDoc(doc(db,"sessions",session.sessionId));}catch(e){} localStorage.removeItem('rajchavin_user'); window.location.href='login.html'; };
+
+        window.addMilestone = async () => { const t=prompt("Name:"); if(t) await updateDoc(doc(db,appState.activeCollection,appState.currentLayout.id),{milestones:[...(appState.currentLayout.milestones||[]),{title:t,done:false}]}); };
+        window.toggleMilestone = async (i) => { if(isReadOnly) return; const ms=appState.currentLayout.milestones; ms[i].done=!ms[i].done; await updateDoc(doc(db,appState.activeCollection,appState.currentLayout.id),{milestones:ms}); };
+        window.deleteMilestone = async (i) => { if(isReadOnly) return; const ms=appState.currentLayout.milestones.filter((_,x)=>x!==i); await updateDoc(doc(db,appState.activeCollection,appState.currentLayout.id),{milestones:ms}); };
+        window.uploadDoc = (i) => { if(isReadOnly) return; const f=i.files[0]; const r=new FileReader(); r.onload=async(e)=>{ await updateDoc(doc(db,appState.activeCollection,appState.currentLayout.id),{docs:[...(appState.currentLayout.docs||[]),{name:f.name,url:e.target.result}]})}; r.readAsDataURL(f); };
+        window.deleteLayoutDoc = async (i) => { if(isReadOnly) return; const d=appState.currentLayout.docs.filter((_,x)=>x!==i); await updateDoc(doc(db,appState.activeCollection,appState.currentLayout.id),{docs:d}); };
+        
+        window.uploadInspDoc = (i) => { const f=i.files[0]; const r=new FileReader(); r.onload=async(e)=>{ const els = [...appState.currentLayout.elements]; const idx = els.findIndex(x=>x.id===appState.selectedId); els[idx].documents = [...(els[idx].documents||[]), {name:f.name, url:e.target.result}]; await updateDoc(doc(db,appState.activeCollection,appState.currentLayout.id), {elements:els}); selectPoly(appState.selectedId, {stopPropagation:()=>{}}); }; r.readAsDataURL(f); };
+        window.deletePlotDoc = async (docIdx) => { const els = [...appState.currentLayout.elements]; const idx = els.findIndex(x=>x.id===appState.selectedId); els[idx].documents = els[idx].documents.filter((_,i)=>i!==docIdx); await updateDoc(doc(db,appState.activeCollection,appState.currentLayout.id), {elements:els}); selectPoly(appState.selectedId, {stopPropagation:()=>{}}); };
+        
+        window.toggleLayoutMenu = (id, e) => { e.stopPropagation(); document.getElementById(`menu-${id}`).classList.toggle('hidden'); };
+        window.deleteLayout = async (id) => { if(confirm("Delete?")) await deleteDoc(doc(db, appState.activeCollection, id)); };
+        window.renameLayout = async (id) => { const n=prompt("Name:"); if(n) await updateDoc(doc(db, appState.activeCollection, id), { name: n }); };
+        window.togglePublicMap = async (cb) => { await updateDoc(doc(db,appState.activeCollection,appState.currentLayout.id), { publicMapVisible: cb.checked }); };
+
+        function updateDashboard() {
+            let rev=0, sold=0, booked=0, total=0;
+            const grid = document.getElementById('project-grid');
+            if(grid) grid.innerHTML = appState.layouts.map(l => {
+                const els = l.elements || [], plots = els.filter(e => e.type === 'plot'), c = plots.length; total += c;
+                plots.forEach(e => { if(e.status==='sold'){sold++; rev+=Number(e.price||0)} if(e.status==='booked'){booked++} });
+                const progress = c > 0 ? (sold/c)*100 : 0;
+                return `<div class="glass-card p-5 cursor-pointer relative overflow-hidden group"><div class="absolute top-2 right-2 z-10"><button onclick="toggleLayoutMenu('${l.id}', event)" class="text-gray-500 hover:text-white p-1 rounded-full hover:bg-white/10"><i class="ph-bold ph-dots-three-vertical"></i></button><div id="menu-${l.id}" class="hidden absolute right-0 mt-1 w-32 bg-black border border-white/10 rounded-lg shadow-xl z-20"><button onclick="renameLayout('${l.id}')" class="w-full text-left px-4 py-2 text-xs text-gray-300 hover:bg-white/10 hover:text-white">Rename</button><button onclick="deleteLayout('${l.id}')" class="w-full text-left px-4 py-2 text-xs text-red-500 hover:bg-red-500/10">Delete</button></div></div><div onclick="openLayout('${l.id}')"><div class="absolute top-0 left-0 w-1 h-full bg-brand group-hover:w-2 transition-all"></div><div class="flex justify-between items-start mb-4 pl-3"><div><h3 class="font-bold text-white text-lg tracking-tight">${l.name}</h3><p class="text-xs text-gray-500 font-mono mt-1">${c} PLOTS</p></div><div class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-gray-400 group-hover:bg-brand group-hover:text-white transition"><i class="ph-bold ph-caret-right"></i></div></div><div class="pl-3"><div class="flex justify-between text-[9px] font-bold text-gray-500 mb-1 uppercase"><span>Progress</span><span>${Math.round(progress)}%</span></div><div class="w-full bg-white/5 h-1.5 rounded-full overflow-hidden"><div class="bg-gradient-to-r from-blue-500 to-green-400 h-full transition-all duration-500" style="width: ${progress}%"></div></div></div></div></div>`;
+            }).join('');
+            safeSetText('dash-revenue', "₹ " + rev.toLocaleString('en-IN')); safeSetText('dash-sold-booked', `${sold} / ${booked}`); safeSetText('dash-usage-plots', total); 
+            if(!isReadOnly && total >= LIMITS.plots) document.getElementById('limit-bar').style.backgroundColor = '#ef4444';
+            safeSetText('dash-usage-layouts', appState.layouts.length);
+            const ctxBar = document.getElementById('dashBarChart'), ctxPie = document.getElementById('dashPieChart');
+            if(appState.dashBar) appState.dashBar.destroy(); if(appState.dashPie) appState.dashPie.destroy();
+            appState.dashBar = new Chart(ctxBar, { type: 'bar', data: { labels: appState.layouts.map(l=>l.name), datasets: [{ label: 'Revenue', data: appState.layouts.map(l=>(l.elements||[]).filter(e=>e.type==='plot').reduce((s,e)=>e.status==='sold'?s+Number(e.price||0):s,0)), backgroundColor: '#3b82f6', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false, grid: {display: false} }, y: { display: false, grid: {display: false} } } } });
+            appState.dashPie = new Chart(ctxPie, { type: 'doughnut', data: { labels: ['Sold', 'Booked', 'Open'], datasets: [{ data: [sold, booked, total-sold-booked], backgroundColor: ['#10b981', '#eab308', '#3f3f46'], borderWidth: 0, hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'right', labels: { color: 'white', boxWidth: 8, font: {size: 10} } } } } });
+        }
+    </script>
+</body>
+</html>

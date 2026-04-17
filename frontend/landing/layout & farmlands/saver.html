@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>My Wealth | Rajchavin</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: { 
+                    colors: { brand: '#3b82f6', accent: '#8b5cf6', success: '#10b981', bg: '#050505', surface: '#0f0f11' },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    animation: { 'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        window.formatVal = (num) => {
+            if(!num) return '0'; num = Number(num);
+            if(num >= 10000000) return (num/10000000).toFixed(2) + ' Cr';
+            if(num >= 100000) return (num/100000).toFixed(2) + ' L';
+            return num.toLocaleString('en-IN');
+        };
+
+        window.nav = (view) => {
+            document.querySelectorAll('.app-view').forEach(e => e.classList.add('hidden'));
+            const target = document.getElementById(`view-${view}`);
+            if(target) target.classList.remove('hidden');
+            const mobNav = document.getElementById('main-nav');
+            if(mobNav) { view === 'home' ? mobNav.classList.remove('hidden') : mobNav.classList.add('hidden'); }
+            window.scrollTo(0,0);
+        };
+
+        window.logout = () => { localStorage.removeItem('rajchavin_user'); window.location.href = 'login.html'; };
+        window.toggleFullScreen = () => { const el = document.getElementById('realTimeSvgContainer') || document.getElementById('plot-map-container'); if(el) !document.fullscreenElement ? el.requestFullscreen().catch(()=>{}) : document.exitFullscreen(); };
+    </script>
+
+    <style>
+        body { background-color: #050505; color: white; -webkit-tap-highlight-color: transparent; overflow-x: hidden; font-family: 'Inter', sans-serif; }
+        
+        .app-view { display: none; width: 100%; min-height: 100vh; padding-bottom: 90px; }
+        .app-view:not(.hidden) { display: block; animation: fadeIn 0.3s ease-out; }
+        @media (min-width: 1024px) { .app-view { padding-bottom: 0; padding-left: 280px; } .app-view:not(.hidden) { display: flex; flex-direction: column; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .glass-card { background: rgba(20, 20, 23, 0.6); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; }
+        .btm-nav { position: fixed; bottom: 20px; left: 20px; right: 20px; background: rgba(15,15,17,0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); height: 65px; border-radius: 35px; display: flex; justify-content: space-around; align-items: center; z-index: 50; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+        .nav-item { color: #52525b; font-size: 24px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: 0.2s; }
+        .nav-item.active { color: white; background: #3b82f6; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); transform: translateY(-5px); }
+
+        .sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 280px; background: #0f0f11; border-right: 1px solid rgba(255,255,255,0.05); padding: 32px; display: none; flex-direction: column; z-index: 60; }
+        @media (min-width: 1024px) { .sidebar { display: flex; } .btm-nav { display: none !important; } }
+        .side-link { display: flex; align-items: center; gap: 12px; color: #a1a1aa; padding: 12px 16px; border-radius: 12px; transition: 0.2s; font-weight: 500; cursor: pointer; }
+        .side-link:hover { background: rgba(255,255,255,0.05); color: white; }
+        .side-link.active { background: #3b82f6; color: white; }
+
+        .progress-ring__circle { transition: stroke-dashoffset 1s ease-in-out; transform: rotate(-90deg); transform-origin: 50% 50%; }
+        .map-poly { stroke: rgba(255,255,255,0.1); stroke-width: 1; fill: #18181b; }
+        .map-poly.my-plot { fill: #3b82f6; stroke: white; stroke-width: 2; filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.6)); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+        
+        .timeline-item { position: relative; padding-left: 24px; padding-bottom: 24px; border-left: 2px solid rgba(255,255,255,0.1); }
+        .timeline-item:last-child { border-left: 2px solid transparent; padding-bottom: 0; }
+        .timeline-dot { position: absolute; left: -7px; top: 0; width: 12px; height: 12px; border-radius: 50%; background: #27272a; border: 2px solid #52525b; }
+        .timeline-item.done .timeline-dot { background: #10b981; border-color: #10b981; }
+        .timeline-item.done { border-left-color: #10b981; }
+        .timeline-item.done .timeline-text { color: white; font-weight: bold; }
+
+        /* Story Circle */
+        .story-ring { padding: 2px; border-radius: 50%; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); cursor: pointer; }
+        .story-img { width: 56px; height: 56px; border-radius: 50%; border: 2px solid black; object-fit: cover; }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="mb-10 pl-2">
+            <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-2xl text-white mb-4 shadow-lg">
+                <i class="ph-fill ph-buildings"></i>
+            </div>
+            <h1 class="text-xl font-bold text-white">Rajchavin</h1>
+            <p class="text-xs text-gray-500 font-medium">Customer Portal</p>
+        </div>
+        <nav class="space-y-2 flex-1">
+            <div onclick="nav('home')" class="side-link active"><i class="ph-bold ph-house text-xl"></i> <span>Dashboard</span></div>
+        </nav>
+        <div onclick="logout()" class="glass-card p-4 flex items-center gap-3 mt-auto cursor-pointer hover:bg-red-900/20 border border-transparent hover:border-red-500/30">
+            <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center font-bold text-white text-xs" id="desk-avatar">U</div>
+            <div class="overflow-hidden">
+                <p class="text-sm font-bold text-white truncate w-32" id="desk-username">User</p>
+                <p class="text-[10px] text-red-400 font-bold">Logout</p>
+            </div>
+        </div>
+    </aside>
+
+    <div id="view-home" class="app-view">
+        <header class="p-6 pt-12 lg:pt-8 flex justify-between items-start">
+            <div>
+                <div class="flex items-center gap-2 mb-2 opacity-70 lg:hidden"><i class="ph-fill ph-buildings text-brand"></i><span class="text-sm font-bold uppercase tracking-widest">Rajchavin</span></div>
+                <p class="text-gray-400 text-xs uppercase font-bold tracking-widest mb-1">Your Portfolio Value</p>
+                <h1 class="text-4xl font-black text-white tracking-tight" id="home-total-val">₹ 0</h1>
+            </div>
+            <div onclick="logout()" class="w-12 h-12 rounded-full bg-gray-800 border border-white/10 flex items-center justify-center font-bold text-white shadow-lg lg:hidden" id="user-avatar">
+                <i class="ph-bold ph-sign-out text-red-400"></i>
+            </div>
+        </header>
+
+        <div class="px-6 lg:px-8 pb-10 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="glass-card p-6 flex flex-col items-center justify-center text-center lg:h-full">
+                <div class="relative w-48 h-48 lg:w-56 lg:h-56">
+                    <svg class="w-full h-full" viewBox="0 0 100 100">
+                        <circle class="text-gray-800 stroke-current" stroke-width="6" cx="50" cy="50" r="45" fill="transparent"></circle>
+                        <circle id="progress-ring" class="text-brand progress-ring__circle stroke-current" stroke-width="6" stroke-linecap="round" cx="50" cy="50" r="45" fill="transparent" stroke-dasharray="282.7" stroke-dashoffset="282.7"></circle>
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span class="text-4xl lg:text-5xl font-black text-white" id="home-percent">0%</span>
+                        <span class="text-[10px] text-gray-400 uppercase font-bold tracking-widest mt-1">Ownership</span>
+                    </div>
+                </div>
+                <div class="mt-6 w-full">
+                    <h3 class="text-lg font-bold text-white mb-1">Land Owned</h3>
+                    <div class="flex items-baseline justify-center gap-2">
+                        <span class="text-3xl font-bold text-green-400" id="home-sqft-owned">0</span>
+                        <span class="text-sm text-gray-500 font-medium">/ <span id="home-sqft-total">0</span> sq.ft</span>
+                    </div>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 lg:grid-cols-1 lg:grid-rows-2 gap-4 lg:h-full">
+                <div class="glass-card p-4 lg:p-6 border-l-2 border-green-500 flex flex-col justify-center">
+                    <p class="text-[10px] text-gray-500 uppercase font-bold mb-1">Invested Amount</p>
+                    <p class="text-xl lg:text-3xl font-bold text-white" id="home-paid-val">₹ 0</p>
+                </div>
+                <div class="glass-card p-4 lg:p-6 border-l-2 border-brand flex flex-col justify-center">
+                    <p class="text-[10px] text-gray-500 uppercase font-bold mb-1">Next Milestone</p>
+                    <p class="text-xs lg:text-sm text-gray-300 leading-tight" id="home-next-goal">Loading...</p>
+                </div>
+            </div>
+            <div class="lg:h-full lg:overflow-y-auto">
+                <h3 class="text-xs font-bold text-gray-500 mb-4 uppercase tracking-widest">Your Assets</h3>
+                <div id="property-list" class="space-y-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-plot" class="app-view bg-black lg:flex lg:flex-row lg:overflow-hidden hidden">
+        <div class="h-[40vh] lg:h-full lg:w-7/12 bg-[#121214] relative lg:border-r lg:border-white/10">
+            <button onclick="nav('home')" class="absolute top-6 left-6 z-20 bg-black/60 backdrop-blur p-3 rounded-full border border-white/10 active:scale-95"><i class="ph-bold ph-arrow-left text-white"></i></button>
+            <div id="plot-map-container" class="w-full h-full flex items-center justify-center"></div>
+            <div class="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-black to-transparent pointer-events-none lg:hidden"></div>
+        </div>
+        
+        <div class="px-6 relative z-10 -mt-6 lg:mt-0 lg:w-5/12 lg:h-full lg:overflow-y-auto lg:p-10 lg:bg-[#050505] bg-transparent">
+            
+            <div class="flex gap-4 overflow-x-auto pb-4 mb-2 no-scrollbar">
+                <div class="flex flex-col items-center gap-1 cursor-pointer">
+                    <div class="story-ring"><div class="w-14 h-14 rounded-full bg-gray-800 flex items-center justify-center border-2 border-black"><i class="ph-fill ph-road-horizon text-2xl"></i></div></div>
+                    <span class="text-[10px] font-bold">Roads</span>
+                </div>
+                <div class="flex flex-col items-center gap-1 cursor-pointer">
+                    <div class="story-ring"><div class="w-14 h-14 rounded-full bg-gray-800 flex items-center justify-center border-2 border-black"><i class="ph-fill ph-park text-2xl"></i></div></div>
+                    <span class="text-[10px] font-bold">Parks</span>
+                </div>
+                <div class="flex flex-col items-center gap-1 cursor-pointer">
+                    <div class="story-ring"><div class="w-14 h-14 rounded-full bg-gray-800 flex items-center justify-center border-2 border-black"><i class="ph-fill ph-lightbulb text-2xl"></i></div></div>
+                    <span class="text-[10px] font-bold">Infra</span>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-end mb-6">
+                <div><span class="text-brand font-bold text-xs uppercase tracking-wider block" id="detail-layout">--</span><h1 class="text-4xl font-black text-white" id="detail-id">P-00</h1></div>
+                <div class="text-right"><p class="text-xs text-gray-500 mb-1">Market Value</p><p class="text-xl font-bold text-white" id="detail-price">₹ 0</p></div>
+            </div>
+            
+            <div class="glass-card p-5 mb-6">
+                <h3 class="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2"><i class="ph-fill ph-trend-up text-green-500"></i> Wealth Projection (5 Years)</h3>
+                <div class="h-32"><canvas id="wealthChart"></canvas></div>
+                <p class="text-[10px] text-gray-500 mt-2 italic text-center">Estimated based on 10% annual appreciation.</p>
+            </div>
+
+            <div class="glass-card p-4 mb-6 flex justify-between items-center bg-purple-500/10 border-purple-500/30">
+                <div><p class="text-[10px] uppercase font-bold text-purple-400 mb-1">Your Banker</p><h3 class="text-lg font-bold text-white" id="detail-banker-name">--</h3><p class="text-xs text-gray-500" id="detail-banker-contact">Loading...</p></div>
+                <div class="w-12 h-12 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center text-2xl"><i class="ph-fill ph-bank"></i></div>
+            </div>
+
+            <div class="glass-card p-6 mb-6 relative overflow-hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2"><i class="ph-fill ph-flag-banner text-brand"></i> Project Status</h3>
+                    <span class="text-xs font-bold text-brand bg-brand/10 px-2 py-1 rounded" id="ms-completion">0%</span>
+                </div>
+                <div class="w-full bg-white/10 h-1.5 rounded-full mb-6 overflow-hidden"><div id="ms-progress-bar" class="h-full bg-brand w-0 transition-all duration-1000"></div></div>
+                <div id="milestone-timeline" class="pl-1"></div>
+            </div>
+
+            <div class="glass-card p-4 text-center mb-6"><p class="text-xs text-gray-500 uppercase">Paid so far</p><p class="text-xl font-bold text-green-400" id="detail-paid">₹ 0</p></div>
+
+            <h3 class="text-sm font-bold text-gray-400 mb-4 uppercase tracking-wider">Transaction History</h3>
+            <div id="tx-list" class="space-y-4 border-l-2 border-dashed border-gray-800 ml-3 pb-20"></div>
+        </div>
+    </div>
+
+    <nav class="btm-nav hidden lg:hidden" id="main-nav">
+        <button onclick="nav('home')" class="nav-item active"><i class="ph-fill ph-house"></i></button>
+        <button class="nav-item opacity-40"><i class="ph-fill ph-chart-pie-slice"></i></button>
+        <button onclick="logout()" class="nav-item text-red-500"><i class="ph-fill ph-sign-out"></i></button>
+    </nav>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, query, where, getDocs, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // --- PASTE KEYS HERE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDHHQXki7JAzDsnsKH6LoLNRYlySfnxW7Y",
+            authDomain: "rajchavin-live.firebaseapp.com",
+            projectId: "rajchavin-live",
+            storageBucket: "rajchavin-live.firebasestorage.app",
+            messagingSenderId: "626552794688",
+            appId: "1:626552794688:web:92988d178bde6c8e6439a5"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- AUTH CHECK ---
+        const session = JSON.parse(localStorage.getItem('rajchavin_user'));
+        if(!session || session.role !== 'saver') {
+            window.location.href = 'login.html';
+        } else {
+            window.appState = { currentUser: session, myPlots: [], transactions: [], layouts: [], bankers: [], chart: null };
+            if(document.getElementById('desk-username')) document.getElementById('desk-username').innerText = session.name;
+            if(document.getElementById('desk-avatar')) document.getElementById('desk-avatar').innerText = session.name.charAt(0);
+            initData();
+            nav('home');
+        }
+
+        // --- DATA ---
+        function initData() {
+            const q = query(collection(db, "assignments"), where("saverName", "==", window.appState.currentUser.name));
+            onSnapshot(q, (snap) => {
+                window.appState.myPlots = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                fetchTransactions(); 
+                fetchLayouts();
+                fetchBankers();
+            });
+        }
+
+        function fetchTransactions() {
+            onSnapshot(collection(db, "transactions"), (snap) => {
+                const all = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                const myIds = window.appState.myPlots.map(p => p.id);
+                window.appState.transactions = all.filter(t => myIds.includes(t.assignmentId));
+                renderHome();
+            });
+        }
+
+        function fetchLayouts() {
+            onSnapshot(collection(db, "layouts"), (snap) => { window.appState.layouts = snap.docs.map(d => ({id: d.id, ...d.data()})); });
+        }
+
+        function fetchBankers() {
+            const q = query(collection(db, "users"), where("role", "==", "banker"));
+            onSnapshot(q, (snap) => { window.appState.bankers = snap.docs.map(d => ({id: d.id, ...d.data()})); });
+        }
+
+        // --- RENDER HOME ---
+        function renderHome() {
+            const plots = window.appState.myPlots;
+            let totalVal = 0, totalPaid = 0;
+            const PLOT_SQFT = 1200; 
+
+            const listHtml = plots.map(p => {
+                const myTx = window.appState.transactions.filter(t => t.assignmentId === p.id);
+                const paid = myTx.reduce((s,t) => s+Number(t.amount), 0);
+                const val = Number(p.value);
+                totalVal += val; totalPaid += paid;
+                const pct = Math.min(100, (paid/val)*100);
+
+                return `<div onclick="openPlotDetail('${p.id}')" class="glass-card p-4 active:scale-95 lg:hover:scale-105 transition cursor-pointer flex items-center justify-between group"><div class="flex items-center gap-4"><div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-gray-800 to-black border border-white/10 flex items-center justify-center font-bold text-white shadow-lg">${p.plotId.replace(/\D/g, '')}</div><div><h4 class="font-bold text-white text-lg">${p.plotId}</h4><p class="text-xs text-gray-500">${p.layoutName}</p></div></div><div class="text-right"><p class="text-green-400 font-bold text-sm">₹${window.formatVal(paid)}</p><p class="text-[10px] text-gray-600 font-bold">${pct.toFixed(0)}% PAID</p></div></div>`;
+            }).join('');
+
+            document.getElementById('property-list').innerHTML = listHtml;
+            document.getElementById('home-total-val').innerText = "₹ " + window.formatVal(totalVal);
+            document.getElementById('home-paid-val').innerText = "₹ " + window.formatVal(totalPaid);
+            
+            const globalPct = totalVal > 0 ? (totalPaid/totalVal)*100 : 0;
+            const sqftOwned = (globalPct / 100) * (plots.length * PLOT_SQFT);
+            
+            const circle = document.getElementById('progress-ring');
+            if(circle) {
+                const radius = circle.r.baseVal.value;
+                const circumference = radius * 2 * Math.PI;
+                const offset = circumference - (globalPct / 100) * circumference;
+                circle.style.strokeDashoffset = offset;
+            }
+
+            document.getElementById('home-percent').innerText = globalPct.toFixed(0) + '%';
+            document.getElementById('home-sqft-owned').innerText = Math.floor(sqftOwned);
+            document.getElementById('home-sqft-total').innerText = plots.length * PLOT_SQFT;
+            
+            const remaining = totalVal - totalPaid;
+            const nextStep = totalVal * 0.05; 
+            document.getElementById('home-next-goal').innerText = remaining > 0 ? `Invest ₹${window.formatVal(nextStep)} more to own +${Math.floor(PLOT_SQFT*0.05)} sq.ft` : "You fully own your assets! 🎉";
+        }
+
+        // --- RENDER DETAIL ---
+        window.openPlotDetail = (assignId) => {
+            const assign = window.appState.myPlots.find(p => p.id === assignId);
+            if (!assign) return;
+
+            const layout = window.appState.layouts.find(l => l.id === assign.layoutId);
+            const txs = window.appState.transactions.filter(t => t.assignmentId === assignId).sort((a,b)=>b.date-a.date);
+            const paid = txs.reduce((s,t) => s+Number(t.amount), 0);
+
+            const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
+            setTxt('detail-id', assign.plotId);
+            setTxt('detail-layout', assign.layoutName);
+            setTxt('detail-price', "₹ " + window.formatVal(assign.value));
+            setTxt('detail-paid', "₹ " + window.formatVal(paid));
+
+            // Banker
+            setTxt('detail-banker-name', assign.bankerName || "Unassigned");
+            const banker = window.appState.bankers.find(b => b.name === assign.bankerName);
+            setTxt('detail-banker-contact', banker ? (banker.contact || banker.email) : "No contact info");
+
+            renderMiniMap(layout, assign.plotId);
+            renderWealthGraph(Number(assign.value));
+
+            // Milestones
+            const msContainer = document.getElementById('milestone-timeline');
+            const milestones = layout ? (layout.milestones || []) : [];
+            
+            if(milestones.length === 0) {
+                msContainer.innerHTML = '<p class="text-xs text-gray-500 italic pl-6">Project just started.</p>';
+                document.getElementById('ms-progress-bar').style.width = '0%';
+                setTxt('ms-completion', '0% Done');
+            } else {
+                const completed = milestones.filter(m => m.done).length;
+                const pct = (completed/milestones.length)*100;
+                document.getElementById('ms-progress-bar').style.width = `${pct}%`;
+                setTxt('ms-completion', `${pct.toFixed(0)}% Done`);
+                msContainer.innerHTML = milestones.map(m => `<div class="timeline-item ${m.done ? 'done' : ''}"><div class="timeline-dot"></div><p class="timeline-text text-xs text-gray-500">${m.title}</p></div>`).join('');
+            }
+
+            // History
+            document.getElementById('tx-list').innerHTML = txs.map((t, i) => `
+                <div class="pl-8 pb-8 relative group"><div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-surface border-2 ${i===0?'border-green-500 shadow-glow':'border-gray-700'} z-10"></div><div class="glass-card p-3 flex justify-between items-center group-hover:border-white/20 transition"><div><p class="text-white font-bold text-lg">₹ ${Number(t.amount).toLocaleString()}</p><p class="text-xs text-gray-500 font-medium">${new Date(t.date.seconds*1000).toDateString()}</p></div><i class="ph-fill ph-check-circle text-green-500 text-xl"></i></div></div>
+            `).join('') || '<p class="text-gray-500 text-xs italic pl-8">No transactions yet.</p>';
+
+            nav('plot');
+        };
+
+        function renderWealthGraph(currentVal) {
+            const ctx = document.getElementById('wealthChart');
+            if(window.appState.chart) window.appState.chart.destroy();
+            
+            // Projection Logic: 10% annual growth
+            const years = ['Now', '2026', '2027', '2028', '2029', '2030'];
+            const values = [];
+            let val = currentVal;
+            for(let i=0; i<6; i++) { values.push(val); val = val * 1.10; } // 10% compounding
+
+            window.appState.chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: years,
+                    datasets: [{
+                        label: 'Projected Value',
+                        data: values,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { 
+                        x: { grid: { display: false }, ticks: { color: '#52525b', font: { size: 10 } } },
+                        y: { display: false } 
+                    }
+                }
+            });
+        }
+
+        function renderMiniMap(layout, myPlotId) {
+            const container = document.getElementById('plot-map-container');
+            if(!layout || !layout.elements) { container.innerHTML = ''; return; }
+            let svg = `<svg viewBox="0 0 800 500" class="w-full h-full" style="opacity:0.8;">`;
+            layout.elements.forEach(el => {
+                let cls = 'map-poly ';
+                if(el.id === myPlotId) cls += 'my-plot';
+                else if(el.type === 'plot') cls += 'type-plot';
+                else if(el.type === 'road') cls += 'type-road';
+                else cls += 'type-infra';
+                svg += `<polygon points="${el.points}" class="${cls}" />`;
+            });
+            container.innerHTML = svg + `</svg>`;
+        }
+    </script>
+</body>
+</html>

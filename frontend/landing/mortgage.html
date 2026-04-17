@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mortgage Loans | Raj Chavin</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class', 
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#020617',   // Deep Blue
+                        surface: '#0F172A', // Slate Blue Surface
+                        primary: '#1C58A1', // Rich Blue Accent
+                        secondary: '#60A5FA', // Subtle Blue Accent
+                        pearl: '#F8FAFC'
+                    },
+                    fontFamily: {
+                        sans: ['Manrope', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    },
+                    backgroundImage: {
+                        'hero-loan': "url('https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80')",
+                        'finance-grid': "radial-gradient(circle, rgba(28,88,161,0.1) 1px, transparent 1px)"
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9); 
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(28, 88, 161, 0.2);
+        }
+        .dark .glass-panel {
+            background: rgba(15, 23, 42, 0.85); 
+            border: 1px solid rgba(28, 88, 161, 0.2);
+        }
+        .bg-grid {
+            background-size: 30px 30px;
+        }
+        .form-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            outline: none;
+            transition: all 0.3s;
+        }
+        .form-input:focus { border-color: #1C58A1; background: rgba(255, 255, 255, 0.1); }
+        .light .form-input { background: rgba(28, 88, 161, 0.05); border-color: rgba(28, 88, 161, 0.1); }
+        
+        .nav-dropdown { opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.2s ease-out; }
+        .group:hover .nav-dropdown { opacity: 1; visibility: visible; transform: translateY(0); }
+    </style>
+</head>
+<body class="bg-pearl text-slate-900 dark:bg-dark dark:text-gray-300 font-sans antialiased transition-colors duration-300">
+
+    <nav class="fixed top-2 left-0 right-0 z-50 px-2 lg:px-6">
+        <div class="max-w-7xl mx-auto glass-panel rounded-xl px-4 py-2 flex justify-between items-center transition-all">
+            
+            <div class="flex items-center gap-2 flex-shrink-0 mr-4">
+                <a href="index.html"><img src="rajchavin-removebg-preview.png" alt="Raj Chavin Logo" class="h-10 w-auto object-contain brightness-0 dark:filter-none transition-all duration-300"></a>
+            </div>
+            
+            <div class="hidden xl:flex items-center space-x-1 text-sm font-semibold tracking-wide flex-grow justify-center">
+
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 hover:text-primary transition dark:text-gray-200 flex items-center gap-1"><a href="about.html">About</a><i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full left-0 w-48 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden">
+                            <a href="/about.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">About Company</a>
+                            <a href="/leadership.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Leadership</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 text-xs hover:text-primary transition dark:text-gray-200 flex items-center gap-1"><a href="layout-farm-exp.html">Layouts & Farmlands</a> <i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full left-0 w-48 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden">
+                            <a href="/layout & farmlands/index.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Layouts</a>
+                            <a href="/farmland.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Farmlands</a>
+                        </div>
+                    </div>
+                </div>
+                <a href="/ras.html" class="px-3 py-2 text-gray-700 hover:text-primary transition dark:text-gray-200">RaaS™</a>
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 hover:text-primary transition dark:text-gray-200 flex items-center gap-1"> <a href="realestate-exp.html">Real Estate </a><i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full left-0 w-56 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden">
+                            <a href="realestate/portal-seller.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Sell Property</a>
+                            <a href="realestate/portal-buyer.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Buy Property</a>
+                            <a href="realestate/portal-seller.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Rent</a>
+                            <a href="realestate/portal-buyer.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Lease</a>
+                            <div class="h-px bg-gray-200 dark:bg-white/10 my-1"></div>
+                            <a href="#" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Add Properties</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 hover:text-primary transition dark:text-gray-200 flex items-center gap-1"><a href="marketplace-exp.html">Marketplace </a><i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full left-1/2 -translate-x-1/2 w-72 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden max-h-[80vh] overflow-y-auto">
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Construction Materials</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Plumbing Products</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Electrical & Wiring</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Flooring Materials</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">POP & Ceiling</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Carpentry & Woodwork</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Aluminium & Glass</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Paints & Wall Finishes</a>
+                            <a href="https://marketplace.rajchavin.com" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Interior Accessories</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 text-xs hover:text-primary transition dark:text-gray-200 flex items-center gap-1"> <a href="design-construction-renovation-exp.html">Design & Construction </a><i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full left-0 w-56 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden">
+                            <a href="design.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Design</a>
+                            <a href="construction.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Construction & Services</a>
+                            <a href="renovation.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Renovation</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 text-xs hover:text-primary transition dark:text-gray-200 flex items-center gap-1"><a href="legals-loans-exp.html">Legals & Loans </a><i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full left-1/2 -translate-x-1/2 w-48 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden">
+                            <a href="/legals.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Legal Services</a>
+                            <a href="/mortgage.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Mortgage Loans</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative group px-3 py-2">
+                    <button class="text-gray-700 hover:text-primary transition dark:text-gray-200 flex items-center gap-1">Careers <i class="fas fa-chevron-down text-xs opacity-50"></i></button>
+                    <div class="nav-dropdown absolute top-full right-0 w-48 pt-4">
+                        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1 overflow-hidden">
+                            <a href="/careers.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Join Us</a>
+                            <a href="/internships.html" class="block px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary dark:text-gray-200 text-sm transition">Internship</a>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="/contact.html" class="px-3 py-2 text-gray-700 hover:text-primary transition dark:text-gray-200">Contact</a>
+            </div>
+
+            <div class="flex items-center gap-4 flex-shrink-0">
+                <button id="theme-toggle" class="w-9 h-9 rounded-full bg-white border border-gray-200 dark:border-white/10 dark:bg-white/10 flex items-center justify-center text-primary dark:text-white hover:bg-primary hover:text-white transition shadow-sm">
+                    <i class="fas fa-sun hidden dark:block text-xs"></i> 
+                    <i class="fas fa-moon block dark:hidden text-xs"></i> 
+                </button>
+                
+                <button class="xl:hidden text-2xl text-gray-800 dark:text-white" onclick="document.getElementById('mob-menu').classList.toggle('hidden')">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div id="mob-menu" class="hidden absolute top-20 left-4 right-4 glass-panel rounded-2xl p-4 shadow-xl z-50 max-h-[80vh] overflow-y-auto bg-white/95 dark:bg-surface/95">
+            <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                    About <i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="/about.html" class="block p-2">About Company</a>
+                    <a href="/leadership.html" class="block p-2">About Leadership</a>
+                </div>
+            </details>
+            <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                   <a href="layout-farm-exp.html"> Layouts & Farmlands </a><i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="/layout & farmlands/index.html" class="block p-2">Layouts</a>
+                    <a href="/farmland.html" class="block p-2">Farmlands</a>
+                </div>
+            </details>
+            <a href="/ras.html" class="block font-bold text-primary p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">RaaS™</a>
+            <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                   <a href="realestate-exp.html"> Real Estate </a><i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="realestate/portal-seller.html" class="block p-2">Sell</a>
+                    <a href="realestate/portal-buyer.html" class="block p-2">Buy</a>
+                    <a href="realestate/portal-seller.html" class="block p-2">Rent</a>
+                    <a href="realestate/portal-buyer.html" class="block p-2">Lease</a>
+                    <a href="#" class="block p-2 text-primary">Add Properties</a>
+                </div>
+            </details>
+            <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                   <a href="design-construction-renovation-exp.html"> Design & Construction</a> <i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="/design.html" class="block p-2">Design</a>
+                    <a href="/construction.html" class="block p-2">Construction & Services</a>
+                    <a href="/renovation.html" class="block p-2">Renovation</a>
+                </div>
+            </details>
+            <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                   <a href="marketplace-exp.html"> Marketplace </a><i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="https://marketplace.rajchavin.com" class="block p-2">All Categories</a>
+                </div>
+            </details>
+            <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                   <a href="legals-loans-exp.html"> Legals & Loans </a><i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="/legals.html" class="block p-2">Legal Services</a>
+                    <a href="/mortgage.html" class="block p-2">Mortgage Loans</a>
+                </div>
+            </details>
+             <details class="group mb-2">
+                <summary class="list-none flex justify-between items-center font-bold text-gray-900 dark:text-white p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">
+                    Careers <i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="pl-4 mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <a href="/careers.html" class="block p-2">Join Us</a>
+                    <a href="/internships.html" class="block p-2">Internship</a>
+                </div>
+            </details>
+            <a href="/contact.html" class="block font-bold text-primary p-3 rounded-lg bg-gray-50 dark:bg-white/5 cursor-pointer">Contact Us</a>
+        </div>
+    </nav>
+
+    <header class="relative pt-40 pb-20 px-4 min-h-[70vh] flex flex-col items-center justify-center bg-finance-grid bg-grid">
+        <div class="absolute inset-0 bg-hero-loan bg-cover bg-center bg-fixed opacity-10 pointer-events-none"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-pearl dark:to-dark pointer-events-none"></div>
+
+        <div class="relative z-10 max-w-5xl mx-auto text-center">
+            <span class="inline-block py-1 px-3 rounded-full bg-primary/10 border border-primary/30 text-primary text-xs font-bold uppercase tracking-widest mb-4">RAAS Financial Engine™</span>
+            
+            <h1 class="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-gray-900 dark:text-white mb-6 leading-tight">
+                Institutional-Grade Property Financing <br><span class="text-primary">for Karnataka Investors</span>
+            </h1>
+            
+            <p class="text-lg md:text-xl text-gray-700 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed font-medium mb-8">
+                Fast. Transparent. Bank-Verified. <br class="hidden md:block">
+                We compare SBI, HDFC, ICICI & Private Lenders — You get the best deal.
+            </p>
+            
+            <div class="flex flex-col sm:flex-row justify-center gap-4 mb-10">
+                <a href="#types" class="px-8 py-4 bg-primary text-white font-bold rounded-full shadow-lg hover:bg-secondary transition flex items-center justify-center gap-2">Explore Loan Types</a>
+                <a href="/contact.html" class="px-8 py-4 border-2 border-primary text-primary dark:border-white/20 dark:text-white font-bold rounded-full hover:bg-primary/10 transition flex items-center justify-center gap-2">Get Pre-Approved</a>
+            </div>
+
+            <div class="flex flex-wrap justify-center gap-4 md:gap-8 text-sm md:text-base text-gray-800 dark:text-gray-200 font-semibold bg-white/50 dark:bg-surface/50 backdrop-blur-md py-4 px-6 rounded-2xl border border-gray-200 dark:border-white/10">
+                <span class="flex items-center gap-2"><i class="fas fa-check text-primary"></i> RBI Compliant Partners</span>
+                <span class="flex items-center gap-2"><i class="fas fa-bolt text-primary"></i> 48–72 Hour Pre-Approval</span>
+                <span class="flex items-center gap-2"><i class="fas fa-map-marker-alt text-primary"></i> North Karnataka Specialists</span>
+                <span class="flex items-center gap-2"><i class="fas fa-file-signature text-primary"></i> 100% Documentation Support</span>
+            </div>
+        </div>
+    </header>
+
+    <section class="py-8 px-4 bg-white dark:bg-surface/80 border-y border-gray-200 dark:border-white/10">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-gray-200 dark:divide-white/10">
+            <div class="py-4">
+                <div class="text-3xl font-bold text-primary mb-1 stat-number" data-target="150">₹150 Cr+</div>
+                <div class="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Processed</div>
+            </div>
+            <div class="py-4">
+                <div class="text-3xl font-bold text-primary mb-1 stat-number" data-target="500">500+</div>
+                <div class="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Loan Files Approved</div>
+            </div>
+            <div class="py-4">
+                <div class="text-3xl font-bold text-primary mb-1 stat-number" data-target="98">98%</div>
+                <div class="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Sanction Success Rate</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-16 px-4">
+        <div class="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+            <div class="glass-panel p-10 rounded-3xl border-l-4 border-primary">
+                <span class="text-xs font-bold text-primary tracking-widest uppercase mb-2 block">RAAS Financial Engine™</span>
+                <h2 class="text-3xl font-serif font-bold text-gray-900 dark:text-white mb-4">🏛 RAJCHAVIN LOAN INTELLIGENCE DESK</h2>
+                <p class="text-lg text-gray-700 dark:text-gray-300 leading-relaxed font-semibold mb-6">
+                    We don’t just forward your file. We structure your profile to maximize approval.
+                </p>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                    Not just loans — But a full financial operating system integrated seamlessly with our layouts & farmlands.
+                </p>
+                <ul class="space-y-4 text-sm font-medium text-gray-800 dark:text-gray-200">
+                    <li class="flex items-center gap-3"><i class="fas fa-chart-line text-primary text-lg"></i> Income Structuring Support</li>
+                    <li class="flex items-center gap-3"><i class="fas fa-tachometer-alt text-primary text-lg"></i> CIBIL Optimization Guidance</li>
+                    <li class="flex items-center gap-3"><i class="fas fa-handshake text-primary text-lg"></i> Bank Negotiation Expertise</li>
+                    <li class="flex items-center gap-3"><i class="fas fa-hard-hat text-primary text-lg"></i> Construction-Linked Disbursement Monitoring</li>
+                    <li class="flex items-center gap-3"><i class="fas fa-gavel text-primary text-lg"></i> Legal & Technical Valuation Handling</li>
+                </ul>
+            </div>
+            
+            <div class="glass-panel p-8 rounded-3xl border border-gray-200 dark:border-white/10 shadow-xl">
+                <h3 class="text-2xl font-serif font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                    <i class="fas fa-calculator text-primary"></i> Instant EMI Calculator
+                </h3>
+                
+                <div class="space-y-6">
+                    <div>
+                        <div class="flex justify-between mb-2">
+                            <label class="text-sm font-bold text-gray-600 dark:text-gray-400">Loan Amount (₹)</label>
+                            <span id="loanValOut" class="font-bold text-primary">₹ 50,00,000</span>
+                        </div>
+                        <input type="range" id="loanAmount" min="500000" max="50000000" step="100000" value="5000000" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-primary">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between mb-2">
+                            <label class="text-sm font-bold text-gray-600 dark:text-gray-400">Interest Rate (% p.a.)</label>
+                            <span id="rateValOut" class="font-bold text-primary">8.5%</span>
+                        </div>
+                        <input type="range" id="interestRate" min="6.5" max="15.0" step="0.1" value="8.5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-primary">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between mb-2">
+                            <label class="text-sm font-bold text-gray-600 dark:text-gray-400">Tenure (Years)</label>
+                            <span id="tenureValOut" class="font-bold text-primary">20 Yrs</span>
+                        </div>
+                        <input type="range" id="loanTenure" min="5" max="30" step="1" value="20" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-primary">
+                    </div>
+
+                    <div class="mt-8 p-6 bg-primary/10 rounded-2xl border border-primary/20 text-center">
+                        <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Your Monthly EMI Output</p>
+                        <h4 class="text-4xl font-bold text-primary" id="emiResult">₹ 43,391</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="types" class="py-16 px-4 bg-gray-100 dark:bg-surface/50 border-t border-gray-200 dark:border-white/5">
+        <div class="max-w-7xl mx-auto">
+            <h2 class="text-3xl font-serif font-bold text-center text-gray-900 dark:text-white mb-12">Targeted Loan Offerings</h2>
+            
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="glass-panel p-8 rounded-2xl hover:-translate-y-2 transition duration-500 relative overflow-hidden">
+                    <span class="absolute top-4 right-4 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full">Most Popular</span>
+                    <i class="fas fa-home text-5xl text-blue-500 mb-6 block"></i>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Home Purchase Loans</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 h-10">For buying new flats, villas, or residential plots seamlessly.</p>
+                    <ul class="text-sm font-medium text-gray-700 dark:text-gray-300 space-y-2">
+                        <li class="flex gap-2"><i class="fas fa-check text-blue-500 mt-1"></i> Up to 90% funding</li>
+                        <li class="flex gap-2"><i class="fas fa-check text-blue-500 mt-1"></i> Competitive ROI</li>
+                        <li class="flex gap-2"><i class="fas fa-check text-blue-500 mt-1"></i> Gov & Private Bank Options</li>
+                    </ul>
+                </div>
+
+                <div class="glass-panel p-8 rounded-2xl hover:-translate-y-2 transition duration-500 relative overflow-hidden">
+                    <span class="absolute top-4 right-4 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full">Fastest Approval</span>
+                    <i class="fas fa-tools text-5xl text-orange-500 mb-6 block"></i>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Construction Loans</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 h-10">Build your home on your own plot with structured payouts.</p>
+                    <ul class="text-sm font-medium text-gray-700 dark:text-gray-300 space-y-2">
+                        <li class="flex gap-2"><i class="fas fa-check text-orange-500 mt-1"></i> Staged disbursements</li>
+                        <li class="flex gap-2"><i class="fas fa-check text-orange-500 mt-1"></i> Progress-based release</li>
+                        <li class="flex gap-2"><i class="fas fa-check text-orange-500 mt-1"></i> End-to-end monitoring</li>
+                    </ul>
+                </div>
+
+                <div class="glass-panel p-8 rounded-2xl hover:-translate-y-2 transition duration-500 relative overflow-hidden">
+                    <span class="absolute top-4 right-4 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">Low Documentation</span>
+                    <i class="fas fa-building text-5xl text-green-500 mb-6 block"></i>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Loan Against Property</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 h-10">Unlock the equity of your existing residential or commercial asset.</p>
+                    <ul class="text-sm font-medium text-gray-700 dark:text-gray-300 space-y-2">
+                        <li class="flex gap-2"><i class="fas fa-check text-green-500 mt-1"></i> High loan amounts</li>
+                        <li class="flex gap-2"><i class="fas fa-check text-green-500 mt-1"></i> Ideal for business capital</li>
+                        <li class="flex gap-2"><i class="fas fa-check text-green-500 mt-1"></i> Flexible usage</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-16 px-4 bg-dark relative overflow-hidden">
+        <div class="absolute inset-0 bg-primary/5 pointer-events-none bg-grid"></div>
+        <div class="max-w-6xl mx-auto relative z-10">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-serif font-bold text-white mb-4">The 7-Day Approval Framework</h2>
+                <p class="text-gray-400">Removing the fear of delays. Clear expectations from Day 1 to Disbursement.</p>
+            </div>
+            
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 overflow-x-auto pb-6 custom-scrollbar">
+                <div class="flex-shrink-0 w-32 text-center group">
+                    <div class="w-12 h-12 mx-auto bg-surface border-2 border-primary rounded-full flex items-center justify-center text-primary font-bold mb-3 group-hover:bg-primary group-hover:text-white transition">1</div>
+                    <h4 class="text-white font-bold text-sm">Eligibility<br>Check</h4>
+                </div>
+                <div class="hidden md:block h-0.5 w-full bg-primary/30 rounded"></div>
+                
+                <div class="flex-shrink-0 w-32 text-center group">
+                    <div class="w-12 h-12 mx-auto bg-surface border-2 border-primary rounded-full flex items-center justify-center text-primary font-bold mb-3 group-hover:bg-primary group-hover:text-white transition">2</div>
+                    <h4 class="text-white font-bold text-sm">Document<br>Collection</h4>
+                </div>
+                <div class="hidden md:block h-0.5 w-full bg-primary/30 rounded"></div>
+                
+                <div class="flex-shrink-0 w-32 text-center group">
+                    <div class="w-12 h-12 mx-auto bg-surface border-2 border-primary rounded-full flex items-center justify-center text-primary font-bold mb-3 group-hover:bg-primary group-hover:text-white transition">3</div>
+                    <h4 class="text-white font-bold text-sm">Bank<br>Login</h4>
+                </div>
+                <div class="hidden md:block h-0.5 w-full bg-primary/30 rounded"></div>
+                
+                <div class="flex-shrink-0 w-32 text-center group">
+                    <div class="w-12 h-12 mx-auto bg-surface border-2 border-primary rounded-full flex items-center justify-center text-primary font-bold mb-3 group-hover:bg-primary group-hover:text-white transition">4</div>
+                    <h4 class="text-white font-bold text-sm">Technical &<br>Legal</h4>
+                </div>
+                <div class="hidden md:block h-0.5 w-full bg-primary/30 rounded"></div>
+
+                <div class="flex-shrink-0 w-32 text-center group">
+                    <div class="w-12 h-12 mx-auto bg-surface border-2 border-primary rounded-full flex items-center justify-center text-primary font-bold mb-3 group-hover:bg-primary group-hover:text-white transition">5</div>
+                    <h4 class="text-white font-bold text-sm">Sanction<br>Approval</h4>
+                </div>
+                <div class="hidden md:block h-0.5 w-full bg-primary/30 rounded"></div>
+
+                <div class="flex-shrink-0 w-32 text-center group">
+                    <div class="w-12 h-12 mx-auto bg-surface border-2 border-primary rounded-full flex items-center justify-center text-primary font-bold mb-3 group-hover:bg-primary group-hover:text-white transition">6</div>
+                    <h4 class="text-white font-bold text-sm">Final<br>Agreement</h4>
+                </div>
+                <div class="hidden md:block h-0.5 w-full bg-primary/30 rounded"></div>
+
+                <div class="flex-shrink-0 w-32 text-center group">
+                    <div class="w-12 h-12 mx-auto bg-primary border-2 border-primary shadow-[0_0_15px_rgba(28,88,161,0.5)] rounded-full flex items-center justify-center text-white font-bold mb-3">7</div>
+                    <h4 class="text-primary font-bold text-sm">Fund<br>Disbursement</h4>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="consultation" class="py-20 px-4 bg-pearl dark:bg-black transition-colors">
+        <div class="max-w-5xl mx-auto grid lg:grid-cols-5 gap-10">
+            <div class="lg:col-span-2 glass-panel p-8 rounded-3xl h-fit">
+                <h3 class="text-2xl font-serif font-bold text-gray-900 dark:text-white mb-4">Direct Assistance</h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-8 text-sm">Skip the queue. Speak directly to our loan structuring experts.</p>
+                
+                <div class="space-y-6">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl"><i class="fas fa-phone-alt"></i></div>
+                        <div>
+                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Call Us Now</p>
+                            <p class="font-bold text-gray-900 dark:text-white text-lg">+91 9071188118</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl"><i class="fas fa-envelope"></i></div>
+                        <div>
+                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Email Support</p>
+                            <p class="font-bold text-gray-900 dark:text-white text-lg">contact@rajchavin.com</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 glass-panel p-8 md:p-10 rounded-3xl shadow-2xl">
+                <div class="mb-8">
+                    <h2 class="text-3xl font-serif font-bold text-gray-900 dark:text-white mb-2">Get Pre-Approved</h2>
+                    <p class="text-gray-500">Fast, Free & Secure evaluation for North Karnataka & Bangalore.</p>
+                </div>
+
+                <a href="/contact.html" class="px-8 py-3 border border-gray-300 dark:border-white/10 text-gray-900 dark:text-white font-bold rounded-full hover:bg-white/5 transition">Contact us</a>
+
+            </div>
+        </div>
+    </section>
+
+    <section class="py-20 px-4 bg-primary relative overflow-hidden text-center">
+        <div class="absolute inset-0 bg-hero-loan bg-cover bg-center opacity-10 mix-blend-overlay"></div>
+        <div class="max-w-4xl mx-auto relative z-10">
+            <h2 class="text-4xl md:text-5xl font-serif font-bold text-white mb-6">Secure the Right Loan Before You Secure the Land.</h2>
+            <p class="text-white/80 text-lg mb-10 max-w-2xl mx-auto">Don't risk your property deal due to bad financing structures. Let our institutional desk handle it.</p>
+            
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <a href="#consultation" class="px-8 py-4 bg-white text-primary font-bold rounded-full shadow-lg hover:bg-gray-100 transition flex items-center justify-center gap-2">👉 Talk to Loan Advisor</a>
+                <a href="#" class="px-8 py-4 border-2 border-white text-white font-bold rounded-full hover:bg-white/10 transition flex items-center justify-center gap-2">👉 Get Bank Comparison Sheet (PDF)</a>
+            </div>
+        </div>
+    </section>
+
+     <footer class="relative bg-gray-100 dark:bg-surface pt-20 pb-10 px-4 transition-colors duration-300 font-sans" style="will-change: transform; transform: translateZ(0);">
+        <div class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
+
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+            <div class="space-y-6">
+                 <div class="flex items-center gap-2">
+                    <img src="rajchavin-removebg-preview.png" alt="Raj Chavin Logo" class="h-12 w-auto object-contain brightness-0 dark:filter-none transition-all duration-300">
+                </div>
+                <p class="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                    Building Governed Real Estate Ecosystems — From Land Acquisition to Structured exit.                </p>
+                <div class="flex gap-4">
+                    <a href="#" class="w-10 h-10 rounded-full bg-white dark:bg-white/5 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary hover:shadow-md transition-all">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="#" class="w-10 h-10 rounded-full bg-white dark:bg-white/5 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary hover:shadow-md transition-all">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="#" class="w-10 h-10 rounded-full bg-white dark:bg-white/5 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary hover:shadow-md transition-all">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div>
+                <h4 class="text-gray-900 dark:text-white font-serif font-bold text-lg mb-6">Quick Links</h4>
+                <ul class="space-y-3">
+                    <li><a href="/about.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">About Us</a></li>
+                    <li><a href="/leadership.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Leadership</a></li>
+                    <li><a href="/careers.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Careers</a></li>
+                    <li><a href="/contact.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Contact</a></li>
+                    <li><a href="#ecosystem" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Ecosystem</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="text-gray-900 dark:text-white font-serif font-bold text-lg mb-6">Our Services</h4>
+                <ul class="space-y-3">
+                    <li><a href="/layout & farmlands/index.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Plots & Farmlands</a></li>
+                    <li><a href="realestate/portal-buyer.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Buy Property</a></li>
+                    <li><a href="realestate/portal-seller.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Sell Property</a></li>
+                    <li><a href="ecommerce/portal-store.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Construction Materials</a></li>
+                    <li><a href="/legals.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Legal Services</a></li>
+                    <li><a href="/mortgage.html" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition text-sm">Mortgage Loans</a></li>
+                </ul>
+            </div>
+
+             <div>
+                <h4 class="text-gray-900 dark:text-white font-serif font-bold text-lg mb-6">Contact</h4>
+                <ul class="space-y-4 text-sm text-gray-600 dark:text-gray-400">
+                    
+                    <p>RAJCHAVIN REALTY RETREAT Shop No. 1, Survey No. 391, Tirlapur’s Premise, Basaveshwar Nagar, Shahapur Peth, Opp. Someshwara Temple, Ward No. 15.</p>
+                    <p>Gadag – 582101, Karnataka, India</p>
+                    
+                    <li class="flex items-center gap-3">
+                        <i class="fas fa-phone text-primary"></i>
+                        <span>+91 907 1188 118</span>
+                    </li>
+                    <li class="flex items-center gap-3">
+                        <i class="fas fa-phone text-primary"></i>
+                        <span>+91 8006800270</span>
+                    </li>
+                    <a href="mailto:contact@rajchavin.com"><li class="flex items-center gap-3">
+                        <i class="fas fa-envelope text-primary"></i>
+                        <span>contact@rajchavin.com</span>
+                    </li></a>
+                </ul>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto border-t border-gray-200 dark:border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500 dark:text-gray-400">
+            <p>&copy; 2026 Raj Chavin Realty Group. All rights reserved.</p>
+            <div class="flex gap-6 mt-4 md:mt-0">
+                <a href="#" class="hover:text-primary transition">Terms of Service</a>
+                <a href="#" class="hover:text-primary transition">Privacy Policy</a>
+            </div>
+        </div>
+    </footer>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // Firebase Setup omitted to keep it clean
+
+        // EMI Calculator Logic
+        const loanAmountInput = document.getElementById('loanAmount');
+        const interestRateInput = document.getElementById('interestRate');
+        const loanTenureInput = document.getElementById('loanTenure');
+        
+        const loanValOut = document.getElementById('loanValOut');
+        const rateValOut = document.getElementById('rateValOut');
+        const tenureValOut = document.getElementById('tenureValOut');
+        const emiResult = document.getElementById('emiResult');
+
+        function calculateEMI() {
+            let p = parseFloat(loanAmountInput.value);
+            let r = parseFloat(interestRateInput.value) / 12 / 100;
+            let n = parseFloat(loanTenureInput.value) * 12;
+
+            loanValOut.innerText = '₹ ' + p.toLocaleString('en-IN');
+            rateValOut.innerText = interestRateInput.value + '%';
+            tenureValOut.innerText = loanTenureInput.value + ' Yrs';
+
+            let emi = (p * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+            emiResult.innerText = '₹ ' + Math.round(emi).toLocaleString('en-IN');
+        }
+
+        loanAmountInput.addEventListener('input', calculateEMI);
+        interestRateInput.addEventListener('input', calculateEMI);
+        loanTenureInput.addEventListener('input', calculateEMI);
+        
+        // Init Calculate
+        calculateEMI();
+
+        // Theme Toggle
+        const themeBtn = document.getElementById('theme-toggle');
+        themeBtn.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+        });
+    </script>
+</body>
+</html>
