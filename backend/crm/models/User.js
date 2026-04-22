@@ -1,0 +1,30 @@
+// backend/models/User.js
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  role: {
+    type: String,
+    enum: ['Admin', 'Agent', 'Manager'],
+    default: 'Agent'
+  }
+}, { timestamps: true });
+
+// Hash the password automatically before saving to MongoDB
+// Modern Mongoose handles the promise automatically, no 'next' needed
+userSchema.pre('save', async function() {
+  if (!this.isModified('password')) return;
+  
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+});
+
+// Method to verify passwords during login
+userSchema.methods.matchPassword = async function(enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
+
+module.exports = mongoose.model('User', userSchema);
