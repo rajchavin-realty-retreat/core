@@ -1,10 +1,47 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../api/axiosConfig';
 
 export default function DynamicForm({ entity, onSuccess }) {
   const [formData, setFormData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
+  
+  // NEW: State to hold the records of linked databases
+  const [relationData, setRelationData] = useState({});
+
+  // --- FETCH RELATIONAL DATA ---
+  // When the form opens, scan the schema for 'relation' fields and fetch their target data
+  useEffect(() => {
+    const fetchRelations = async () => {
+      const relationFields = entity.fields.filter(f => f.type === 'relation' && f.targetEntity);
+      if (relationFields.length === 0) return;
+
+      const newRelationData = {};
+      for (let field of relationFields) {
+        try {
+          const res = await api.get(`/records/entity/${field.targetEntity}`);
+          newRelationData[field.name] = res.data;
+        } catch (error) {
+          console.error(`Failed to fetch records for relation: ${field.name}`);
+        }
+      }
+      setRelationData(newRelationData);
+    };
+
+    if (entity && entity.fields) {
+      fetchRelations();
+    }
+  }, [entity]);
+
+  // Helper function to figure out what to display for a dynamic record
+  // (Since we don't know if the user named their column "Full Name", "Title", or "Company")
+  const getDisplayValue = (record) => {
+    if (!record || !record.data) return 'Unknown Record';
+    const keys = Object.keys(record.data);
+    if (keys.length === 0) return 'Empty Record';
+    // Return the value of the first column in their database
+    return record.data[keys[0]] || 'Unnamed Record'; 
+  };
 
   // --- STANDARD INPUT HANDLER ---
   const handleInputChange = (fieldName, value) => {
@@ -45,6 +82,7 @@ export default function DynamicForm({ entity, onSuccess }) {
       const uploadPromises = files.map(file => {
         const uploadData = new FormData();
         uploadData.append('file', file);
+        uploadData.append('workspaceId', entity.workspace || entity.workspaceId);
         return api.post('/upload', uploadData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
@@ -64,7 +102,6 @@ export default function DynamicForm({ entity, onSuccess }) {
     }
   };
 
-  // --- REMOVE A FILE FROM MULTIPLE ARRAY ---
   const removeFileFromArray = (fieldName, indexToRemove) => {
     setFormData(prev => {
       const currentArray = prev[fieldName] || [];
@@ -102,8 +139,6 @@ export default function DynamicForm({ entity, onSuccess }) {
           {field.type === 'text' && <input type="text" value={formData[field.name] || ''} onChange={(e) => handleInputChange(field.name, e.target.value)} required className="px-3 py-2 text-sm border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none" />}
           {field.type === 'number' && <input type="number" value={formData[field.name] || ''} onChange={(e) => handleInputChange(field.name, e.target.value)} required className="px-3 py-2 text-sm border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none" />}
           {field.type === 'textarea' && <textarea value={formData[field.name] || ''} onChange={(e) => handleInputChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none min-h-[100px]" />}
-          
-          {/* DATE & DATETIME */}
           {field.type === 'date' && <input type="date" value={formData[field.name] || ''} onChange={(e) => handleInputChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md outline-none focus:ring-1 focus:ring-indigo-500" />}
           {field.type === 'datetime' && <input type="datetime-local" value={formData[field.name] || ''} onChange={(e) => handleInputChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md outline-none focus:ring-1 focus:ring-indigo-500" />}
           
@@ -114,6 +149,22 @@ export default function DynamicForm({ entity, onSuccess }) {
             </select>
           )}
 
+          {/* THE NEW RELATION DROPDOWN */}
+          {field.type === 'relation' && (
+            <select 
+              value={formData[field.name] || ''} 
+              onChange={(e) => handleInputChange(field.name, e.target.value)} 
+              className="px-3 py-2 text-sm border border-indigo-200 rounded-md bg-indigo-50/30 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium text-indigo-900"
+            >
+              <option value="">Link to {field.name}...</option>
+              {(relationData[field.name] || []).map(record => (
+                <option key={record._id} value={record._id}>
+                  {getDisplayValue(record)}
+                </option>
+              ))}
+            </select>
+          )}
+
           {field.type === 'checkbox' && (
             <label className="flex items-center gap-2 cursor-pointer mt-1 w-fit group">
               <input type="checkbox" checked={formData[field.name] || false} onChange={(e) => handleInputChange(field.name, e.target.checked)} className="w-4 h-4 text-indigo-600 border-zinc-300 rounded focus:ring-indigo-500 cursor-pointer" />
@@ -121,7 +172,6 @@ export default function DynamicForm({ entity, onSuccess }) {
             </label>
           )}
 
-          {/* SINGLE MEDIA UPLOAD */}
           {field.type === 'media' && (
             <div className="flex flex-col gap-2">
               {formData[field.name] ? (
@@ -137,7 +187,6 @@ export default function DynamicForm({ entity, onSuccess }) {
             </div>
           )}
 
-          {/* MULTIPLE MEDIA UPLOAD (GALLERY) */}
           {field.type === 'media-multiple' && (
             <div className="flex flex-col gap-3 p-3 border border-zinc-200 rounded-md bg-zinc-50/50">
               {formData[field.name] && formData[field.name].length > 0 && (
@@ -162,7 +211,6 @@ export default function DynamicForm({ entity, onSuccess }) {
         </div>
       ))}
 
-      {/* FOOTER */}
       <div className="mt-auto pt-6 border-t border-zinc-100 flex flex-col">
         <button type="submit" disabled={isSubmitting || isUploadingFile} className="w-full bg-indigo-600 text-white py-2.5 rounded-md font-medium text-sm hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
           {isUploadingFile ? 'Uploading files...' : isSubmitting ? 'Saving...' : 'Create Record'}

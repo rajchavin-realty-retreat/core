@@ -1,8 +1,8 @@
 const Workspace = require('../models/Workspace');
 const User = require('../models/User');
-const Entity = require('../models/Entity'); // <-- Add this
-const Record = require('../models/Record'); // <-- Add this
-const { deleteFromCloudinary } = require('../config/cloudinary'); // <-- Add this
+const Entity = require('../models/Entity');
+const Record = require('../models/Record');
+const { deleteFromCloudinary } = require('../config/cloudinary');
 
 // 1. Fetch workspaces where you are the Owner OR an invited Member
 exports.getUserWorkspaces = async (req, res) => {
@@ -35,12 +35,15 @@ exports.createWorkspace = async (req, res) => {
   }
 };
 
-// 3. Invite a colleague to your workspace
-exports.addMember = async (req, res) => {
+// 3. UPGRADED: Invite a colleague with a Custom Role ID
+exports.inviteUser = async (req, res) => {
   try {
-    const { email, role } = req.body;
-    const workspace = await Workspace.findById(req.params.id);
+    const { id } = req.params;
+    
+    // Extract roleId from the frontend payload!
+    const { email, roleId } = req.body; 
 
+    const workspace = await Workspace.findById(id);
     if (!workspace) return res.status(404).json({ message: 'Workspace not found' });
     
     // Only the owner can invite
@@ -48,25 +51,30 @@ exports.addMember = async (req, res) => {
       return res.status(403).json({ message: 'Only the owner can invite members' });
     }
 
-    // Find the user they are inviting
-    const userToAdd = await User.findOne({ email });
-    if (!userToAdd) return res.status(404).json({ message: 'User not found. They must sign up first!' });
+    const userToInvite = await User.findOne({ email });
+    if (!userToInvite) return res.status(404).json({ message: 'User not found with this email. They must sign up first!' });
 
     // Prevent adding the owner as a member
-    if (workspace.owner.toString() === userToAdd._id.toString()) {
+    if (workspace.owner.toString() === userToInvite._id.toString()) {
       return res.status(400).json({ message: 'You cannot invite yourself.' });
     }
 
     // Prevent duplicate invites
-    const isMember = workspace.members.some(m => m.user.toString() === userToAdd._id.toString());
-    if (isMember) return res.status(400).json({ message: 'User is already in this workspace.' });
+    const alreadyMember = workspace.members.some(m => m.user.toString() === userToInvite._id.toString());
+    if (alreadyMember) return res.status(400).json({ message: 'User is already in this workspace.' });
 
-    // Add them to the array and save
-    workspace.members.push({ user: userToAdd._id, role: role || 'editor' });
+    // Push the new member with their specific Custom Role ID
+    workspace.members.push({
+      user: userToInvite._id,
+      status: 'pending',
+      roleId: roleId
+    });
+
     await workspace.save();
 
-    res.status(200).json({ message: 'Team member added successfully!' });
+    res.status(200).json({ message: 'User invited successfully', workspace });
   } catch (error) {
+    console.error("🔥 INVITE ERROR:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -174,6 +182,66 @@ exports.deleteWorkspace = async (req, res) => {
 
     res.status(200).json({ message: 'Workspace and all associated data permanently deleted' });
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// --- CUSTOM ROLE MANAGEMENT ---
+exports.createCustomRole = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const roleData = req.body;
+    const userId = req.user._id || req.user.id;
+
+    const workspace = await Workspace.findById(id);
+    if (!workspace) return res.status(404).json({ message: "Workspace not found" });
+
+    // Security check: Only the owner can create custom roles
+    if (workspace.owner.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "Only workspace owners can manage roles." });
+    }
+
+    // Push the new role into the array
+    workspace.customRoles.push(roleData);
+    await workspace.save();
+
+    res.status(201).json({ message: "Role created successfully", workspace });
+  } catch (error) {
+    console.error("🔥 ROLE CREATION ERROR:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.deleteCustomRole = async (req, res) => {
+  try {
+    const { id, roleId } = req.params;
+    const userId = req.user._id || req.user.id;
+
+    const workspace = await Workspace.findById(id);
+    if (!workspace) return res.status(404).json({ message: "Workspace not found" });
+
+    // Security check
+    if (workspace.owner.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "Only workspace owners can manage roles." });
+    }
+
+    // 1. Remove the role from the customRoles array
+    workspace.customRoles = workspace.customRoles.filter(role => role._id.toString() !== roleId);
+
+    // 2. Safety Sweep: If any team member had this role, revert them to a blank state
+    workspace.members = workspace.members.map(member => {
+      if (member.roleId && member.roleId.toString() === roleId) {
+        member.roleId = null; 
+      }
+      return member;
+    });
+
+    await workspace.save();
+    
+    // 3. Send the updated workspace back to React so it can update the UI instantly
+    res.status(200).json({ message: "Role deleted successfully", workspace });
+  } catch (error) {
+    console.error("🔥 ROLE DELETION ERROR:", error);
     res.status(500).json({ message: error.message });
   }
 };

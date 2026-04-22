@@ -1,8 +1,38 @@
 // backend/controllers/recordController.js
 const Record = require('../models/Record');
-const Entity = require('../models/Entity'); // <-- Added this so we can check the schema!
+const Entity = require('../models/Entity'); 
+const Workspace = require('../models/Workspace'); 
 const { deleteFromCloudinary } = require('../config/cloudinary');
-const Workspace = require('../models/Workspace'); // <-- ADD THIS LINE
+
+// --- THE PERMISSION ENGINE (Helper Function) ---
+const getUserPermissions = async (workspaceId, userId) => {
+  const workspace = await Workspace.findById(workspaceId);
+  if (!workspace) throw new Error("Workspace not found");
+
+  // 1. If they are the owner, give them God mode.
+  if (workspace.owner.toString() === userId.toString()) {
+    return {
+      viewAllRecords: true, viewOwnRecords: true, createRecords: true,
+      editAllRecords: true, editOwnRecords: true, deleteAllRecords: true, deleteOwnRecords: true
+    };
+  }
+
+  // 2. Find their assigned Custom Role
+  const member = workspace.members.find(m => m.user.toString() === userId.toString());
+  if (!member || member.status !== 'accepted') throw new Error("Not a valid workspace member");
+
+  const userRole = workspace.customRoles.find(r => r._id.toString() === member.roleId?.toString());
+  
+  // 3. If they don't have a role, give them strict View-Only basics
+  if (!userRole) {
+    return {
+      viewAllRecords: false, viewOwnRecords: true, createRecords: false,
+      editAllRecords: false, editOwnRecords: false, deleteAllRecords: false, deleteOwnRecords: false
+    };
+  }
+
+  return userRole.permissions;
+};
 
 // @desc    Create a new dynamic record (with optional media upload)
 // @route   POST /api/records
@@ -11,36 +41,33 @@ exports.createRecord = async (req, res) => {
   try {
     const { entityId, dynamicData } = req.body;
     let parsedData = typeof dynamicData === 'string' ? JSON.parse(dynamicData) : dynamicData;
+    const userId = req.user._id || req.user.id;
 
     const entity = await Entity.findById(entityId);
+    if (!entity) return res.status(404).json({ message: "Database not found" });
 
-    // --- NEW: THE SECURITY CHECK ---
-    const workspace = await Workspace.findById(entity.workspace);
-    const isOwner = workspace.owner.toString() === req.user._id.toString();
-    const memberObj = workspace.members.find(m => m.user.toString() === req.user._id.toString());
-    
-    // If they aren't the owner, and they aren't an admin/editor, BLOCK THEM.
-    if (!isOwner && (!memberObj || memberObj.role === 'viewer')) {
-      return res.status(403).json({ message: 'Viewers cannot create records.' });
+    // --- PHASE 3 SECURITY CHECK ---
+    const workspaceId = entity.workspace || entity.workspaceId;
+    const permissions = await getUserPermissions(workspaceId, userId);
+
+    if (!permissions.createRecords) {
+      return res.status(403).json({ message: 'Security Error: You do not have permission to create records.' });
     }
     // -------------------------------
 
     // --- THE MULTI-FILE CLOUDINARY HANDLER ---
     if (req.files && req.files.length > 0) {
       req.files.forEach(file => {
-        const fieldName = file.fieldname; // e.g., "House Photos"
+        const fieldName = file.fieldname; 
         const fileUrl = file.secure_url || file.path;
         
-        // Find out what kind of media column this is
         const fieldSchema = entity.fields.find(f => f.name === fieldName);
         
         if (fieldSchema) {
           if (fieldSchema.type === 'media-multiple') {
-            // If it's multiple, save as an array of URLs
             if (!parsedData[fieldName]) parsedData[fieldName] = [];
             parsedData[fieldName].push(fileUrl);
           } else {
-            // If it's single, save as a standard string URL
             parsedData[fieldName] = fileUrl;
           }
         }
@@ -49,7 +76,7 @@ exports.createRecord = async (req, res) => {
 
     const newRecord = await Record.create({
       entity: entityId,
-      createdBy: req.user._id,
+      createdBy: userId,
       data: parsedData
     });
 
@@ -65,7 +92,27 @@ exports.createRecord = async (req, res) => {
 // @access  Private
 exports.getRecordsByEntity = async (req, res) => {
   try {
-    const records = await Record.find({ entity: req.params.entityId })
+    const { entityId } = req.params;
+    const userId = req.user._id || req.user.id;
+
+    const entity = await Entity.findById(entityId);
+    if (!entity) return res.status(404).json({ message: "Database not found" });
+
+    // --- PHASE 3 SECURITY CHECK ---
+    const workspaceId = entity.workspace || entity.workspaceId;
+    const permissions = await getUserPermissions(workspaceId, userId);
+
+    let query = { entity: entity._id };
+    
+    if (!permissions.viewAllRecords) {
+      if (!permissions.viewOwnRecords) {
+        return res.status(403).json({ message: "Access Denied: You do not have permission to view records." });
+      }
+      query.createdBy = userId; // Force the query to only return their records!
+    }
+    // -------------------------------
+
+    const records = await Record.find(query)
       .populate('createdBy', 'name')
       .sort({ createdAt: -1 });
       
@@ -81,21 +128,24 @@ exports.getRecordsByEntity = async (req, res) => {
 exports.updateRecord = async (req, res) => {
   try {
     const { dynamicData } = req.body;
+    const userId = req.user._id || req.user.id;
+
     const record = await Record.findById(req.params.id).populate('entity');
-    
     if (!record) return res.status(404).json({ message: 'Record not found' });
 
-    // --- SECURITY CHECK (THE BOUNCER) ---
-    const workspace = await Workspace.findById(record.entity.workspace);
-    const isOwner = workspace.owner.toString() === req.user._id.toString();
-    const memberObj = workspace.members.find(m => m.user.toString() === req.user._id.toString());
+    // --- PHASE 3 SECURITY CHECK ---
+    const workspaceId = record.entity.workspace || record.entity.workspaceId;
+    const permissions = await getUserPermissions(workspaceId, userId);
+
+    const isOwnerOfRecord = record.createdBy.toString() === userId.toString();
     
-    if (!isOwner && (!memberObj || memberObj.role === 'viewer')) {
-      return res.status(403).json({ message: 'Viewers cannot edit records.' });
+    if (!permissions.editAllRecords) {
+      if (!permissions.editOwnRecords || !isOwnerOfRecord) {
+        return res.status(403).json({ message: "Security Error: You do not have permission to edit this record." });
+      }
     }
     // ------------------------------------
 
-    // Update the record data. We merge the old data with the new data.
     record.data = { ...record.data, ...dynamicData };
     
     await record.save();
@@ -110,45 +160,30 @@ exports.updateRecord = async (req, res) => {
 // @access  Private
 exports.deleteRecord = async (req, res) => {
   try {
-    const record = await Record.findById(req.params.id);
+    const { id } = req.params;
+    const userId = req.user._id || req.user.id;
 
-    // --- NEW: THE SECURITY CHECK ---
-    const workspace = await Workspace.findById(record.entity.workspace);
-    const isOwner = workspace.owner.toString() === req.user._id.toString();
-    const memberObj = workspace.members.find(m => m.user.toString() === req.user._id.toString());
+    const record = await Record.findById(id).populate('entity');
+    if (!record) return res.status(404).json({ message: "Record not found" });
+
+    // --- PHASE 3 SECURITY CHECK ---
+    const workspaceId = record.entity.workspace || record.entity.workspaceId;
+    const permissions = await getUserPermissions(workspaceId, userId);
+
+    const isOwnerOfRecord = record.createdBy.toString() === userId.toString();
     
-    // If they aren't the owner, and they aren't an admin/editor, BLOCK THEM.
-    if (!isOwner && (!memberObj || memberObj.role === 'viewer')) {
-      return res.status(403).json({ message: 'Viewers cannot delete records.' });
-    }
-    // -------------------------------
-
-    if (!record) return res.status(404).json({ message: 'Record not found' });
-
-    // --- CLOUDINARY CLEANUP LOGIC ---
-    const fieldData = record.data || {};
-    
-    // Loop through every field in the record's data
-    for (const key in fieldData) {
-      const value = fieldData[key];
-
-      // If it's a single URL string from Cloudinary
-      if (typeof value === 'string' && value.includes('cloudinary.com')) {
-        await deleteFromCloudinary(value);
-      } 
-      // If it's an array of URLs (media-multiple)
-      else if (Array.isArray(value)) {
-        for (const url of value) {
-          if (typeof url === 'string' && url.includes('cloudinary.com')) {
-            await deleteFromCloudinary(url);
-          }
-        }
+    if (!permissions.deleteAllRecords) {
+      if (!permissions.deleteOwnRecords || !isOwnerOfRecord) {
+        return res.status(403).json({ message: "Security Error: You do not have permission to delete this record." });
       }
     }
+    // ------------------------------------
 
-    await record.deleteOne();
-    res.status(200).json({ message: 'Record and associated media deleted' });
+    await Record.findByIdAndDelete(id);
+
+    res.status(200).json({ message: "Record securely deleted" });
   } catch (error) {
+    console.error("🔥 SECURE DELETE ERROR:", error);
     res.status(500).json({ message: error.message });
   }
 };

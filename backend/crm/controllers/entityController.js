@@ -19,6 +19,7 @@ exports.createEntity = async (req, res) => {
 
     res.status(201).json(entity);
   } catch (error) {
+    console.error("🔥 ENTITY CREATION ERROR:", error); 
     res.status(500).json({ message: error.message });
   }
 };

@@ -5,6 +5,7 @@ import Dashboard from './Dashboard';
 import ClientDetail from './ClientDetail'; // newly added import
 import EntityView from './pages/EntityView'; // Update path if you put it in a pages folder
 import Signup from './Signup';
+import RecordView from './RecordView';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -64,7 +65,11 @@ function App() {
             </ProtectedRoute>
           } 
         />
+      <Route path="/crm/:entityId/record/:recordId" element={<RecordView />} />
+
+
       </Routes>
+
     </Router>
   );
 }
