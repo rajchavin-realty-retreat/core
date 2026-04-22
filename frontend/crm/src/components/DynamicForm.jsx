@@ -1,116 +1,173 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import api from '../api/axiosConfig';
 
 export default function DynamicForm({ entity, onSuccess }) {
   const [formData, setFormData] = useState({});
-  const [fileData, setFileData] = useState({}); // New state specifically for tracking files
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const formRef = useRef(null); // Ref to reset the whole form
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
 
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    // Checkboxes use 'checked' instead of 'value'
-    setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
+  // --- STANDARD INPUT HANDLER ---
+  const handleInputChange = (fieldName, value) => {
+    setFormData(prev => ({ ...prev, [fieldName]: value }));
   };
 
-  const handleFileChange = (e, fieldName, isMultiple) => {
-    if (isMultiple) {
-      setFileData({ ...fileData, [fieldName]: Array.from(e.target.files) });
-    } else {
-      setFileData({ ...fileData, [fieldName]: e.target.files[0] });
+  // --- SINGLE FILE UPLOAD ---
+  const handleSingleUpload = async (e, fieldName) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploadingFile(true);
+    const uploadData = new FormData();
+    uploadData.append('file', file);
+    uploadData.append('workspaceId', entity.workspace || entity.workspaceId);
+
+    try {
+      const res = await api.post('/upload', uploadData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const fileUrl = res.data.url || res.data.secure_url || res.data;
+      handleInputChange(fieldName, fileUrl);
+    } catch (error) {
+      alert("Failed to upload file.");
+    } finally {
+      setIsUploadingFile(false);
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  // --- MULTIPLE FILE UPLOAD (PROMISE.ALL) ---
+  const handleMultiUpload = async (e, fieldName) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
 
+    setIsUploadingFile(true);
+    
     try {
-      const submitData = new FormData();
-      submitData.append('entityId', entity._id);
-      submitData.append('dynamicData', JSON.stringify(formData));
-      
-      // Append all our files exactly under their custom column names
-      Object.keys(fileData).forEach(key => {
-        const fileOrArray = fileData[key];
-        if (Array.isArray(fileOrArray)) {
-          fileOrArray.forEach(f => submitData.append(key, f)); // Append multiple to same key
-        } else {
-          submitData.append(key, fileOrArray); // Append single
-        }
+      const uploadPromises = files.map(file => {
+        const uploadData = new FormData();
+        uploadData.append('file', file);
+        return api.post('/upload', uploadData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
       });
 
-      await api.post('/records', submitData);
-
-      setFormData({});
-      setFileData({});
-      if (formRef.current) formRef.current.reset(); // Physically wipes the UI cleanly
-      if (onSuccess) onSuccess(); 
+      const responses = await Promise.all(uploadPromises);
+      const newUrls = responses.map(res => res.data.url || res.data.secure_url || res.data);
+      
+      setFormData(prev => {
+        const existingArray = prev[fieldName] || [];
+        return { ...prev, [fieldName]: [...existingArray, ...newUrls] };
+      });
     } catch (error) {
-      alert('Failed to save record.');
-      console.error(error);
+      alert("Failed to upload one or more files.");
+    } finally {
+      setIsUploadingFile(false);
+    }
+  };
+
+  // --- REMOVE A FILE FROM MULTIPLE ARRAY ---
+  const removeFileFromArray = (fieldName, indexToRemove) => {
+    setFormData(prev => {
+      const currentArray = prev[fieldName] || [];
+      return {
+        ...prev,
+        [fieldName]: currentArray.filter((_, idx) => idx !== indexToRemove)
+      };
+    });
+  };
+
+  // --- SUBMIT RECORD ---
+  const handleCreateRecord = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await api.post('/records', {
+        entityId: entity._id,
+        dynamicData: formData
+      });
+      setFormData({});
+      if (onSuccess) onSuccess(); // Closes drawer & refreshes table
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to create record');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-      <h2 className="text-xl font-bold text-gray-800 mb-4">Add New {entity.name}</h2>
-      
-      {entity.fields.map((field, index) => (
-        <div key={index} className="flex flex-col">
-          <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-            {field.name}
-          </label>
+    <form onSubmit={handleCreateRecord} className="flex flex-col gap-5 h-full">
+      {entity.fields.map((field, idx) => (
+        <div key={idx} className="flex flex-col gap-1.5">
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{field.name}</label>
           
-          {field.type === 'text' && (
-            <input type="text" name={field.name} onChange={handleInputChange} value={formData[field.name] || ''} required className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
-          )}
-
-          {field.type === 'textarea' && (
-            <textarea name={field.name} onChange={handleInputChange} value={formData[field.name] || ''} required className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[100px]" />
-          )}
-
-          {field.type === 'number' && (
-            <input type="number" name={field.name} onChange={handleInputChange} value={formData[field.name] || ''} required className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
-          )}
-
-          {field.type === 'date' && (
-            <input type="date" name={field.name} onChange={handleInputChange} value={formData[field.name] || ''} required className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
-          )}
-
-          {field.type === 'datetime' && (
-            <input type="datetime-local" name={field.name} onChange={handleInputChange} value={formData[field.name] || ''} required className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
-          )}
-
+          {field.type === 'text' && <input type="text" value={formData[field.name] || ''} onChange={(e) => handleInputChange(field.name, e.target.value)} required className="px-3 py-2 text-sm border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none" />}
+          {field.type === 'number' && <input type="number" value={formData[field.name] || ''} onChange={(e) => handleInputChange(field.name, e.target.value)} required className="px-3 py-2 text-sm border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none" />}
+          {field.type === 'textarea' && <textarea value={formData[field.name] || ''} onChange={(e) => handleInputChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none min-h-[100px]" />}
+          
+          {/* DATE & DATETIME */}
+          {field.type === 'date' && <input type="date" value={formData[field.name] || ''} onChange={(e) => handleInputChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md outline-none focus:ring-1 focus:ring-indigo-500" />}
+          {field.type === 'datetime' && <input type="datetime-local" value={formData[field.name] || ''} onChange={(e) => handleInputChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md outline-none focus:ring-1 focus:ring-indigo-500" />}
+          
           {field.type === 'dropdown' && (
-            <select name={field.name} onChange={handleInputChange} value={formData[field.name] || ''} required className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
-              <option value="" disabled>Select an option...</option>
-              {field.options?.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
+            <select value={formData[field.name] || ''} onChange={(e) => handleInputChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md bg-white outline-none focus:ring-1 focus:ring-indigo-500">
+              <option value="">Select option...</option>
+              {(field.options || []).map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
             </select>
           )}
 
           {field.type === 'checkbox' && (
-            <div className="flex items-center mt-2">
-              <input type="checkbox" name={field.name} onChange={handleInputChange} checked={formData[field.name] || false} className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500" />
-              <span className="ml-2 text-sm text-gray-600">Yes</span>
+            <label className="flex items-center gap-2 cursor-pointer mt-1 w-fit group">
+              <input type="checkbox" checked={formData[field.name] || false} onChange={(e) => handleInputChange(field.name, e.target.checked)} className="w-4 h-4 text-indigo-600 border-zinc-300 rounded focus:ring-indigo-500 cursor-pointer" />
+              <span className="text-sm text-zinc-600 group-hover:text-zinc-900 transition-colors">Enabled</span>
+            </label>
+          )}
+
+          {/* SINGLE MEDIA UPLOAD */}
+          {field.type === 'media' && (
+            <div className="flex flex-col gap-2">
+              {formData[field.name] ? (
+                <div className="relative w-20 h-20 border border-zinc-200 rounded-md overflow-hidden group shadow-sm">
+                  <img src={formData[field.name]} alt="preview" className="w-full h-full object-cover" />
+                  <button type="button" onClick={() => handleInputChange(field.name, '')} className="absolute inset-0 bg-zinc-900/60 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-xs font-bold backdrop-blur-sm">Clear</button>
+                </div>
+              ) : (
+                <div className="border border-dashed border-zinc-300 rounded-md p-3 hover:bg-zinc-50 transition-colors">
+                  <input type="file" accept="image/*,application/pdf" onChange={(e) => handleSingleUpload(e, field.name)} className="text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer w-full text-zinc-500" />
+                </div>
+              )}
             </div>
           )}
 
-          {field.type === 'media' && (
-            <input type="file" accept="image/*,.pdf" onChange={(e) => handleFileChange(e, field.name, false)} required className="px-4 py-2 border rounded-lg bg-gray-50 text-sm" />
-          )}
-
+          {/* MULTIPLE MEDIA UPLOAD (GALLERY) */}
           {field.type === 'media-multiple' && (
-            <input type="file" multiple accept="image/*,.pdf" onChange={(e) => handleFileChange(e, field.name, true)} required className="px-4 py-2 border rounded-lg bg-blue-50 border-blue-200 text-sm text-blue-800" />
+            <div className="flex flex-col gap-3 p-3 border border-zinc-200 rounded-md bg-zinc-50/50">
+              {formData[field.name] && formData[field.name].length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {formData[field.name].map((url, i) => (
+                    <div key={i} className="relative w-16 h-16 border border-zinc-200 rounded overflow-hidden group shadow-sm">
+                      <img src={url} alt={`file-${i}`} className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => removeFileFromArray(field.name, i)} className="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity rounded-bl-md">×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <input 
+                type="file" 
+                multiple 
+                accept="image/*,application/pdf" 
+                onChange={(e) => handleMultiUpload(e, field.name)} 
+                className="text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer w-full text-zinc-500" 
+              />
+            </div>
           )}
         </div>
       ))}
 
-      <button type="submit" disabled={isSubmitting} className="mt-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-        {isSubmitting ? 'Uploading Data...' : 'Save Record'}
-      </button>
+      {/* FOOTER */}
+      <div className="mt-auto pt-6 border-t border-zinc-100 flex flex-col">
+        <button type="submit" disabled={isSubmitting || isUploadingFile} className="w-full bg-indigo-600 text-white py-2.5 rounded-md font-medium text-sm hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
+          {isUploadingFile ? 'Uploading files...' : isSubmitting ? 'Saving...' : 'Create Record'}
+        </button>
+      </div>
     </form>
   );
 }

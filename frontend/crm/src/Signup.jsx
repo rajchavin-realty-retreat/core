@@ -2,33 +2,27 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from './api/axiosConfig';
 
-export default function Signup() {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: ''
-  });
-  const [isLoading, setIsLoading] = useState(false);
+export default function Signup({setAuth}) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleSignup = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-
+    
     try {
-      // Pointing to the route defined above your registerUser controller
-      const response = await api.post('/users/register', formData);
+      // Assuming your backend route is /users or /users/register
+      const res = await api.post('/users/register', { name, email, password });
       
-      // Store the response (which includes _id, name, email, role, and token)
-      localStorage.setItem('userInfo', JSON.stringify(response.data));
-      
-      // Send them to the Dashboard to create their first workspace!
+      // Auto-login the user after successful registration
+      localStorage.setItem('userInfo', JSON.stringify(res.data));
+      setAuth(true);
+      // Redirect to login (or dashboard if you passed setAuth as a prop)
       navigate('/'); 
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create account');
@@ -38,71 +32,100 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Create your account
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Or{' '}
-          <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">
-            sign in to your existing account
-          </Link>
-        </p>
+    <div className="flex min-h-screen bg-white font-sans text-zinc-900">
+      
+      {/* --- LEFT PANE (Visual Branding) --- */}
+      <div className="hidden lg:flex lg:w-1/2 bg-zinc-900 flex-col justify-between p-12 relative overflow-hidden">
+        
+        {/* Subtle dot pattern background */}
+        <div className="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMSkiLz48L3N2Zz4=')]"></div>
+        
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-8 h-8 bg-indigo-500 rounded-md flex items-center justify-center shadow-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
+            </div>
+            <span className="text-white font-bold text-xl tracking-tight">Rajchavin CRM</span>
+          </div>
+        </div>
+
+        <div className="relative z-10 max-w-md">
+          <h2 className="text-3xl font-bold text-white mb-4">Start building today.</h2>
+          <p className="text-zinc-400 text-sm leading-relaxed">
+            Create your first workspace, invite your team, and deploy custom databases in seconds. No coding required.
+          </p>
+        </div>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-gray-100">
+      {/* --- RIGHT PANE (The Form) --- */}
+      <div className="flex-1 flex flex-col justify-center px-8 sm:px-16 lg:px-24">
+        <div className="w-full max-w-sm mx-auto">
           
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-zinc-900 tracking-tight">Create an account</h2>
+            <p className="text-sm text-zinc-500 mt-2">Enter your details to get started.</p>
+          </div>
+
           {error && (
-            <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4">
-              <p className="text-sm text-red-700">{error}</p>
+            <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-md font-semibold">
+              {error}
             </div>
           )}
 
-          <form className="space-y-6" onSubmit={handleSignup}>
+          <form onSubmit={handleSignup} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Full Name</label>
-              <div className="mt-1">
-                <input
-                  name="name" type="text" required
-                  value={formData.name} onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
+              <label className="block text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-1.5">Full Name</label>
+              <input 
+                type="text" 
+                required 
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-md outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-shadow"
+                placeholder="John Doe"
+              />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Email address</label>
-              <div className="mt-1">
-                <input
-                  name="email" type="email" required
-                  value={formData.email} onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
+              <label className="block text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-1.5">Email Address</label>
+              <input 
+                type="email" 
+                required 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-md outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-shadow"
+                placeholder="name@company.com"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-1.5">Password</label>
+              <input 
+                type="password" 
+                required 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-md outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-shadow"
+                placeholder="Create a strong password"
+                minLength={6}
+              />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Password</label>
-              <div className="mt-1">
-                <input
-                  name="password" type="password" required minLength="6"
-                  value={formData.password} onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-            </div>
-
-            <div>
-              <button
-                type="submit" disabled={isLoading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400 transition-colors"
-              >
-                {isLoading ? 'Creating account...' : 'Sign up'}
-              </button>
-            </div>
+            <button 
+              type="submit" 
+              disabled={isLoading}
+              className="w-full bg-indigo-600 text-white py-2.5 rounded-md text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 mt-2 shadow-sm"
+            >
+              {isLoading ? 'Creating account...' : 'Create Account'}
+            </button>
           </form>
+
+          <p className="mt-8 text-center text-sm text-zinc-500">
+            Already have an account?{' '}
+            <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-800">
+              Sign in
+            </Link>
+          </p>
+          
         </div>
       </div>
     </div>

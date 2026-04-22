@@ -34,8 +34,9 @@ function App() {
           element={<Login setAuth={setIsAuthenticated} />} 
         />
 
-        <Route path="/signup" element={<Signup />} />
-        
+<Route path="/signup" element={<Signup setAuth={setIsAuthenticated} />} />
+
+
         {/* Protected Dashboard Route */}
         <Route 
           path="/" 

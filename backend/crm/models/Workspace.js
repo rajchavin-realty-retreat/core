@@ -7,7 +7,8 @@ const workspaceSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     role: { type: String, enum: ['admin', 'editor', 'viewer'], default: 'editor' },
     // --- NEW: The Handshake Status ---
-    status: { type: String, enum: ['pending', 'accepted'], default: 'pending' } 
+    status: { type: String, enum: ['pending', 'accepted'], default: 'pending' },
+    storageUsed: { type: Number, default: 0 },
   }]
 }, { timestamps: true });
 
