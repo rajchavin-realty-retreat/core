@@ -245,3 +245,150 @@ exports.deleteCustomRole = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// ==========================================
+// --- THE BACKEND FORMULA ENGINE ---
+// ==========================================
+const computeBackendFormula = (currentData, formulaString) => {
+  if (!formulaString) return 0;
+  let equation = formulaString;
+  
+  const variables = formulaString.match(/\{([^}]+)\}/g);
+  if (variables) {
+    variables.forEach(variable => {
+      const colName = variable.replace(/[{}]/g, '');
+      let val = currentData[colName];
+      
+      if (val === undefined || val === null || val === '') val = 0;
+      else if (typeof val === 'string') {
+        const stripped = val.replace(/[^0-9.-]+/g, ""); 
+        val = stripped !== '' ? Number(stripped) : 0;
+      } else {
+        val = Number(val);
+        if (isNaN(val)) val = 0;
+      }
+      // Globally replace all instances of the variable
+      equation = equation.split(variable).join(val);
+    });
+  }
+
+  try {
+    const sanitizedEquation = equation.replace(/[^-()\d/*+.]/g, '');
+    if (!sanitizedEquation) return 0;
+    
+    const result = new Function(`'use strict'; return (${sanitizedEquation})`)();
+    if (!Number.isFinite(result) || Number.isNaN(result)) return 0;
+    
+    return Number(result.toFixed(2));
+  } catch (e) {
+    return 0;
+  }
+};
+
+const getActiveFormula = (field, currentFormData) => {
+  if (field.type === 'formula') return field.formula || '';
+  if (field.type === 'conditional-formula') {
+    const dependentValue = String(currentFormData[field.dependentField] || '').trim();
+    const matchedCondition = field.conditions?.find(c => String(c.value).trim() === dependentValue);
+    return matchedCondition ? (matchedCondition.formula || '') : '';
+  }
+  return '';
+};
+
+
+// ==========================================
+// --- MEMBER ANALYTICS ENGINE ---
+// ==========================================
+// @desc    Calculate total contributions and numeric sums across all databases
+// @route   GET /api/workspaces/:id/members/:memberId/stats
+exports.getMemberStats = async (req, res) => {
+  try {
+    const { id, memberId } = req.params;
+    const userId = req.user._id || req.user.id;
+
+    const workspace = await Workspace.findById(id);
+    if (!workspace) return res.status(404).json({ message: "Workspace not found" });
+
+    // 1. Security Check
+    const isOwner = workspace.owner.toString() === userId.toString();
+    const myMember = workspace.members.find(m => m.user.toString() === userId.toString());
+    let canViewStats = isOwner;
+
+    if (!isOwner && myMember && workspace.customRoles) {
+      const myRole = workspace.customRoles.find(r => r._id.toString() === myMember.roleId?.toString());
+      if (myRole && myRole.permissions.manageTeam) canViewStats = true;
+    }
+
+    if (!canViewStats) {
+      return res.status(403).json({ message: "Security Error: You do not have permission to view team analytics." });
+    }
+
+    // 2. Fetch all databases
+    const entities = await Entity.find({ workspace: workspace._id });
+    
+    // 3. Create a map tracking the FULL SCHEMA of numeric fields
+    const entityMap = {};
+    entities.forEach(ent => {
+      // We grab the full field object so we have access to the formula strings!
+      const numericFields = ent.fields.filter(f => ['number', 'formula', 'conditional-formula'].includes(f.type));
+
+      entityMap[ent._id.toString()] = { 
+        name: ent.name, 
+        numericFields, 
+        recordCount: 0, 
+        sums: {} 
+      };
+
+      // Initialize sums to 0
+      numericFields.forEach(f => entityMap[ent._id.toString()].sums[f.name] = 0);
+    });
+
+    // 4. Fetch ALL records
+    const entityIds = entities.map(e => e._id);
+    const records = await Record.find({ 
+      entity: { $in: entityIds }, 
+      createdBy: memberId 
+    });
+
+    // 5. The High-Speed Calculation Engine
+    let globalRecordCount = 0;
+    let globalSum = 0;
+
+    records.forEach(rec => {
+      const entId = rec.entity.toString();
+      if (entityMap[entId]) {
+        entityMap[entId].recordCount++;
+        globalRecordCount++;
+
+        // We clone the row data so we can calculate formulas on the fly
+        const rowData = { ...rec.data };
+
+        // First Pass: Auto-calculate all formulas just in case the DB is outdated
+        entityMap[entId].numericFields.forEach(field => {
+          if (field.type === 'formula' || field.type === 'conditional-formula') {
+             rowData[field.name] = computeBackendFormula(rowData, getActiveFormula(field, rowData));
+          }
+        });
+
+        // Second Pass: Add them all up!
+        entityMap[entId].numericFields.forEach(field => {
+          const val = Number(rowData[field.name]) || 0;
+          entityMap[entId].sums[field.name] += val;
+          globalSum += val; 
+        });
+      }
+    });
+
+    const databaseStats = Object.values(entityMap).filter(stat => stat.recordCount > 0);
+
+    res.status(200).json({
+      globalRecordCount,
+      globalSum,
+      databaseStats
+    });
+
+  } catch (error) {
+    console.error("🔥 MEMBER STATS ERROR:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
