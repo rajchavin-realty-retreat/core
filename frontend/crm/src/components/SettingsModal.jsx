@@ -64,6 +64,11 @@ export default function SettingsModal({ activeWorkspace, isOwner, setIsSettingsO
 
   const togglePermission = (key) => setNewRole(prev => ({ ...prev, permissions: { ...prev.permissions, [key]: !prev.permissions[key] } }));
 
+  // --- NEW: STORAGE CALCULATIONS ---
+  const storageInMB = activeWorkspace?.storageUsed ? (activeWorkspace.storageUsed / (1024 * 1024)).toFixed(2) : "0.00";
+  const limitInMB = 1024; // 1 GB Free Tier limit
+  const storagePercentage = Math.min((storageInMB / limitInMB) * 100, 100);
+
   return (
     <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border border-zinc-200">
@@ -90,6 +95,18 @@ export default function SettingsModal({ activeWorkspace, isOwner, setIsSettingsO
                   {isOwner && <button type="submit" disabled={isUpdatingWorkspace || editWorkspaceName === activeWorkspace.name} className="bg-zinc-900 text-white px-4 py-2 sm:py-1.5 rounded-md text-sm font-medium hover:bg-zinc-800 disabled:opacity-50">Save</button>}
                 </div>
               </form>
+
+              {/* --- NEW: STORAGE PROGRESS BAR --- */}
+              <div className="p-4 bg-zinc-50 rounded-lg border border-zinc-200">
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="text-sm font-bold text-zinc-800">Workspace Storage</h4>
+                  <span className="text-xs text-zinc-500 font-medium">{storageInMB} MB / 1 GB</span>
+                </div>
+                <div className="w-full bg-zinc-200 rounded-full h-2.5 overflow-hidden">
+                  <div className={`h-full rounded-full transition-all duration-500 ${storagePercentage > 90 ? 'bg-red-500' : 'bg-indigo-600'}`} style={{ width: `${storagePercentage}%` }}></div>
+                </div>
+              </div>
+
               {isOwner && (
                 <div className="pt-4 border-t border-zinc-100">
                   <label className="block text-xs font-semibold text-red-500 uppercase mb-2">Danger Zone</label>

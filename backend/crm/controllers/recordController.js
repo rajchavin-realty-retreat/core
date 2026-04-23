@@ -3,6 +3,7 @@ const Record = require('../models/Record');
 const Entity = require('../models/Entity'); 
 const Workspace = require('../models/Workspace'); 
 const { deleteFromCloudinary } = require('../config/cloudinary');
+const cloudinary = require('cloudinary').v2; // We need this to check file sizes
 
 // --- THE PERMISSION ENGINE (Helper Function) ---
 const getUserPermissions = async (workspaceId, userId) => {
@@ -158,6 +159,7 @@ exports.updateRecord = async (req, res) => {
 // @desc    Delete a specific record and its associated cloud files
 // @route   DELETE /api/records/:id
 // @access  Private
+// --- UPGRADED: DELETION + STORAGE RECOVERY ---
 exports.deleteRecord = async (req, res) => {
   try {
     const { id } = req.params;
@@ -166,24 +168,48 @@ exports.deleteRecord = async (req, res) => {
     const record = await Record.findById(id).populate('entity');
     if (!record) return res.status(404).json({ message: "Record not found" });
 
-    // --- PHASE 3 SECURITY CHECK ---
     const workspaceId = record.entity.workspace || record.entity.workspaceId;
     const permissions = await getUserPermissions(workspaceId, userId);
-
     const isOwnerOfRecord = record.createdBy.toString() === userId.toString();
     
     if (!permissions.deleteAllRecords) {
-      if (!permissions.deleteOwnRecords || !isOwnerOfRecord) {
-        return res.status(403).json({ message: "Security Error: You do not have permission to delete this record." });
+      if (!permissions.deleteOwnRecords || !isOwnerOfRecord) return res.status(403).json({ message: "Security Error: You do not have permission to delete this record." });
+    }
+
+    // 1. CLOUDINARY STORAGE RECOVERY ENGINE
+    let bytesRecovered = 0;
+    const fieldData = record.data || {};
+
+    const processDeletion = async (url) => {
+      if (typeof url === 'string' && url.includes('cloudinary.com')) {
+        try {
+          const publicId = url.split('/').slice(-2).join('/').split('.')[0]; 
+          // Fetch the file size before we delete it
+          const fileDetails = await cloudinary.api.resource(publicId);
+          bytesRecovered += fileDetails.bytes;
+          // Nuke it from Cloudinary
+          await cloudinary.uploader.destroy(publicId, { invalidate: true });
+        } catch(e) { console.log("File already gone or not found in Cloudinary") }
+      }
+    };
+
+    for (const key in fieldData) {
+      const value = fieldData[key];
+      if (typeof value === 'string') {
+        await processDeletion(value);
+      } else if (Array.isArray(value)) {
+        for (const url of value) await processDeletion(url);
       }
     }
-    // ------------------------------------
+
+    // 2. Refund the storage back to the Workspace!
+    if (bytesRecovered > 0) {
+      await Workspace.findByIdAndUpdate(workspaceId, {
+        $inc: { storageUsed: -bytesRecovered } 
+      });
+    }
 
     await Record.findByIdAndDelete(id);
-
-    res.status(200).json({ message: "Record securely deleted" });
-  } catch (error) {
-    console.error("🔥 SECURE DELETE ERROR:", error);
-    res.status(500).json({ message: error.message });
-  }
+    res.status(200).json({ message: "Record securely deleted and storage recovered" });
+  } catch (error) { res.status(500).json({ message: error.message }); }
 };

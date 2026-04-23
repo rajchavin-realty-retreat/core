@@ -1,0 +1,28 @@
+const Workspace = require('../models/Workspace');
+const cloudinary = require('cloudinary').v2;
+
+exports.uploadFile = async (req, res) => {
+  try {
+    // 1. Get the workspace ID sent from the frontend
+    const { workspaceId } = req.body; 
+
+    // 2. Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: `crm_workspaces/${workspaceId}`
+    });
+
+    // 3. --- NEW: INCREMENT WORKSPACE STORAGE ---
+    if (workspaceId) {
+      await Workspace.findByIdAndUpdate(workspaceId, {
+        $inc: { storageUsed: result.bytes } // $inc automatically adds the bytes to the total!
+      });
+    }
+
+    res.status(200).json({ 
+      url: result.secure_url, 
+      bytes: result.bytes 
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Upload failed", error });
+  }
+};

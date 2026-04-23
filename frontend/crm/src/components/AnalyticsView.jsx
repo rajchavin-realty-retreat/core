@@ -1,6 +1,14 @@
+import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
-export default function AnalyticsView({ entities }) {
+export default function AnalyticsView({ entities, activeWorkspace }) {
+  if (!activeWorkspace) return null;
+
+  // --- STORAGE CALCULATIONS ---
+  const storageInMB = activeWorkspace.storageUsed ? (activeWorkspace.storageUsed / (1024 * 1024)).toFixed(2) : "0.00";
+  const limitInMB = 1024; // 1 GB Free Tier limit
+  const storagePercentage = Math.min((storageInMB / limitInMB) * 100, 100);
+
   // 1. Prepare data for the Bar Chart (How many columns does each database have?)
   const databaseStats = entities.map(entity => ({
     name: entity.name,
@@ -8,7 +16,6 @@ export default function AnalyticsView({ entities }) {
   }));
 
   // 2. Dummy Data for the Area Chart (Simulating "Records Created over the last 7 days")
-  // In a production app, we would fetch this from the backend!
   const activityData = [
     { day: 'Mon', records: 12 },
     { day: 'Tue', records: 19 },
@@ -20,27 +27,57 @@ export default function AnalyticsView({ entities }) {
   ];
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto animate-fade-in">
       
+      {/* --- HEADER --- */}
+      <div>
+        <h2 className="text-2xl font-bold text-zinc-900">Workspace Overview</h2>
+      </div>
+
+      {/* --- THE MASTER STORAGE TRACKER --- */}
+      <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
+        <div className="flex justify-between items-end mb-4">
+          <div>
+            <h3 className="text-sm font-bold text-zinc-900">Cloudinary Storage Capacity</h3>
+            <p className="text-xs text-zinc-500 mt-0.5">Total file size of all media uploaded across all databases.</p>
+          </div>
+          <div className="text-right">
+            <span className="text-2xl font-black text-zinc-900">{storageInMB} <span className="text-sm text-zinc-500 font-medium">MB</span></span>
+            <span className="text-sm text-zinc-400 mx-2">/</span>
+            <span className="text-sm font-bold text-zinc-600">1GB</span>
+          </div>
+        </div>
+        
+        <div className="w-full bg-zinc-100 rounded-full h-4 overflow-hidden border border-zinc-200">
+          <div 
+            className={`h-full rounded-full transition-all duration-1000 ease-out ${storagePercentage > 90 ? 'bg-red-500' : storagePercentage > 75 ? 'bg-amber-400' : 'bg-indigo-600'}`} 
+            style={{ width: `${storagePercentage}%` }}
+          ></div>
+        </div>
+        {storagePercentage > 90 && (
+          <p className="text-xs text-red-600 font-bold mt-3 text-right">⚠️ Approaching storage limit. Please delete old files.</p>
+        )}
+      </div>
+
       {/* --- TOP STATS ROW --- */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">Total Databases</p>
-          <p className="text-3xl font-bold text-zinc-900">{entities.length}</p>
+        <div className="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm flex flex-col justify-center">
+          <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Total Databases</p>
+          <p className="text-3xl font-black text-zinc-900">{entities.length}</p>
         </div>
-        <div className="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">System Health</p>
-          <div className="flex items-center gap-2 mt-1">
+        <div className="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm flex flex-col justify-center">
+          <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Total Schema Columns</p>
+          <p className="text-3xl font-black text-zinc-900">{entities.reduce((acc, ent) => acc + ent.fields.length, 0)}</p>
+        </div>
+        <div className="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm flex flex-col justify-center">
+          <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">System Health</p>
+          <div className="flex items-center gap-2 mt-2">
             <span className="relative flex h-3 w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
             </span>
             <span className="text-sm font-semibold text-emerald-600 tracking-tight">All Systems Operational</span>
           </div>
-        </div>
-        <div className="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">Storage Used</p>
-          <p className="text-3xl font-bold text-zinc-900">14<span className="text-lg text-zinc-400 font-medium">.2 MB</span></p>
         </div>
       </div>
 
