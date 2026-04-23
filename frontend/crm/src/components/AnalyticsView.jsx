@@ -9,13 +9,13 @@ export default function AnalyticsView({ entities, activeWorkspace }) {
   const limitInMB = 1024; // 1 GB Free Tier limit
   const storagePercentage = Math.min((storageInMB / limitInMB) * 100, 100);
 
-  // 1. Prepare data for the Bar Chart (How many columns does each database have?)
+  // 1. Prepare data for the Bar Chart
   const databaseStats = entities.map(entity => ({
     name: entity.name,
     columns: entity.fields.length,
   }));
 
-  // 2. Dummy Data for the Area Chart (Simulating "Records Created over the last 7 days")
+  // 2. Dummy Data for the Area Chart 
   const activityData = [
     { day: 'Mon', records: 12 },
     { day: 'Tue', records: 19 },
@@ -26,12 +26,17 @@ export default function AnalyticsView({ entities, activeWorkspace }) {
     { day: 'Sun', records: 8 },
   ];
 
+  // --- METRICS ---
+  const totalColumns = entities.reduce((acc, ent) => acc + ent.fields.length, 0);
+  const activeMembers = activeWorkspace.members?.filter(m => m.status === 'accepted').length || 0;
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto animate-fade-in">
       
       {/* --- HEADER --- */}
       <div>
         <h2 className="text-2xl font-bold text-zinc-900">Workspace Overview</h2>
+        <p className="text-sm text-zinc-500 mt-1">High-level metrics and system limits for {activeWorkspace.name}.</p>
       </div>
 
       {/* --- THE MASTER STORAGE TRACKER --- */}
@@ -44,7 +49,7 @@ export default function AnalyticsView({ entities, activeWorkspace }) {
           <div className="text-right">
             <span className="text-2xl font-black text-zinc-900">{storageInMB} <span className="text-sm text-zinc-500 font-medium">MB</span></span>
             <span className="text-sm text-zinc-400 mx-2">/</span>
-            <span className="text-sm font-bold text-zinc-600">1GB</span>
+            <span className="text-sm font-bold text-zinc-600">1,024 MB Limit</span>
           </div>
         </div>
         
@@ -67,7 +72,7 @@ export default function AnalyticsView({ entities, activeWorkspace }) {
         </div>
         <div className="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm flex flex-col justify-center">
           <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Total Schema Columns</p>
-          <p className="text-3xl font-black text-zinc-900">{entities.reduce((acc, ent) => acc + ent.fields.length, 0)}</p>
+          <p className="text-3xl font-black text-zinc-900">{totalColumns}</p>
         </div>
         <div className="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm flex flex-col justify-center">
           <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">System Health</p>

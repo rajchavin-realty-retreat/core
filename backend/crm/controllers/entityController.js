@@ -97,3 +97,23 @@ exports.deleteEntity = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Update an existing database schema
+// @route   PUT /api/entities/:id
+exports.updateEntity = async (req, res) => {
+  try {
+    const { name, fields } = req.body;
+    const entity = await Entity.findById(req.params.id);
+    
+    if (!entity) return res.status(404).json({ message: "Database not found" });
+
+    // Update the schema blueprint
+    entity.name = name || entity.name;
+    entity.fields = fields || entity.fields;
+    
+    await entity.save();
+    res.status(200).json({ message: "Database schema updated successfully", entity });
+  } catch (error) { 
+    res.status(500).json({ message: error.message }); 
+  }
+};

@@ -1,12 +1,34 @@
-// backend/index.js
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 
 const app = express();
-app.use(cors());
-app.use(express.json()); // Body parser
+
+// --- THE SECURITY BOUNCER (CORS WHITELIST) ---
+const whitelist = [
+  'http://localhost:3000',             // Allow your local React development server
+  'http://localhost:5173',             // (Add this if you are using Vite instead of CRA)
+  'https://lazylink.rajchavin.com' // <-- Replace with your actual live deployed frontend URL
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (whitelist.indexOf(origin) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Security Block: Not allowed by CORS'));
+    }
+  },
+  credentials: true, 
+  optionsSuccessStatus: 200 
+};
+
+// Apply the strict whitelist middleware
+app.use(cors(corsOptions));
+
+// Body parser
+app.use(express.json()); 
 
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI; 

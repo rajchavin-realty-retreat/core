@@ -12,7 +12,7 @@ export default function Sidebar({
   return (
     <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-zinc-50 border-r border-zinc-200 flex flex-col flex-shrink-0 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="h-14 flex items-center px-4 border-b border-zinc-200 justify-between">
-        <div className="font-semibold text-sm text-zinc-800 tracking-tight">LazyTree</div>
+        <div className="font-semibold text-sm text-zinc-800 tracking-tight">Lazy Link</div>
         <div className="flex items-center gap-2">
           <button onClick={handleLogout} className="text-xs text-zinc-500 hover:text-zinc-800 font-medium transition-colors">Logout</button>
           <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden text-zinc-400 hover:text-zinc-600">
