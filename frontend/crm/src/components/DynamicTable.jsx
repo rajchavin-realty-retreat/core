@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom'; 
 import api from '../api/axiosConfig';
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 
 export default function DynamicTable({ entity, records, userPermissions, currentUser }) {
   const navigate = useNavigate();
@@ -23,138 +25,170 @@ export default function DynamicTable({ entity, records, userPermissions, current
   const [localPerms, setLocalPerms] = useState(null);
   const [localUser, setLocalUser] = useState(null);
 
-  // --- UPGRADED: BULLETPROOF FORMULA ENGINE ---
+  // --- THE MATH & FORMULA ENGINE ---
   const computeFormula = (currentData, formulaString) => {
     if (!formulaString) return '';
     let equation = formulaString;
-    
     const variables = formulaString.match(/\{([^}]+)\}/g);
-    
     if (variables) {
       variables.forEach(variable => {
         const colName = variable.replace(/[{}]/g, '');
         let val = currentData[colName];
-        
-        // FIX 1: Safely handle undefined, null, or empty string as 0
-        if (val === undefined || val === null || val === '') {
-          val = 0;
-        } else if (typeof val === 'string') {
+        if (val === undefined || val === null || val === '') val = 0;
+        else if (typeof val === 'string') {
           const stripped = val.replace(/[^0-9.-]+/g, ""); 
           val = stripped !== '' ? Number(stripped) : 0;
         } else {
           val = Number(val);
           if (isNaN(val)) val = 0;
         }
-
-        // FIX 2: Globally replace ALL instances of the variable in the equation!
-        // (Standard .replace only does the first one, which breaks {Qty} * {Qty})
         equation = equation.split(variable).join(val);
       });
     }
-
     try {
       const sanitizedEquation = equation.replace(/[^-()\d/*+.]/g, '');
       if (!sanitizedEquation) return '';
-      
       const result = new Function(`'use strict'; return (${sanitizedEquation})`)();
-      
-      // If it evaluates to Infinity or NaN, return '' instead of crashing
       if (!Number.isFinite(result) || Number.isNaN(result)) return '';
-      
       return Number(result.toFixed(2));
-    } catch (e) {
-      return '#ERROR';
-    }
+    } catch (e) { return '#ERROR'; }
   };
 
   const getActiveFormula = (field, currentFormData) => {
     if (field.type === 'formula') return field.formula || '';
-    
     if (field.type === 'conditional-formula') {
-      // FIX 3: Force string comparison and trim whitespace so dropdowns never miss!
       const dependentValue = String(currentFormData[field.dependentField] || '').trim();
       const matchedCondition = field.conditions?.find(c => String(c.value).trim() === dependentValue);
       return matchedCondition ? (matchedCondition.formula || '') : '';
     }
     return '';
   };
-  // ----------------------------------------------
 
-  // 1. SMART PERMISSION RESOLVER
+  // --- PHASE B: LOOKUP ENGINE ---
+  const computeLookup = (field, currentData) => {
+    if (!field.sourceRelationField || !field.targetLookupField) return '';
+    const sourceId = currentData[field.sourceRelationField];
+    if (!sourceId) return '';
+    const sourceRecords = relationData[field.sourceRelationField] || [];
+    const match = sourceRecords.find(r => r._id === sourceId);
+    if (match && match.data) return match.data[field.targetLookupField] || '';
+    return '';
+  };
+
+  // --- PHASE B: ROLLUP MATH ENGINE ---
+  const computeRollup = (field, currentData) => {
+    if (!field.sourceRelationField || !field.targetLookupField) return '';
+    const sourceValues = currentData[field.sourceRelationField];
+    if (!sourceValues) return '';
+    
+    const ids = Array.isArray(sourceValues) ? sourceValues : [sourceValues];
+    const sourceRecords = relationData[field.sourceRelationField] || [];
+    let values = [];
+    ids.forEach(id => {
+      const match = sourceRecords.find(r => r._id === id);
+      if (match && match.data && match.data[field.targetLookupField] !== undefined && match.data[field.targetLookupField] !== '') {
+        let val = match.data[field.targetLookupField];
+        if (typeof val === 'string') {
+          const stripped = val.replace(/[^0-9.-]+/g, "");
+          val = stripped !== '' ? Number(stripped) : 0;
+        } else val = Number(val) || 0;
+        values.push(val);
+      }
+    });
+
+    if (values.length === 0) return field.rollupFunction === 'COUNT' ? 0 : '';
+    switch(field.rollupFunction) {
+      case 'SUM': return values.reduce((a, b) => a + b, 0);
+      case 'AVERAGE': return parseFloat((values.reduce((a, b) => a + b, 0) / values.length).toFixed(2));
+      case 'MAX': return Math.max(...values);
+      case 'MIN': return Math.min(...values);
+      case 'COUNT': return values.length;
+      default: return '';
+    }
+  };
+
+  // --- SMART PERMISSION RESOLVER ---
   useEffect(() => {
     const resolvePermissions = async () => {
       try {
         const userInfo = currentUser || JSON.parse(localStorage.getItem('userInfo'));
         setLocalUser(userInfo);
-
-        if (userPermissions) {
-          setLocalPerms(userPermissions);
-          return;
-        }
-
+        if (userPermissions) { setLocalPerms(userPermissions); return; }
         if (!entity) return;
         const workspaceId = entity.workspace || entity.workspaceId;
         const res = await api.get('/workspaces');
         const workspace = res.data.find(w => w._id === workspaceId);
-        
         if (!workspace) return;
-
         const userIdStr = String(userInfo?.id || userInfo?._id);
         const ownerIdStr = String(workspace.owner._id || workspace.owner);
-
-        if (ownerIdStr === userIdStr) {
-          setLocalPerms({ editAllRecords: true, editOwnRecords: true, deleteAllRecords: true, deleteOwnRecords: true });
-          return;
-        }
-
+        if (ownerIdStr === userIdStr) { setLocalPerms({ editAllRecords: true, editOwnRecords: true, deleteAllRecords: true, deleteOwnRecords: true }); return; }
         const member = workspace.members.find(m => String(m.user._id || m.user) === userIdStr);
         if (member && workspace.customRoles) {
           const role = workspace.customRoles.find(r => String(r._id) === String(member.roleId));
-          if (role) {
-            setLocalPerms(role.permissions);
-            return;
-          }
+          if (role) { setLocalPerms(role.permissions); return; }
         }
         setLocalPerms({ editAllRecords: false, editOwnRecords: false, deleteAllRecords: false, deleteOwnRecords: false });
-      } catch (error) {
-        console.error("Failed to resolve table permissions", error);
-        setLocalPerms({ editAllRecords: true, editOwnRecords: true, deleteAllRecords: true, deleteOwnRecords: true });
-      }
+      } catch (error) { setLocalPerms({ editAllRecords: true, editOwnRecords: true, deleteAllRecords: true, deleteOwnRecords: true }); }
     };
     resolvePermissions();
   }, [entity, userPermissions, currentUser]);
 
-  // 2. FETCH FORWARD LINKS
+  // --- FETCH FORWARD LINKS ---
   useEffect(() => {
     const fetchForwardRelations = async () => {
       if (!entity || !entity.fields) return;
       const relationFields = entity.fields.filter(f => f.type === 'relation' && f.targetEntity);
       if (relationFields.length === 0) return;
-
       const newRelationData = {};
       for (let field of relationFields) {
         try {
           const res = await api.get(`/records/entity/${field.targetEntity}`);
           newRelationData[field.name] = res.data;
-        } catch (error) { console.error('Failed to fetch relation data'); }
+        } catch (error) {}
       }
       setRelationData(newRelationData);
     };
     fetchForwardRelations();
   }, [entity]);
 
-  const getDisplayValue = (recordId, fieldName) => {
+  // --- UPGRADED: FLEXIBLE MULTI-COLUMN FORMATTER ---
+  const getDisplayValue = (recordId, field) => {
     if (!recordId) return '-';
-    const targetRecords = relationData[fieldName] || [];
+    const targetRecords = relationData[field.name] || [];
     const match = targetRecords.find(r => r._id === recordId);
     if (!match || !match.data) return `ID: ${String(recordId).slice(-4)}`;
+    
+    if (field.displayFields && field.displayFields.length > 0) {
+      return field.displayFields.map(fieldName => {
+        if (match.data[fieldName] !== undefined) return match.data[fieldName];
+        const flexKey = Object.keys(match.data).find(k => k.toLowerCase().trim() === fieldName.toLowerCase().trim());
+        return flexKey ? match.data[flexKey] : null;
+      }).filter(val => val !== undefined && val !== null && val !== '').join(' - '); 
+    }
     const keys = Object.keys(match.data);
     return keys.length > 0 ? match.data[keys[0]] : 'Unnamed';
   };
 
+  // --- UPGRADED: CASCADING FILTERS FOR EDIT MODAL ---
+  const getFilteredRelations = (field) => {
+    let allOptions = relationData[field.name] || [];
+    if (field.cascadingParentField && field.cascadingTargetField) {
+      const selectedParentId = editFormData[field.cascadingParentField];
+      if (!selectedParentId) return [];
+      allOptions = allOptions.filter(record => record.data && record.data[field.cascadingTargetField] === selectedParentId);
+    }
+    return allOptions;
+  };
+
   const handleEditClick = async (record) => {
     setEditingRecord(record);
-    setEditFormData(record.data || {});
+    const formattedData = { ...record.data };
+    entity.fields.forEach(f => {
+      if (f.type === 'json' && formattedData[f.name]) {
+        formattedData[f.name] = JSON.stringify(formattedData[f.name], null, 2);
+      }
+    });
+    setEditFormData(formattedData || {});
     setModalTab('details');
     setSubRecords([]); 
     setIsLoadingRelations(true);
@@ -197,7 +231,7 @@ export default function DynamicTable({ entity, records, userPermissions, current
         }
       }
       setSubRecords(relatedData);
-    } catch (error) { console.error("Failed to load sub-records", error); } 
+    } catch (error) {} 
     finally { setIsLoadingRelations(false); }
   };
 
@@ -206,10 +240,7 @@ export default function DynamicTable({ entity, records, userPermissions, current
     const openRecordId = params.get('openRecord');
     if (openRecordId && records && records.length > 0) {
       const recordToOpen = records.find(r => r._id === openRecordId);
-      if (recordToOpen) {
-        handleEditClick(recordToOpen);
-        navigate(location.pathname, { replace: true });
-      }
+      if (recordToOpen) { handleEditClick(recordToOpen); navigate(location.pathname, { replace: true }); }
     }
   }, [location.search, records, navigate]); 
 
@@ -217,14 +248,18 @@ export default function DynamicTable({ entity, records, userPermissions, current
 
   const handleDelete = async (id) => {
     if (!window.confirm("Permanently delete this record?")) return;
-    try {
-      await api.delete(`/records/${id}`);
-      window.location.reload(); 
-    } catch (error) { alert(error.response?.data?.message || "Delete failed"); }
+    try { await api.delete(`/records/${id}`); window.location.reload(); } catch (error) { alert("Delete failed"); }
   };
 
   const handleEditChange = (fieldName, value) => {
-    setEditFormData(prev => ({ ...prev, [fieldName]: value }));
+    setEditFormData(prev => {
+      const newData = { ...prev, [fieldName]: value };
+      // Auto-clear dependent dropdowns if parent changes
+      entity.fields.forEach(f => {
+        if (f.cascadingParentField === fieldName) newData[f.name] = ''; 
+      });
+      return newData;
+    });
   };
 
   const handleFileUpload = async (e, fieldName) => {
@@ -268,18 +303,18 @@ export default function DynamicTable({ entity, records, userPermissions, current
     setIsUpdating(true);
     try {
       const payloadData = { ...editFormData };
-      
-      // FIX 4: Use payloadData to calculate formulas!
-      // This means if Formula B relies on Formula A, it will use the freshly calculated value of A instead of failing!
-      entity.fields.forEach(field => {
-        if (field.type === 'formula' || field.type === 'conditional-formula') {
-          payloadData[field.name] = computeFormula(payloadData, getActiveFormula(field, payloadData));
+      for (let field of entity.fields) {
+        if (field.type === 'formula' || field.type === 'conditional-formula') payloadData[field.name] = computeFormula(payloadData, getActiveFormula(field, payloadData));
+        if (field.type === 'lookup') payloadData[field.name] = computeLookup(field, payloadData);
+        if (field.type === 'rollup') payloadData[field.name] = computeRollup(field, payloadData);
+        if (field.type === 'json' && payloadData[field.name]) {
+          try { payloadData[field.name] = JSON.parse(payloadData[field.name]); } 
+          catch (err) { throw new Error(`Syntax Error in "${field.name}": Invalid JSON.`); }
         }
-      });
-
+      }
       await api.put(`/records/${editingRecord._id}`, { dynamicData: payloadData });
       window.location.reload(); 
-    } catch (error) { alert(error.response?.data?.message || "Update failed"); } 
+    } catch (error) { alert(error.message || "Update failed"); } 
     finally { setIsUpdating(false); }
   };
 
@@ -287,24 +322,13 @@ export default function DynamicTable({ entity, records, userPermissions, current
   const filteredRecords = records.filter(record => {
     if (!searchTerm) return true; 
     const lowerSearch = searchTerm.toLowerCase();
-
-    // Instead of raw data, we check against what is actually displayed on the screen
     return entity.fields.some(field => {
       let displayString = "";
-
-      if (field.type === 'relation' && record.data?.[field.name]) {
-        // 1. Resolve Linked Database IDs into actual readable text
-        displayString = String(getDisplayValue(record.data[field.name], field.name));
-      } 
-      else if (field.type === 'formula' || field.type === 'conditional-formula') {
-        // 2. Resolve computed math formulas into their final numbers
-        displayString = String(computeFormula(record.data, getActiveFormula(field, record.data)));
-      } 
-      else {
-        // 3. Handle all standard text, numbers, dates, and dropdowns
-        displayString = String(record.data?.[field.name] || "");
-      }
-
+      if (field.type === 'relation' && record.data?.[field.name]) displayString = String(getDisplayValue(record.data[field.name], field));
+      else if (field.type === 'formula' || field.type === 'conditional-formula') displayString = String(computeFormula(record.data, getActiveFormula(field, record.data)));
+      else if (field.type === 'lookup') displayString = String(computeLookup(field, record.data));
+      else if (field.type === 'rollup') displayString = String(computeRollup(field, record.data));
+      else displayString = String(record.data?.[field.name] || "");
       return displayString.toLowerCase().includes(lowerSearch);
     });
   });
@@ -326,7 +350,8 @@ export default function DynamicTable({ entity, records, userPermissions, current
                 {entity.fields.map((field, index) => (
                   <th key={index} className="px-4 py-2 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider whitespace-nowrap">
                     {field.name}
-                    {(field.type === 'formula' || field.type === 'conditional-formula') && <span className="ml-1.5 text-emerald-500 text-[9px]">ƒx</span>}
+                    {(field.type === 'formula' || field.type === 'conditional-formula' || field.type === 'rollup') && <span className="ml-1.5 text-emerald-500 text-[9px]">ƒx</span>}
+                    {field.type === 'lookup' && <span className="ml-1.5 text-indigo-500 text-[9px]">↓</span>}
                   </th>
                 ))}
                 <th className="px-4 py-2 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider whitespace-nowrap">Creator</th>
@@ -335,7 +360,6 @@ export default function DynamicTable({ entity, records, userPermissions, current
             </thead>
             <tbody className="divide-y divide-zinc-100">
               {filteredRecords.map((record) => {
-
                 const myIdStr = String(localUser?.id || localUser?._id);
                 const creatorIdStr = String(record.createdBy?._id || record.createdBy);
                 const isMyRecord = myIdStr === creatorIdStr;
@@ -347,20 +371,20 @@ export default function DynamicTable({ entity, records, userPermissions, current
                     {entity.fields.map((field, index) => (
                       <td key={index} className="px-4 py-2.5 text-sm text-zinc-700">
                         
+                        {/* RENDER PHASE B TYPES IN TABLE */}
                         {field.type === 'relation' && record.data?.[field.name] && (
                           <button onClick={(e) => { e.stopPropagation(); navigate(`/crm/${field.targetEntity}/record/${record.data[field.name]}`); }} className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-indigo-100 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors text-[11px] font-semibold whitespace-nowrap cursor-pointer">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd" /></svg>
-                            {getDisplayValue(record.data[field.name], field.name)}
+                            {getDisplayValue(record.data[field.name], field)}
                           </button>
                         )}
+                        {(field.type === 'formula' || field.type === 'conditional-formula') && <span className="font-mono font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 whitespace-nowrap">{computeFormula(record.data, getActiveFormula(field, record.data))}</span>}
+                        {field.type === 'lookup' && <span className="font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 whitespace-nowrap">{computeLookup(field, record.data)}</span>}
+                        {field.type === 'rollup' && <span className="font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 whitespace-nowrap">{computeRollup(field, record.data)}</span>}
 
-                        {/* WORKS FOR BOTH FORMULA TYPES */}
-                        {(field.type === 'formula' || field.type === 'conditional-formula') && (
-                          <span className="font-mono font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 whitespace-nowrap">
-                            {computeFormula(record.data, getActiveFormula(field, record.data))}
-                          </span>
-                        )}
-
+                        {field.type === 'json' && <span className="font-mono text-[10px] bg-zinc-100 text-zinc-600 px-1.5 py-0.5 rounded truncate max-w-[150px] block border border-zinc-200">{record.data?.[field.name] ? JSON.stringify(record.data[field.name]).substring(0, 30) + '...' : '{}'}</span>}
+                        {field.type === 'email' && record.data?.[field.name] && <a href={`mailto:${record.data[field.name]}`} onClick={(e) => e.stopPropagation()} className="text-indigo-600 hover:underline truncate max-w-xs block font-medium">{record.data[field.name]}</a>}
+                        {field.type === 'phone' && record.data?.[field.name] && <a href={`tel:${record.data[field.name]}`} onClick={(e) => e.stopPropagation()} className="text-indigo-600 hover:underline truncate max-w-xs block font-medium">{record.data[field.name]}</a>}
                         {field.type === 'checkbox' && <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${record.data?.[field.name] ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-zinc-100 text-zinc-500 border-zinc-200'}`}>{record.data?.[field.name] ? 'TRUE' : 'FALSE'}</span>}
                         {(field.type === 'text' || field.type === 'textarea' || field.type === 'dropdown' || field.type === 'number') && <span className="whitespace-pre-wrap truncate max-w-xs block">{record.data?.[field.name] || '-'}</span>}
                         {field.type === 'date' && <span className="text-zinc-500 whitespace-nowrap">{record.data?.[field.name] ? new Date(record.data[field.name]).toLocaleDateString() : '-'}</span>}
@@ -384,8 +408,8 @@ export default function DynamicTable({ entity, records, userPermissions, current
 
       {/* --- EDIT MODAL --- */}
       {editingRecord && (
-        <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-zinc-200">
+        <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4 cursor-pointer" onClick={() => setEditingRecord(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="bg-white cursor-default rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-zinc-200">
             <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-100 bg-zinc-50/50">
               <h3 className="text-sm font-semibold text-zinc-900">Edit {entity.name} Record</h3>
               <button onClick={() => setEditingRecord(null)} className="text-zinc-400 hover:text-zinc-600"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg></button>
@@ -393,53 +417,55 @@ export default function DynamicTable({ entity, records, userPermissions, current
 
             <div className="flex border-b border-zinc-200 px-6 pt-2 bg-zinc-50/30">
               <button onClick={() => setModalTab('details')} className={`pb-3 text-sm font-semibold transition-colors border-b-2 ${modalTab === 'details' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>Record Details</button>
-              <button onClick={() => setModalTab('related')} className={`pb-3 ml-6 text-sm font-semibold transition-colors border-b-2 flex items-center gap-1.5 ${modalTab === 'related' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>
-                Related Activity {subRecords.length > 0 && <span className="bg-indigo-100 text-indigo-700 py-0.5 px-2 rounded-full text-[10px]">{subRecords.reduce((acc, sr) => acc + sr.records.length, 0)}</span>}
-              </button>
+              <button onClick={() => setModalTab('related')} className={`pb-3 ml-6 text-sm font-semibold transition-colors border-b-2 flex items-center gap-1.5 ${modalTab === 'related' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>Related Activity {subRecords.length > 0 && <span className="bg-indigo-100 text-indigo-700 py-0.5 px-2 rounded-full text-[10px]">{subRecords.reduce((acc, sr) => acc + sr.records.length, 0)}</span>}</button>
             </div>
 
             {modalTab === 'details' && (
               <form onSubmit={submitUpdate} className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
                 {entity.fields.map((field, idx) => (
                   <div key={idx} className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                      {field.name} {(field.type === 'formula' || field.type === 'conditional-formula') && <span className="text-emerald-500 ml-1 text-[10px]">(Auto-Calculated)</span>}
-                    </label>
                     
-                    {/* WORKS FOR BOTH FORMULA TYPES IN LIVE PREVIEW */}
-                    {(field.type === 'formula' || field.type === 'conditional-formula') && (
-                      <input 
-                        type="text" 
-                        disabled 
-                        value={computeFormula(editFormData, getActiveFormula(field, editFormData))} 
-                        className="px-3 py-2 text-sm border border-emerald-200 rounded-md bg-emerald-50/50 text-emerald-700 font-mono outline-none cursor-not-allowed transition-all" 
-                      />
-                    )}
+                    <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                      {field.name} 
+                      {(field.type === 'formula' || field.type === 'conditional-formula' || field.type === 'lookup' || field.type === 'rollup') && <span className="text-emerald-500 ml-1 text-[10px]">(Auto-Calculated)</span>}
+                    </label>
 
+                    {/* PHASE B EDIT MODAL INPUTS */}
+                    {(field.type === 'lookup' || field.type === 'rollup') && (
+                      <input type="text" disabled value={field.type === 'lookup' ? computeLookup(field, editFormData) : computeRollup(field, editFormData)} className="px-3 py-2 text-sm border border-indigo-200 rounded-md bg-indigo-50/40 text-indigo-800 font-medium outline-none cursor-not-allowed transition-all" />
+                    )}
+                    {(field.type === 'formula' || field.type === 'conditional-formula') && (<input type="text" disabled value={computeFormula(editFormData, getActiveFormula(field, editFormData))} className="px-3 py-2 text-sm border border-emerald-200 rounded-md bg-emerald-50/50 text-emerald-700 font-mono outline-none cursor-not-allowed transition-all" />)}
+                    {field.type === 'json' && (<textarea value={editFormData[field.name] || ''} onChange={(e) => handleEditChange(field.name, e.target.value)} placeholder="{\n  &quot;key&quot;: &quot;value&quot;\n}" className="px-3 py-3 text-xs font-mono border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none bg-zinc-900 text-emerald-400 min-h-[150px] shadow-inner leading-relaxed" />)}
+                    {field.type === 'email' && <input type="email" value={editFormData[field.name] || ''} onChange={(e) => handleEditChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none" />}
+                    {field.type === 'phone' && (<div className="border border-zinc-200 rounded-md focus-within:ring-1 focus-within:ring-indigo-500 bg-white px-3 py-1.5"><PhoneInput international defaultCountry="IN" value={editFormData[field.name] || ''} onChange={(val) => handleEditChange(field.name, val)} className="text-sm outline-none w-full" /></div>)}
                     {field.type === 'text' && <input type="text" value={editFormData[field.name] || ''} onChange={(e) => handleEditChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none" />}
                     {field.type === 'number' && <input type="number" value={editFormData[field.name] || ''} onChange={(e) => handleEditChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none" />}
                     {field.type === 'textarea' && <textarea value={editFormData[field.name] || ''} onChange={(e) => handleEditChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none min-h-[80px]" />}
                     {field.type === 'date' && <input type="date" value={editFormData[field.name] ? editFormData[field.name].split('T')[0] : ''} onChange={(e) => handleEditChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md outline-none focus:ring-1 focus:ring-indigo-500" />}
                     {field.type === 'datetime' && <input type="datetime-local" value={editFormData[field.name] ? new Date(editFormData[field.name]).toISOString().slice(0, 16) : ''} onChange={(e) => handleEditChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md outline-none focus:ring-1 focus:ring-indigo-500" />}
-                    
-                    {(field.type === 'dropdown' || field.type === 'relation') && (
+                    {field.type === 'dropdown' && (
                       <select value={editFormData[field.name] || ''} onChange={(e) => handleEditChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md bg-white outline-none focus:ring-1 focus:ring-indigo-500">
                         <option value="">Select option...</option>
-                        {field.type === 'dropdown' && (field.options || []).map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
-                        {field.type === 'relation' && (relationData[field.name] || []).map(r => <option key={r._id} value={r._id}>{getDisplayValue(r._id, field.name)}</option>)}
+                        {(field.options || []).map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
                       </select>
                     )}
-
+                    {field.type === 'relation' && (
+                      <select 
+                        value={editFormData[field.name] || ''} 
+                        onChange={(e) => handleEditChange(field.name, e.target.value)} 
+                        className={`px-3 py-2 text-sm border border-zinc-200 rounded-md bg-white outline-none focus:ring-1 focus:ring-indigo-500 ${field.cascadingParentField && !editFormData[field.cascadingParentField] ? 'bg-zinc-100 cursor-not-allowed opacity-70' : ''}`}
+                        disabled={field.cascadingParentField && !editFormData[field.cascadingParentField]}
+                      >
+                        <option value="">{field.cascadingParentField && !editFormData[field.cascadingParentField] ? `Select ${field.cascadingParentField} first...` : 'Select record...'}</option>
+                        {getFilteredRelations(field).map(r => <option key={r._id} value={r._id}>{getDisplayValue(r._id, field)}</option>)}
+                      </select>
+                    )}
                     {field.type === 'checkbox' && <label className="flex items-center gap-2 mt-1 w-fit"><input type="checkbox" checked={editFormData[field.name] || false} onChange={(e) => handleEditChange(field.name, e.target.checked)} className="w-4 h-4 text-indigo-600 rounded" /><span className="text-sm text-zinc-600">Enabled</span></label>}
-                    
                     {field.type === 'media' && (
                       <div className="flex flex-col gap-2">
-                        {editFormData[field.name] ? (
-                          <div className="relative w-20 h-20 border rounded-md overflow-hidden group"><img src={editFormData[field.name]} alt="preview" className="w-full h-full object-cover" /><button type="button" onClick={() => handleEditChange(field.name, '')} className="absolute inset-0 bg-black/60 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs">Clear</button></div>
-                        ) : (<input type="file" onChange={(e) => handleFileUpload(e, field.name)} className="text-xs" />)}
+                        {editFormData[field.name] ? (<div className="relative w-20 h-20 border rounded-md overflow-hidden group"><img src={editFormData[field.name]} alt="preview" className="w-full h-full object-cover" /><button type="button" onClick={() => handleEditChange(field.name, '')} className="absolute inset-0 bg-black/60 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs">Clear</button></div>) : (<input type="file" onChange={(e) => handleFileUpload(e, field.name)} className="text-xs" />)}
                       </div>
                     )}
-                    
                     {field.type === 'media-multiple' && (
                       <div className="flex flex-col gap-3 p-3 border rounded-md">
                          <div className="flex flex-wrap gap-2">{editFormData[field.name]?.map((url, i) => <div key={i} className="relative w-16 h-16 border rounded overflow-hidden group"><img src={url} alt="file" className="w-full h-full object-cover" /><button type="button" onClick={() => removeFileFromArray(field.name, i)} className="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100">×</button></div>)}</div>
@@ -448,25 +474,16 @@ export default function DynamicTable({ entity, records, userPermissions, current
                     )}
                   </div>
                 ))}
-
                 <div className="flex gap-2 mt-4 pt-5 border-t border-zinc-100">
                   <button type="button" onClick={() => setEditingRecord(null)} className="flex-1 bg-white border border-zinc-200 text-zinc-700 py-2 rounded-md font-medium text-sm hover:bg-zinc-50">Cancel</button>
-                  <button type="submit" disabled={isUpdating || isUploadingFile} className="flex-1 bg-indigo-600 text-white py-2 rounded-md font-medium text-sm hover:bg-indigo-700 disabled:opacity-50">
-                    {isUploadingFile ? 'Uploading...' : isUpdating ? 'Saving...' : 'Save Changes'}
-                  </button>
+                  <button type="submit" disabled={isUpdating || isUploadingFile} className="flex-1 bg-indigo-600 text-white py-2 rounded-md font-medium text-sm hover:bg-indigo-700 disabled:opacity-50">Save Changes</button>
                 </div>
               </form>
             )}
-
+            {/* Related Activity Tab Content (unchanged) */}
             {modalTab === 'related' && (
                <div className="flex-1 overflow-y-auto p-6 bg-zinc-50/50">
-               {isLoadingRelations ? (
-                 <div className="text-center py-10 text-sm text-zinc-500">Scanning workspace for related records...</div>
-               ) : subRecords.length === 0 ? (
-                 <div className="text-center py-12 border-2 border-dashed border-zinc-200 rounded-xl bg-white">
-                   <p className="text-sm font-medium text-zinc-600">No linked records found.</p>
-                 </div>
-               ) : (
+               {isLoadingRelations ? <div className="text-center py-10 text-sm text-zinc-500">Scanning workspace...</div> : subRecords.length === 0 ? <div className="text-center py-12 border-2 border-dashed border-zinc-200 rounded-xl bg-white"><p className="text-sm font-medium text-zinc-600">No linked records found.</p></div> : (
                  <div className="space-y-6">
                    {subRecords.map((subSet, index) => (
                      <div key={index} className="space-y-3">
@@ -476,12 +493,7 @@ export default function DynamicTable({ entity, records, userPermissions, current
                            <div key={rec._id} className="bg-white p-3.5 rounded-lg border border-zinc-200 shadow-sm flex flex-col gap-1.5">
                              {Object.entries(rec.data).map(([key, val], i) => {
                                if (val === editingRecord._id) return null;
-                               return (
-                                 <div key={i} className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline gap-1">
-                                   <span className="text-[11px] font-semibold text-zinc-400 uppercase">{key}</span>
-                                   <span className="text-sm text-zinc-800 font-medium truncate max-w-[250px]">{String(val)}</span>
-                                 </div>
-                               );
+                               return (<div key={i} className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline gap-1"><span className="text-[11px] font-semibold text-zinc-400 uppercase">{key}</span><span className="text-sm text-zinc-800 font-medium truncate max-w-[250px]">{String(val)}</span></div>);
                              })}
                            </div>
                          ))}

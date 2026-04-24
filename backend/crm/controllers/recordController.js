@@ -3,14 +3,13 @@ const Record = require('../models/Record');
 const Entity = require('../models/Entity'); 
 const Workspace = require('../models/Workspace'); 
 const { deleteFromCloudinary } = require('../config/cloudinary');
-const cloudinary = require('cloudinary').v2; // We need this to check file sizes
+const cloudinary = require('cloudinary').v2; 
 
 // --- THE PERMISSION ENGINE (Helper Function) ---
 const getUserPermissions = async (workspaceId, userId) => {
   const workspace = await Workspace.findById(workspaceId);
   if (!workspace) throw new Error("Workspace not found");
 
-  // 1. If they are the owner, give them God mode.
   if (workspace.owner.toString() === userId.toString()) {
     return {
       viewAllRecords: true, viewOwnRecords: true, createRecords: true,
@@ -18,13 +17,11 @@ const getUserPermissions = async (workspaceId, userId) => {
     };
   }
 
-  // 2. Find their assigned Custom Role
   const member = workspace.members.find(m => m.user.toString() === userId.toString());
   if (!member || member.status !== 'accepted') throw new Error("Not a valid workspace member");
 
   const userRole = workspace.customRoles.find(r => r._id.toString() === member.roleId?.toString());
   
-  // 3. If they don't have a role, give them strict View-Only basics
   if (!userRole) {
     return {
       viewAllRecords: false, viewOwnRecords: true, createRecords: false,
@@ -34,6 +31,54 @@ const getUserPermissions = async (workspaceId, userId) => {
 
   return userRole.permissions;
 };
+
+// --- THE ENTERPRISE VALIDATION ENGINE ---
+const validateRecordData = async (entityId, incomingData, recordIdToExclude = null) => {
+  const entity = await Entity.findById(entityId);
+  if (!entity) throw new Error("Database schema not found.");
+
+  for (let field of entity.fields) {
+    const value = incomingData[field.name];
+    
+    // Rule 1: Check Required Fields
+    if (field.isRequired) {
+      if (
+        value === undefined || 
+        value === null || 
+        (typeof value === 'string' && value.trim() === '') ||
+        (Array.isArray(value) && value.length === 0)
+      ) {
+        throw new Error(`Validation Error: "${field.name}" is a required field.`);
+      }
+    }
+
+    // Rule 2: Check Unique Fields
+    if (field.isUnique && value !== undefined && value !== null && String(value).trim() !== '') {
+      const query = { 
+        entity: entityId, // Match the exact database
+        [`data.${field.name}`]: value 
+      };
+      
+      if (recordIdToExclude) {
+        query._id = { $ne: recordIdToExclude }; // Don't check against itself during updates!
+      }
+
+      const existingRecord = await Record.findOne(query);
+      if (existingRecord) {
+        throw new Error(`Duplicate Error: The value "${value}" already exists in the "${field.name}" column. This column requires unique values.`);
+      }
+    }
+
+    // Rule 3: Strict Email Formatting Validation
+    if (field.type === 'email' && value !== undefined && value !== null && String(value).trim() !== '') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(value)) {
+        throw new Error(`Validation Error: "${value}" is not a valid email address in column "${field.name}".`);
+      }
+    }
+  }
+};
+
 
 // @desc    Create a new dynamic record (with optional media upload)
 // @route   POST /api/records
@@ -47,21 +92,19 @@ exports.createRecord = async (req, res) => {
     const entity = await Entity.findById(entityId);
     if (!entity) return res.status(404).json({ message: "Database not found" });
 
-    // --- PHASE 3 SECURITY CHECK ---
+    // --- SECURITY CHECK ---
     const workspaceId = entity.workspace || entity.workspaceId;
     const permissions = await getUserPermissions(workspaceId, userId);
 
     if (!permissions.createRecords) {
       return res.status(403).json({ message: 'Security Error: You do not have permission to create records.' });
     }
-    // -------------------------------
 
-    // --- THE MULTI-FILE CLOUDINARY HANDLER ---
+    // --- CLOUDINARY HANDLER ---
     if (req.files && req.files.length > 0) {
       req.files.forEach(file => {
         const fieldName = file.fieldname; 
         const fileUrl = file.secure_url || file.path;
-        
         const fieldSchema = entity.fields.find(f => f.name === fieldName);
         
         if (fieldSchema) {
@@ -75,6 +118,10 @@ exports.createRecord = async (req, res) => {
       });
     }
 
+    // --- THE VALIDATION GATEWAY ---
+    // Run the fully parsed data (including file URLs) through the rule engine
+    await validateRecordData(entityId, parsedData);
+
     const newRecord = await Record.create({
       entity: entityId,
       createdBy: userId,
@@ -84,7 +131,8 @@ exports.createRecord = async (req, res) => {
     res.status(201).json(newRecord);
   } catch (error) {
     console.error("RECORD CREATION ERROR:", error);
-    res.status(500).json({ message: error.message });
+    // Return 400 Bad Request so the frontend can display the validation error
+    res.status(400).json({ message: error.message });
   }
 };
 
@@ -99,7 +147,7 @@ exports.getRecordsByEntity = async (req, res) => {
     const entity = await Entity.findById(entityId);
     if (!entity) return res.status(404).json({ message: "Database not found" });
 
-    // --- PHASE 3 SECURITY CHECK ---
+    // --- SECURITY CHECK ---
     const workspaceId = entity.workspace || entity.workspaceId;
     const permissions = await getUserPermissions(workspaceId, userId);
 
@@ -109,9 +157,8 @@ exports.getRecordsByEntity = async (req, res) => {
       if (!permissions.viewOwnRecords) {
         return res.status(403).json({ message: "Access Denied: You do not have permission to view records." });
       }
-      query.createdBy = userId; // Force the query to only return their records!
+      query.createdBy = userId; 
     }
-    // -------------------------------
 
     const records = await Record.find(query)
       .populate('createdBy', 'name')
@@ -134,10 +181,9 @@ exports.updateRecord = async (req, res) => {
     const record = await Record.findById(req.params.id).populate('entity');
     if (!record) return res.status(404).json({ message: 'Record not found' });
 
-    // --- PHASE 3 SECURITY CHECK ---
+    // --- SECURITY CHECK ---
     const workspaceId = record.entity.workspace || record.entity.workspaceId;
     const permissions = await getUserPermissions(workspaceId, userId);
-
     const isOwnerOfRecord = record.createdBy.toString() === userId.toString();
     
     if (!permissions.editAllRecords) {
@@ -145,21 +191,25 @@ exports.updateRecord = async (req, res) => {
         return res.status(403).json({ message: "Security Error: You do not have permission to edit this record." });
       }
     }
-    // ------------------------------------
 
-    record.data = { ...record.data, ...dynamicData };
-    
+    // Merge existing data with the incoming updates
+    const mergedData = { ...record.data, ...dynamicData };
+
+    // --- THE VALIDATION GATEWAY ---
+    // Pass the record._id so the engine doesn't block the update if a unique field hasn't changed
+    await validateRecordData(record.entity._id || record.entity, mergedData, record._id);
+
+    record.data = mergedData;
     await record.save();
     res.status(200).json({ message: 'Record updated successfully', record });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 };
 
 // @desc    Delete a specific record and its associated cloud files
 // @route   DELETE /api/records/:id
 // @access  Private
-// --- UPGRADED: DELETION + STORAGE RECOVERY ---
 exports.deleteRecord = async (req, res) => {
   try {
     const { id } = req.params;
@@ -176,7 +226,7 @@ exports.deleteRecord = async (req, res) => {
       if (!permissions.deleteOwnRecords || !isOwnerOfRecord) return res.status(403).json({ message: "Security Error: You do not have permission to delete this record." });
     }
 
-    // 1. CLOUDINARY STORAGE RECOVERY ENGINE
+    // --- CLOUDINARY STORAGE RECOVERY ENGINE ---
     let bytesRecovered = 0;
     const fieldData = record.data || {};
 
@@ -184,10 +234,8 @@ exports.deleteRecord = async (req, res) => {
       if (typeof url === 'string' && url.includes('cloudinary.com')) {
         try {
           const publicId = url.split('/').slice(-2).join('/').split('.')[0]; 
-          // Fetch the file size before we delete it
           const fileDetails = await cloudinary.api.resource(publicId);
           bytesRecovered += fileDetails.bytes;
-          // Nuke it from Cloudinary
           await cloudinary.uploader.destroy(publicId, { invalidate: true });
         } catch(e) { console.log("File already gone or not found in Cloudinary") }
       }
@@ -202,7 +250,6 @@ exports.deleteRecord = async (req, res) => {
       }
     }
 
-    // 2. Refund the storage back to the Workspace!
     if (bytesRecovered > 0) {
       await Workspace.findByIdAndUpdate(workspaceId, {
         $inc: { storageUsed: -bytesRecovered } 
@@ -211,5 +258,7 @@ exports.deleteRecord = async (req, res) => {
 
     await Record.findByIdAndDelete(id);
     res.status(200).json({ message: "Record securely deleted and storage recovered" });
-  } catch (error) { res.status(500).json({ message: error.message }); }
+  } catch (error) { 
+    res.status(500).json({ message: error.message }); 
+  }
 };

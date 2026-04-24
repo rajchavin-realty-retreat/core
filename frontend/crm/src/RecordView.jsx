@@ -15,7 +15,7 @@ export default function RecordView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEntityFilter, setSelectedEntityFilter] = useState('All');
 
-  // --- THE FORMULA ENGINE FOR RECORD PREVIEW ---
+  // --- THE MATH & FORMULA ENGINE ---
   const computeFormula = (currentData, formulaString) => {
     if (!formulaString) return '';
     let equation = formulaString;
@@ -54,6 +54,60 @@ export default function RecordView() {
     return '';
   };
 
+  // --- PHASE B: LOOKUP ENGINE (Adapted for Record View) ---
+  const computeLookup = (field, recordData, schemaFields) => {
+    if (!field.sourceRelationField || !field.targetLookupField) return '';
+    const sourceId = recordData[field.sourceRelationField];
+    if (!sourceId) return '';
+
+    const sourceField = schemaFields.find(f => f.name === field.sourceRelationField);
+    if (!sourceField || !sourceField.targetEntity) return '';
+
+    const sourceRecords = relationData[sourceField.targetEntity] || [];
+    const match = sourceRecords.find(r => r._id === sourceId);
+    if (match && match.data) return match.data[field.targetLookupField] || '';
+    return '';
+  };
+
+  // --- PHASE B: ROLLUP MATH ENGINE (Adapted for Record View) ---
+  const computeRollup = (field, recordData, schemaFields) => {
+    if (!field.sourceRelationField || !field.targetLookupField) return '';
+    const sourceValues = recordData[field.sourceRelationField];
+    if (!sourceValues) return '';
+
+    const sourceField = schemaFields.find(f => f.name === field.sourceRelationField);
+    if (!sourceField || !sourceField.targetEntity) return '';
+
+    const ids = Array.isArray(sourceValues) ? sourceValues : [sourceValues];
+    const sourceRecords = relationData[sourceField.targetEntity] || [];
+
+    let values = [];
+    ids.forEach(id => {
+      const match = sourceRecords.find(r => r._id === id);
+      if (match && match.data && match.data[field.targetLookupField] !== undefined && match.data[field.targetLookupField] !== '') {
+        let val = match.data[field.targetLookupField];
+        if (typeof val === 'string') {
+          const stripped = val.replace(/[^0-9.-]+/g, "");
+          val = stripped !== '' ? Number(stripped) : 0;
+        } else {
+           val = Number(val) || 0;
+        }
+        values.push(val);
+      }
+    });
+
+    if (values.length === 0) return field.rollupFunction === 'COUNT' ? 0 : '';
+
+    switch(field.rollupFunction) {
+      case 'SUM': return values.reduce((a, b) => a + b, 0);
+      case 'AVERAGE': return parseFloat((values.reduce((a, b) => a + b, 0) / values.length).toFixed(2));
+      case 'MAX': return Math.max(...values);
+      case 'MIN': return Math.min(...values);
+      case 'COUNT': return values.length;
+      default: return '';
+    }
+  };
+
   useEffect(() => {
     const fetchFullProfile = async () => {
       try {
@@ -70,8 +124,13 @@ export default function RecordView() {
           try { const res = await api.get(`/records/entity/${targetId}`); masterDict[targetId] = res.data; } catch (e) {}
         };
 
+        // 1. Pre-Load Dictionaries for Relations, Lookups, and Rollups
         for (let field of entityRes.data.fields) {
           if (field.type === 'relation') await loadDictionary(field.targetEntity);
+          if (field.type === 'lookup' || field.type === 'rollup') {
+            const sourceField = entityRes.data.fields.find(f => f.name === field.sourceRelationField);
+            if (sourceField && sourceField.targetEntity) await loadDictionary(sourceField.targetEntity);
+          }
         }
 
         const allEntitiesRes = await api.get(`/entities/workspace/${workspaceId}`);
@@ -82,10 +141,15 @@ export default function RecordView() {
           const linkField = linkedEnt.fields.find(f => f.type === 'relation' && f.targetEntity === entityId).name;
           const linkedRecordsRes = await api.get(`/records/entity/${linkedEnt._id}`);
           const matches = linkedRecordsRes.data.filter(r => r.data && r.data[linkField] === recordId);
+          
           if (matches.length > 0) {
             activityData.push({ entitySchema: linkedEnt, records: matches });
             for (let field of linkedEnt.fields) {
                if (field.type === 'relation') await loadDictionary(field.targetEntity);
+               if (field.type === 'lookup' || field.type === 'rollup') {
+                 const sourceField = linkedEnt.fields.find(f => f.name === field.sourceRelationField);
+                 if (sourceField && sourceField.targetEntity) await loadDictionary(sourceField.targetEntity);
+               }
             }
           }
         }
@@ -96,26 +160,63 @@ export default function RecordView() {
     fetchFullProfile();
   }, [entityId, recordId]);
 
-  const renderFieldValue = (field, recordData) => {
+  // --- THE MASTER UI RENDERER ---
+  const renderFieldValue = (field, recordData, schemaFields = mainEntity.fields) => {
+    
+    // Auto-Calculated Types
     if (field.type === 'formula' || field.type === 'conditional-formula') {
       const computed = computeFormula(recordData, getActiveFormula(field, recordData));
       return <span className="font-mono font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 whitespace-nowrap shadow-sm">{computed}</span>;
     }
+    if (field.type === 'lookup') {
+      const computed = computeLookup(field, recordData, schemaFields);
+      return <span className="font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 whitespace-nowrap shadow-sm">{computed || <span className="text-zinc-400 italic font-normal">Empty</span>}</span>;
+    }
+    if (field.type === 'rollup') {
+      const computed = computeRollup(field, recordData, schemaFields);
+      return <span className="font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 whitespace-nowrap shadow-sm">{computed !== '' ? computed : <span className="text-zinc-400 italic font-normal">Empty</span>}</span>;
+    }
+
     const value = recordData[field.name];
     if (value === null || value === undefined || value === '') return <span className="text-zinc-400 italic">Empty</span>;
 
     switch (field.type) {
-      case 'media': return <a href={value} target="_blank" rel="noreferrer" className="block w-fit mt-1"><img src={value} alt="Attachment" className="h-14 w-14 object-cover rounded-md border border-zinc-200 shadow-sm hover:opacity-80 transition-opacity" /></a>;
-      case 'media-multiple': if (!Array.isArray(value)) return null; return <div className="flex gap-2 flex-wrap mt-1">{value.map((url, i) => <a key={i} href={url} target="_blank" rel="noreferrer"><img src={url} alt={`Gallery-${i}`} className="h-10 w-10 object-cover rounded-md border border-zinc-200 shadow-sm hover:opacity-80 transition-opacity" /></a>)}</div>;
-      case 'checkbox': return <span className={`inline-block mt-1 px-2 py-0.5 text-[10px] font-bold rounded border ${value ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-zinc-100 text-zinc-500 border-zinc-200'}`}>{value ? 'TRUE' : 'FALSE'}</span>;
-      case 'date': return <span className="text-zinc-800">{new Date(value).toLocaleDateString()}</span>;
-      case 'datetime': return <span className="text-zinc-800">{new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>;
+      // Phase B Syntax & Links
+      case 'json': 
+        return (
+          <div className="mt-1 relative group">
+            <pre className="bg-[#1E1E1E] text-[#D4D4D4] p-4 rounded-lg overflow-x-auto text-[11px] font-mono leading-relaxed shadow-inner border border-zinc-800">
+              <code dangerouslySetInnerHTML={{ 
+                __html: JSON.stringify(value, null, 2)
+                  .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                    let cls = 'text-[#CE9178]'; 
+                    if (/^"/.test(match)) { if (/:$/.test(match)) cls = 'text-[#9CDCFE]'; } 
+                    else if (/true|false/.test(match)) cls = 'text-[#569CD6]'; 
+                    else if (/null/.test(match)) cls = 'text-[#569CD6]'; 
+                    else cls = 'text-[#B5CEA8]'; 
+                    return `<span class="${cls}">${match}</span>`;
+                  })
+              }} />
+            </pre>
+          </div>
+        );
+      case 'email': return <a href={`mailto:${value}`} className="text-indigo-600 hover:underline font-medium break-all">{value}</a>;
+      case 'phone': return <a href={`tel:${value}`} className="text-indigo-600 hover:underline font-medium">{value}</a>;
+      
+      // Phase B Multi-Column Relations
       case 'relation':
         let displayVal = `ID: ${String(value).slice(-4)}`;
         const targetRecords = relationData[field.targetEntity];
         if (targetRecords) {
           const match = targetRecords.find(r => r._id === value);
-          if (match && match.data) { const keys = Object.keys(match.data); if (keys.length > 0) displayVal = match.data[keys[0]]; }
+          if (match && match.data) { 
+            if (field.displayFields && field.displayFields.length > 0) {
+              displayVal = field.displayFields.map(fn => match.data[fn]).filter(v => v !== undefined && v !== null && v !== '').join(' - ');
+            } else {
+              const keys = Object.keys(match.data); 
+              if (keys.length > 0) displayVal = match.data[keys[0]]; 
+            }
+          }
         }
         return (
           <button onClick={() => navigate(`/crm/${field.targetEntity}/record/${value}`)} className="inline-flex items-center gap-1.5 px-2.5 py-1 mt-1 rounded border border-indigo-100 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors text-xs font-semibold whitespace-nowrap cursor-pointer shadow-sm">
@@ -123,6 +224,13 @@ export default function RecordView() {
             {displayVal}
           </button>
         );
+
+      // Standard Types
+      case 'media': return <a href={value} target="_blank" rel="noreferrer" className="block w-fit mt-1"><img src={value} alt="Attachment" className="h-14 w-14 object-cover rounded-md border border-zinc-200 shadow-sm hover:opacity-80 transition-opacity" /></a>;
+      case 'media-multiple': if (!Array.isArray(value)) return null; return <div className="flex gap-2 flex-wrap mt-1">{value.map((url, i) => <a key={i} href={url} target="_blank" rel="noreferrer"><img src={url} alt={`Gallery-${i}`} className="h-10 w-10 object-cover rounded-md border border-zinc-200 shadow-sm hover:opacity-80 transition-opacity" /></a>)}</div>;
+      case 'checkbox': return <span className={`inline-block mt-1 px-2 py-0.5 text-[10px] font-bold rounded border ${value ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-zinc-100 text-zinc-500 border-zinc-200'}`}>{value ? 'TRUE' : 'FALSE'}</span>;
+      case 'date': return <span className="text-zinc-800">{new Date(value).toLocaleDateString()}</span>;
+      case 'datetime': return <span className="text-zinc-800">{new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>;
       default: return <span className="text-zinc-800 whitespace-pre-wrap">{String(value)}</span>;
     }
   };
@@ -139,7 +247,11 @@ export default function RecordView() {
       const filteredRecords = group.records.filter(rec => {
         if (!searchQuery) return true;
         return group.entitySchema.fields.some(field => {
-          let val = (field.type === 'formula' || field.type === 'conditional-formula') ? computeFormula(rec.data, getActiveFormula(field, rec.data)) : rec.data[field.name];
+          let val = '';
+          if (field.type === 'formula' || field.type === 'conditional-formula') val = computeFormula(rec.data, getActiveFormula(field, rec.data));
+          else if (field.type === 'lookup') val = computeLookup(field, rec.data, group.entitySchema.fields);
+          else if (field.type === 'rollup') val = computeRollup(field, rec.data, group.entitySchema.fields);
+          else val = rec.data[field.name];
           return String(val).toLowerCase().includes(lowerSearch);
         });
       });
@@ -161,7 +273,16 @@ export default function RecordView() {
           <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden sticky top-20">
             <div className="bg-zinc-50 border-b border-zinc-100 px-5 py-4"><h2 className="text-lg font-bold text-zinc-900 truncate">{displayTitle}</h2><p className="text-xs text-zinc-500 mt-1">Record Profile • Added {new Date(mainRecord.createdAt).toLocaleDateString()}</p></div>
             <div className="p-5 flex flex-col gap-4 max-h-[75vh] overflow-y-auto">
-              {mainEntity.fields.map((field, idx) => (<div key={idx} className="flex flex-col gap-1"><span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">{field.name}</span><div className="text-sm">{renderFieldValue(field, mainRecord.data)}</div></div>))}
+              {mainEntity.fields.map((field, idx) => (
+                <div key={idx} className="flex flex-col gap-1">
+                  <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                    {field.name}
+                    {field.type === 'lookup' && <span className="ml-1 text-indigo-400 text-[10px] font-normal lowercase tracking-normal bg-indigo-50 px-1 py-0.5 rounded border border-indigo-100">lookup</span>}
+                    {field.type === 'rollup' && <span className="ml-1 text-amber-500 text-[10px] font-normal lowercase tracking-normal bg-amber-50 px-1 py-0.5 rounded border border-amber-100">rollup</span>}
+                  </span>
+                  <div className="text-sm">{renderFieldValue(field, mainRecord.data, mainEntity.fields)}</div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -208,7 +329,17 @@ export default function RecordView() {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                             {activityGroup.entitySchema.fields.map((field, i) => {
                               if (field.type === 'relation' && rec.data[field.name] === recordId) return null;
-                              return (<div key={i} className="flex flex-col gap-1"><span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">{field.name}{(field.type === 'formula' || field.type === 'conditional-formula') && <span className="text-emerald-500 ml-1 text-[9px] font-normal">ƒx</span>}</span><div className="text-sm">{renderFieldValue(field, rec.data)}</div></div>);
+                              return (
+                                <div key={i} className="flex flex-col gap-1">
+                                  <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                                    {field.name}
+                                    {(field.type === 'formula' || field.type === 'conditional-formula') && <span className="text-emerald-500 ml-1 text-[9px] font-normal">ƒx</span>}
+                                    {field.type === 'lookup' && <span className="text-indigo-400 ml-1 text-[9px] font-normal">↓</span>}
+                                    {field.type === 'rollup' && <span className="text-amber-500 ml-1 text-[9px] font-normal">Σ</span>}
+                                  </span>
+                                  <div className="text-sm">{renderFieldValue(field, rec.data, activityGroup.entitySchema.fields)}</div>
+                                </div>
+                              );
                             })}
                           </div>
                         </div>
