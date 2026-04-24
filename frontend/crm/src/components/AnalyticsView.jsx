@@ -43,13 +43,13 @@ export default function AnalyticsView({ entities, activeWorkspace }) {
       <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
         <div className="flex justify-between items-end mb-4">
           <div>
-            <h3 className="text-sm font-bold text-zinc-900">Cloudinary Storage Capacity</h3>
+            <h3 className="text-sm font-bold text-zinc-900">Storage Capacity</h3>
             <p className="text-xs text-zinc-500 mt-0.5">Total file size of all media uploaded across all databases.</p>
           </div>
           <div className="text-right">
             <span className="text-2xl font-black text-zinc-900">{storageInMB} <span className="text-sm text-zinc-500 font-medium">MB</span></span>
             <span className="text-sm text-zinc-400 mx-2">/</span>
-            <span className="text-sm font-bold text-zinc-600">1,024 MB Limit</span>
+            <span className="text-sm font-bold text-zinc-600">1GB Limit</span>
           </div>
         </div>
         

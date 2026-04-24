@@ -283,13 +283,32 @@ export default function DynamicTable({ entity, records, userPermissions, current
     finally { setIsUpdating(false); }
   };
 
+  // --- DISPLAY-AWARE SEARCH ENGINE ---
   const filteredRecords = records.filter(record => {
     if (!searchTerm) return true; 
     const lowerSearch = searchTerm.toLowerCase();
-    const recordValues = Object.values(record.data || {});
-    return recordValues.some(val => String(val).toLowerCase().includes(lowerSearch));
-  });
 
+    // Instead of raw data, we check against what is actually displayed on the screen
+    return entity.fields.some(field => {
+      let displayString = "";
+
+      if (field.type === 'relation' && record.data?.[field.name]) {
+        // 1. Resolve Linked Database IDs into actual readable text
+        displayString = String(getDisplayValue(record.data[field.name], field.name));
+      } 
+      else if (field.type === 'formula' || field.type === 'conditional-formula') {
+        // 2. Resolve computed math formulas into their final numbers
+        displayString = String(computeFormula(record.data, getActiveFormula(field, record.data)));
+      } 
+      else {
+        // 3. Handle all standard text, numbers, dates, and dropdowns
+        displayString = String(record.data?.[field.name] || "");
+      }
+
+      return displayString.toLowerCase().includes(lowerSearch);
+    });
+  });
+  
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-zinc-200 shadow-sm">
