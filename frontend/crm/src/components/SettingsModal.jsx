@@ -6,17 +6,28 @@ export default function SettingsModal({ activeWorkspace, isOwner, setIsSettingsO
   const [editWorkspaceName, setEditWorkspaceName] = useState('');
   const [isUpdatingWorkspace, setIsUpdatingWorkspace] = useState(false);
   const [isCreatingRole, setIsCreatingRole] = useState(false);
+  
+  // --- PHASE C: ENTITY OVERRIDES STATE ---
+  const [workspaceEntities, setWorkspaceEntities] = useState([]);
+  
   const [newRole, setNewRole] = useState({
     name: '',
     permissions: {
       viewAllRecords: false, viewOwnRecords: true, createRecords: false,
       editAllRecords: false, editOwnRecords: false, deleteAllRecords: false,
       deleteOwnRecords: false, manageDatabases: false, manageTeam: false
-    }
+    },
+    entityOverrides: [] // The new Granular Array!
   });
 
   useEffect(() => {
-    if (activeWorkspace) setEditWorkspaceName(activeWorkspace.name);
+    if (activeWorkspace) {
+      setEditWorkspaceName(activeWorkspace.name);
+      // Fetch all databases so we can show them in the granular permission list
+      api.get(`/entities/workspace/${activeWorkspace._id}`)
+         .then(res => setWorkspaceEntities(res.data))
+         .catch(err => console.error("Failed to load workspace databases", err));
+    }
   }, [activeWorkspace]);
 
   const handleRenameWorkspace = async (e) => {
@@ -49,7 +60,7 @@ export default function SettingsModal({ activeWorkspace, isOwner, setIsSettingsO
       setActiveWorkspace(res.data.workspace);
       setWorkspaces(prev => prev.map(ws => ws._id === activeWorkspace._id ? res.data.workspace : ws));
       setIsCreatingRole(false);
-      setNewRole({ name: '', permissions: { viewAllRecords: false, viewOwnRecords: true, createRecords: false, editAllRecords: false, editOwnRecords: false, deleteAllRecords: false, deleteOwnRecords: false, manageDatabases: false, manageTeam: false }});
+      setNewRole({ name: '', permissions: { viewAllRecords: false, viewOwnRecords: true, createRecords: false, editAllRecords: false, editOwnRecords: false, deleteAllRecords: false, deleteOwnRecords: false, manageDatabases: false, manageTeam: false }, entityOverrides: [] });
     } catch (error) { alert("Failed to create role: " + (error.response?.data?.message || error.message)); }
   };
 
@@ -64,14 +75,48 @@ export default function SettingsModal({ activeWorkspace, isOwner, setIsSettingsO
 
   const togglePermission = (key) => setNewRole(prev => ({ ...prev, permissions: { ...prev.permissions, [key]: !prev.permissions[key] } }));
 
-  // --- NEW: STORAGE CALCULATIONS ---
+  // --- PHASE C: OVERRIDE HANDLERS ---
+  const toggleOverrideEntity = (entityId) => {
+    setNewRole(prev => {
+      const exists = prev.entityOverrides.some(eo => eo.entityId === entityId);
+      if (exists) {
+        return { ...prev, entityOverrides: prev.entityOverrides.filter(eo => eo.entityId !== entityId) };
+      } else {
+        return {
+          ...prev,
+          entityOverrides: [
+            ...prev.entityOverrides,
+            {
+              entityId,
+              // Default an override to strict 'Own Records Only' so the Admin can build up from there
+              permissions: { viewAllRecords: false, viewOwnRecords: true, createRecords: false, editAllRecords: false, editOwnRecords: false, deleteAllRecords: false, deleteOwnRecords: false }
+            }
+          ]
+        };
+      }
+    });
+  };
+
+  const toggleOverridePerm = (entityId, permKey) => {
+    setNewRole(prev => ({
+      ...prev,
+      entityOverrides: prev.entityOverrides.map(eo => {
+        if (eo.entityId === entityId) {
+          return { ...eo, permissions: { ...eo.permissions, [permKey]: !eo.permissions[permKey] } };
+        }
+        return eo;
+      })
+    }));
+  };
+
+  // --- STORAGE CALCULATIONS ---
   const storageInMB = activeWorkspace?.storageUsed ? (activeWorkspace.storageUsed / (1024 * 1024)).toFixed(2) : "0.00";
-  const limitInMB = 1024; // 1 GB Free Tier limit
+  const limitInMB = 1024; // 1 GB limit
   const storagePercentage = Math.min((storageInMB / limitInMB) * 100, 100);
 
   return (
     <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border border-zinc-200">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden border border-zinc-200">
         <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-100 bg-zinc-50">
           <h3 className="text-sm font-bold text-zinc-900 tracking-tight">Workspace Settings</h3>
           <button onClick={() => setIsSettingsOpen(false)} className="text-zinc-400 hover:text-zinc-800 text-lg">&times;</button>
@@ -96,7 +141,6 @@ export default function SettingsModal({ activeWorkspace, isOwner, setIsSettingsO
                 </div>
               </form>
 
-              {/* --- NEW: STORAGE PROGRESS BAR --- */}
               <div className="p-4 bg-zinc-50 rounded-lg border border-zinc-200">
                 <div className="flex justify-between items-center mb-2">
                   <h4 className="text-sm font-bold text-zinc-800">Workspace Storage</h4>
@@ -139,6 +183,9 @@ export default function SettingsModal({ activeWorkspace, isOwner, setIsSettingsO
                           <div className="flex gap-2 mt-1">
                             {role.permissions.createRecords && <span className="text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-100 px-1.5 rounded">Create</span>}
                             {role.permissions.viewAllRecords ? <span className="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 rounded">View All</span> : <span className="text-[10px] text-zinc-500 bg-zinc-100 border border-zinc-200 px-1.5 rounded">View Own</span>}
+                            {role.entityOverrides && role.entityOverrides.length > 0 && (
+                              <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-100 px-1.5 rounded">{role.entityOverrides.length} Overrides</span>
+                            )}
                           </div>
                         </div>
                         <button onClick={() => handleDeleteRole(role._id, role.name)} className="text-zinc-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity p-2">
@@ -159,16 +206,18 @@ export default function SettingsModal({ activeWorkspace, isOwner, setIsSettingsO
                     <label className="block text-xs font-semibold text-zinc-500 uppercase mb-1">Role Title</label>
                     <input type="text" required placeholder="e.g., Sales Manager, Intern" value={newRole.name} onChange={(e) => setNewRole({...newRole, name: e.target.value})} className="w-full max-w-sm px-3 py-2 text-sm border border-zinc-200 rounded-md outline-none focus:border-indigo-500" />
                   </div>
+                  
+                  {/* GLOBAL PERMISSIONS */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border border-zinc-200 rounded-xl overflow-hidden bg-zinc-50/50">
                     <div className="p-4 space-y-4">
-                       <h5 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest border-b border-zinc-200 pb-2">Records Access</h5>
+                       <h5 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest border-b border-zinc-200 pb-2">Global Records Access</h5>
                        <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={newRole.permissions.viewAllRecords} onChange={() => togglePermission('viewAllRecords')} className="rounded text-indigo-600" /><span className="text-sm font-medium text-zinc-800">View ALL company records</span></label>
                        <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={newRole.permissions.createRecords} onChange={() => togglePermission('createRecords')} className="rounded text-indigo-600" /><span className="text-sm font-medium text-zinc-800">Create new records</span></label>
                        <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={newRole.permissions.editOwnRecords} onChange={() => togglePermission('editOwnRecords')} className="rounded text-indigo-600" /><span className="text-sm font-medium text-zinc-800">Edit their OWN records</span></label>
                        <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={newRole.permissions.editAllRecords} onChange={() => togglePermission('editAllRecords')} className="rounded text-indigo-600" /><span className="text-sm font-medium text-red-600">Edit ANYONE'S records</span></label>
                     </div>
                     <div className="p-4 space-y-4 border-t md:border-t-0 md:border-l border-zinc-200">
-                       <h5 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest border-b border-zinc-200 pb-2">Danger Zone</h5>
+                       <h5 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest border-b border-zinc-200 pb-2">Global Danger Zone</h5>
                        <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={newRole.permissions.deleteOwnRecords} onChange={() => togglePermission('deleteOwnRecords')} className="rounded text-indigo-600" /><span className="text-sm font-medium text-zinc-800">Delete their OWN records</span></label>
                        <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={newRole.permissions.deleteAllRecords} onChange={() => togglePermission('deleteAllRecords')} className="rounded text-indigo-600" /><span className="text-sm font-medium text-red-600">Delete ANYONE'S records</span></label>
                        <h5 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest border-b border-zinc-200 pb-2 mt-4 pt-2">Admin Powers</h5>
@@ -176,7 +225,59 @@ export default function SettingsModal({ activeWorkspace, isOwner, setIsSettingsO
                        <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={newRole.permissions.manageTeam} onChange={() => togglePermission('manageTeam')} className="rounded text-indigo-600" /><span className="text-sm font-medium text-zinc-800">Invite / Manage Team</span></label>
                     </div>
                   </div>
-                  <button type="submit" className="w-full bg-indigo-600 text-white py-2 rounded-md font-bold text-sm shadow-sm hover:bg-indigo-700">Deploy Role Configuration</button>
+
+                  {/* --- PHASE C: GRANULAR DATABASE OVERRIDES --- */}
+                  {workspaceEntities.length > 0 && (
+                    <div className="border border-zinc-200 rounded-xl overflow-hidden bg-white">
+                      <div className="p-4 bg-zinc-50 border-b border-zinc-200">
+                        <h5 className="text-xs font-bold text-zinc-800 tracking-tight">Database-Specific Overrides (Optional)</h5>
+                        <p className="text-[11px] text-zinc-500 mt-1">These settings will override the global rules above for specific databases.</p>
+                      </div>
+                      
+                      <div className="p-4 space-y-3">
+                        {workspaceEntities.map(entity => {
+                          const override = newRole.entityOverrides.find(eo => eo.entityId === entity._id);
+                          const isOverridden = !!override;
+
+                          return (
+                            <div key={entity._id} className={`border rounded-lg p-3 transition-colors ${isOverridden ? 'border-indigo-200 bg-indigo-50/20' : 'border-zinc-200 bg-white'}`}>
+                              <div className="flex justify-between items-center">
+                                 <span className="text-sm font-bold text-zinc-800">{entity.name}</span>
+                                 <label className="flex items-center gap-1.5 cursor-pointer">
+                                    <input type="checkbox" checked={isOverridden} onChange={() => toggleOverrideEntity(entity._id)} className="rounded text-indigo-600 w-3.5 h-3.5" />
+                                    <span className="text-[11px] font-semibold text-indigo-600 uppercase tracking-wide">Enable Override</span>
+                                 </label>
+                              </div>
+                              
+                              {/* The Granular Checklist! */}
+                              {isOverridden && (
+                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-indigo-100">
+                                    <label className="flex items-center gap-1.5 cursor-pointer">
+                                      <input type="checkbox" checked={override.permissions.viewAllRecords || false} onChange={() => toggleOverridePerm(entity._id, 'viewAllRecords')} className="rounded text-indigo-500" /> 
+                                      <span className="text-xs font-medium text-zinc-700">View All</span>
+                                    </label>
+                                    <label className="flex items-center gap-1.5 cursor-pointer">
+                                      <input type="checkbox" checked={override.permissions.createRecords || false} onChange={() => toggleOverridePerm(entity._id, 'createRecords')} className="rounded text-indigo-500" /> 
+                                      <span className="text-xs font-medium text-zinc-700">Create</span>
+                                    </label>
+                                    <label className="flex items-center gap-1.5 cursor-pointer">
+                                      <input type="checkbox" checked={override.permissions.editAllRecords || false} onChange={() => toggleOverridePerm(entity._id, 'editAllRecords')} className="rounded text-indigo-500" /> 
+                                      <span className="text-xs font-medium text-zinc-700">Edit All</span>
+                                    </label>
+                                    <label className="flex items-center gap-1.5 cursor-pointer">
+                                      <input type="checkbox" checked={override.permissions.deleteAllRecords || false} onChange={() => toggleOverridePerm(entity._id, 'deleteAllRecords')} className="rounded text-red-500 border-red-200" /> 
+                                      <span className="text-xs font-medium text-red-600">Delete All</span>
+                                    </label>
+                                 </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-md font-bold text-sm shadow-md hover:bg-indigo-700 hover:shadow-lg transition-all">Deploy Role Configuration</button>
                 </form>
               )}
             </div>

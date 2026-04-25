@@ -7,27 +7,33 @@ export default function Sidebar({
   isOwner, setIsSettingsOpen, handleCreateWorkspace,
   newWorkspaceName, setNewWorkspaceName, canManageTeam,
   handleInvite, inviteEmail, setInviteEmail, inviteRole, setInviteRole, isInviting,
-  setSelectedMember, setActiveTab
+  setSelectedMember, setActiveTab, 
+  handleRemoveMember // <-- NEW PROP RECEIVED
 }) {
+  
+  // We need to know who the current user is so they can't delete themselves!
+  const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+
   return (
     <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-zinc-50 border-r border-zinc-200 flex flex-col flex-shrink-0 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       
       {/* --- BRANDING HEADER WITH LOGO --- */}
       <div className="h-14 flex items-center px-4 border-b border-zinc-200 justify-between">
         <div className="flex items-center gap-2.5">
-          {/* Replace src="/logo.png" with the actual path to your image in the public folder or a web URL */}
           <img 
             src="/logo.jpeg" 
             alt="Lazy Link Logo" 
             className="h-7 w-50 object-contain rounded-md"
             onError={(e) => {
-              // Fallback if the image isn't found
               e.target.style.display = 'none';
             }} 
           />
         </div>
         
         <div className="flex items-center gap-2">
+          <button onClick={() => window.location.href = '/profile'} className="text-zinc-400 hover:text-zinc-800 transition-colors p-1" title="User Profile">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+          </button>
           <button onClick={handleLogout} className="text-xs text-zinc-500 hover:text-zinc-800 font-medium transition-colors">Logout</button>
           <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden text-zinc-400 hover:text-zinc-600">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
@@ -98,16 +104,21 @@ export default function Sidebar({
             <ul className="space-y-1 px-2 text-xs">
               {activeWorkspace.members.map((m, i) => {
                 const assignedRole = activeWorkspace.customRoles?.find(r => String(r._id) === String(m.roleId));
+                
+                // Identify if the member being rendered is the logged-in user
+                const isCurrentUser = String(m.user?._id) === String(userInfo?.id || userInfo?._id);
+
                 return (
                   <li key={i} className="flex justify-between items-center py-1.5 group">
                     <div className="truncate flex-1">
                       <span className="text-zinc-700 font-medium">{m.user?.name || m.user?.email || 'Pending'}</span>
                       {m.status === 'pending' && <span className="ml-1 text-[9px] text-amber-600 bg-amber-50 px-1 rounded border border-amber-100">Pending</span>}
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1">
                       <span className="text-[9px] text-zinc-500 uppercase font-semibold border border-zinc-200 px-1.5 py-0.5 rounded bg-white">
                         {assignedRole ? assignedRole.name : 'Unknown'}
                       </span>
+                      
                       {/* STATS BUTTON FOR ACCEPTED MEMBERS */}
                       {m.status === 'accepted' && setSelectedMember && setActiveTab && (
                         <button 
@@ -116,6 +127,17 @@ export default function Sidebar({
                           title="View Analytics"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" /></svg>
+                        </button>
+                      )}
+
+                      {/* NEW: REMOVE MEMBER BUTTON */}
+                      {!isCurrentUser && handleRemoveMember && (
+                        <button 
+                          onClick={() => handleRemoveMember(m.user?._id)} 
+                          className="opacity-0 group-hover:opacity-100 p-1 bg-white border border-red-100 text-red-500 rounded hover:bg-red-50 transition-all shadow-sm"
+                          title="Remove Member"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
                       )}
                     </div>

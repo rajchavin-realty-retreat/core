@@ -190,8 +190,10 @@ exports.deleteWorkspace = async (req, res) => {
 exports.createCustomRole = async (req, res) => {
   try {
     const { id } = req.params;
-    const roleData = req.body;
     const userId = req.user._id || req.user.id;
+    
+    // Explicitly extract ONLY the fields we trust from the frontend
+    const { name, permissions, entityOverrides } = req.body;
 
     const workspace = await Workspace.findById(id);
     if (!workspace) return res.status(404).json({ message: "Workspace not found" });
@@ -201,8 +203,13 @@ exports.createCustomRole = async (req, res) => {
       return res.status(403).json({ message: "Only workspace owners can manage roles." });
     }
 
-    // Push the new role into the array
-    workspace.customRoles.push(roleData);
+    // Push the clean, structured role into the array
+    workspace.customRoles.push({
+      name,
+      permissions,
+      entityOverrides: entityOverrides || [] // Ensure it defaults to an empty array if none exist
+    });
+    
     await workspace.save();
 
     res.status(201).json({ message: "Role created successfully", workspace });
@@ -389,6 +396,55 @@ exports.getMemberStats = async (req, res) => {
 
   } catch (error) {
     console.error("🔥 MEMBER STATS ERROR:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Remove a member from a workspace
+// @route   DELETE /api/workspaces/:id/members/:memberId
+// @access  Private
+exports.removeMember = async (req, res) => {
+  try {
+    const workspaceId = req.params.id;
+    const targetMemberId = req.params.memberId;
+    const requestUserId = req.user._id || req.user.id;
+
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) return res.status(404).json({ message: 'Workspace not found' });
+
+    // 1. Security Check: Is the person requesting the deletion an Owner or Admin?
+    const isOwner = workspace.owner.toString() === requestUserId.toString();
+    
+    if (!isOwner) {
+      const myMembership = workspace.members.find(m => m.user.toString() === requestUserId.toString());
+      if (!myMembership) return res.status(403).json({ message: 'You are not in this workspace.' });
+
+      const myRole = workspace.customRoles.find(r => r._id.toString() === myMembership.roleId?.toString());
+      if (!myRole || !myRole.permissions.manageTeam) {
+        return res.status(403).json({ message: 'Security Error: You do not have permission to remove members.' });
+      }
+    }
+
+    // 2. Prevent accidentally deleting the workspace owner
+    if (workspace.owner.toString() === targetMemberId) {
+      return res.status(400).json({ message: 'You cannot remove the Workspace Owner.' });
+    }
+
+    // 3. Remove the member from the array
+    const initialMemberCount = workspace.members.length;
+    workspace.members = workspace.members.filter(m => m.user.toString() !== targetMemberId.toString());
+
+    if (workspace.members.length === initialMemberCount) {
+      return res.status(404).json({ message: 'Member not found in this workspace.' });
+    }
+
+    // 4. Save the updated workspace
+    await workspace.save();
+    
+    res.status(200).json({ message: 'Member successfully removed.' });
+
+  } catch (error) {
+    console.error("Remove Member Error:", error);
     res.status(500).json({ message: error.message });
   }
 };

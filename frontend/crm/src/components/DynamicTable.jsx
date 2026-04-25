@@ -107,7 +107,7 @@ export default function DynamicTable({ entity, records, userPermissions, current
     }
   };
 
-  // --- SMART PERMISSION RESOLVER ---
+  // --- PHASE C: SMART GRANULAR PERMISSION RESOLVER ---
   useEffect(() => {
     const resolvePermissions = async () => {
       try {
@@ -115,20 +115,44 @@ export default function DynamicTable({ entity, records, userPermissions, current
         setLocalUser(userInfo);
         if (userPermissions) { setLocalPerms(userPermissions); return; }
         if (!entity) return;
+        
         const workspaceId = entity.workspace || entity.workspaceId;
         const res = await api.get('/workspaces');
         const workspace = res.data.find(w => w._id === workspaceId);
         if (!workspace) return;
+        
         const userIdStr = String(userInfo?.id || userInfo?._id);
         const ownerIdStr = String(workspace.owner._id || workspace.owner);
-        if (ownerIdStr === userIdStr) { setLocalPerms({ editAllRecords: true, editOwnRecords: true, deleteAllRecords: true, deleteOwnRecords: true }); return; }
+        
+        if (ownerIdStr === userIdStr) { 
+          setLocalPerms({ editAllRecords: true, editOwnRecords: true, deleteAllRecords: true, deleteOwnRecords: true }); 
+          return; 
+        }
+        
         const member = workspace.members.find(m => String(m.user._id || m.user) === userIdStr);
         if (member && workspace.customRoles) {
           const role = workspace.customRoles.find(r => String(r._id) === String(member.roleId));
-          if (role) { setLocalPerms(role.permissions); return; }
+          if (role) { 
+            let finalPerms = { ...role.permissions };
+            
+            // ---> THE NEW OVERRIDE CHECKER <---
+            // Check if the Admin set a specific rule just for this database
+            if (role.entityOverrides && role.entityOverrides.length > 0) {
+              const override = role.entityOverrides.find(eo => String(eo.entityId) === String(entity._id));
+              if (override) {
+                // If an override exists, merge its permissions over the global ones!
+                finalPerms = { ...finalPerms, ...override.permissions };
+              }
+            }
+            
+            setLocalPerms(finalPerms); 
+            return; 
+          }
         }
         setLocalPerms({ editAllRecords: false, editOwnRecords: false, deleteAllRecords: false, deleteOwnRecords: false });
-      } catch (error) { setLocalPerms({ editAllRecords: true, editOwnRecords: true, deleteAllRecords: true, deleteOwnRecords: true }); }
+      } catch (error) { 
+        setLocalPerms({ editAllRecords: true, editOwnRecords: true, deleteAllRecords: true, deleteOwnRecords: true }); 
+      }
     };
     resolvePermissions();
   }, [entity, userPermissions, currentUser]);
@@ -248,13 +272,12 @@ export default function DynamicTable({ entity, records, userPermissions, current
 
   const handleDelete = async (id) => {
     if (!window.confirm("Permanently delete this record?")) return;
-    try { await api.delete(`/records/${id}`); window.location.reload(); } catch (error) { alert("Delete failed"); }
+    try { await api.delete(`/records/${id}`); window.location.reload(); } catch (error) { alert(error.response?.data?.message || "Delete failed"); }
   };
 
   const handleEditChange = (fieldName, value) => {
     setEditFormData(prev => {
       const newData = { ...prev, [fieldName]: value };
-      // Auto-clear dependent dropdowns if parent changes
       entity.fields.forEach(f => {
         if (f.cascadingParentField === fieldName) newData[f.name] = ''; 
       });
@@ -363,6 +386,8 @@ export default function DynamicTable({ entity, records, userPermissions, current
                 const myIdStr = String(localUser?.id || localUser?._id);
                 const creatorIdStr = String(record.createdBy?._id || record.createdBy);
                 const isMyRecord = myIdStr === creatorIdStr;
+                
+                // --- THIS NOW RESPECTS THE DATABASE OVERRIDES! ---
                 const canEdit = localPerms ? (localPerms.editAllRecords || (localPerms.editOwnRecords && isMyRecord)) : true;
                 const canDelete = localPerms ? (localPerms.deleteAllRecords || (localPerms.deleteOwnRecords && isMyRecord)) : true;
 

@@ -6,6 +6,7 @@ import ClientDetail from './ClientDetail'; // newly added import
 import EntityView from './pages/EntityView'; // Update path if you put it in a pages folder
 import Signup from './Signup';
 import RecordView from './RecordView';
+import UserProfile from './pages/UserProfile';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -44,6 +45,15 @@ function App() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/profile" 
+          element={
+            <ProtectedRoute>
+              <UserProfile />
             </ProtectedRoute>
           } 
         />

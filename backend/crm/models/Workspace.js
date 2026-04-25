@@ -8,7 +8,7 @@ const roleSchema = new mongoose.Schema({
   permissions: {
     // Record Viewing
     viewAllRecords: { type: Boolean, default: false },
-    viewOwnRecords: { type: Boolean, default: true }, // Usually true if they are in the workspace
+    viewOwnRecords: { type: Boolean, default: true }, 
     
     // Record Creation
     createRecords: { type: Boolean, default: false },
@@ -22,9 +22,23 @@ const roleSchema = new mongoose.Schema({
     deleteOwnRecords: { type: Boolean, default: false },
     
     // Admin Powers
-    manageDatabases: { type: Boolean, default: false }, // Can create/delete schemas
-    manageTeam: { type: Boolean, default: false }       // Can invite/kick members
-  }
+    manageDatabases: { type: Boolean, default: false }, 
+    manageTeam: { type: Boolean, default: false }       
+  },
+
+  // ---> MOVED HERE: Overrides belong to the ROLE, not the Workspace root! <---
+  entityOverrides: [{
+    entityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Entity' },
+    permissions: {
+      viewAllRecords: { type: Boolean, default: false },
+      viewOwnRecords: { type: Boolean, default: true },
+      createRecords: { type: Boolean, default: false },
+      editAllRecords: { type: Boolean, default: false },
+      editOwnRecords: { type: Boolean, default: false },
+      deleteAllRecords: { type: Boolean, default: false },
+      deleteOwnRecords: { type: Boolean, default: false }
+    }
+  }]
 });
 
 const workspaceSchema = new mongoose.Schema({
@@ -41,7 +55,6 @@ const workspaceSchema = new mongoose.Schema({
     status: { type: String, enum: ['pending', 'accepted', 'declined'], default: 'pending' },
     
     // 3. We change 'role' from a strict string to an ID pointing to the customRoles array!
-    // (If it's empty, we assume they are the owner)
     roleId: { type: mongoose.Schema.Types.ObjectId } 
   }],
 }, { timestamps: true });
