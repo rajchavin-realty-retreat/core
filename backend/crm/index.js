@@ -10,7 +10,7 @@ const app = express();
 const whitelist = [
   'http://localhost:3000',             // Allow your local React development server
   'http://localhost:5173',             // (Add this if you are using Vite instead of CRA)
-  'https://lazylink.rajchavin.com' // <-- Replace with your actual live deployed frontend URL
+  'https://oaas.rajchavin.com' // <-- Replace with your actual live deployed frontend URL
 ];
 
 const corsOptions = {
