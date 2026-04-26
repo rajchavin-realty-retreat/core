@@ -193,3 +193,29 @@ exports.deleteRecord = async (req, res) => {
     res.status(200).json({ message: "Record securely deleted" });
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
+
+// Add Comment to Record
+exports.addComment = async (req, res) => {
+  try {
+    const record = await Record.findById(req.params.id);
+    
+    if (!record) {
+      return res.status(404).json({ message: 'Record not found' });
+    }
+    
+    // Push the new comment into the array
+    record.comments.push({
+      text: req.body.text,
+      userName: req.body.userName
+    });
+    
+    await record.save();
+    
+    // Return the updated record back to the frontend
+    res.status(201).json(record);
+    
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    res.status(500).json({ message: 'Server error adding comment' });
+  }
+};

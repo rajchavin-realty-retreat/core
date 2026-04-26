@@ -4,7 +4,12 @@ const mongoose = require('mongoose');
 const recordSchema = new mongoose.Schema({
   entity: { type: mongoose.Schema.Types.ObjectId, ref: 'Entity', required: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  
+  // Add this inside your existing RecordSchema
+  comments: [{
+    text: String,
+    userName: String,
+    createdAt: { type: Date, default: Date.now }
+  }],
   // Mongoose 'Mixed' type allows us to save dynamic, unstructured JSON!
   data: { type: mongoose.Schema.Types.Mixed, required: true }
 }, { timestamps: true });

@@ -9,12 +9,13 @@ const { deleteFromCloudinary } = require('../config/cloudinary');
 // @access  Private
 exports.createEntity = async (req, res) => {
   try {
-    const { workspaceId, name, fields } = req.body;
+    const { workspaceId, name, fields, showCreatedAt } = req.body;
     
     const entity = await Entity.create({
       workspace: workspaceId,
       name,
-      fields // e.g., [{ name: "Budget", type: "number" }]
+      fields, // e.g., [{ name: "Budget", type: "number" }]
+      showCreatedAt: showCreatedAt || false, // <-- Save it to the database!
     });
 
     res.status(201).json(entity);
@@ -102,7 +103,7 @@ exports.deleteEntity = async (req, res) => {
 // @route   PUT /api/entities/:id
 exports.updateEntity = async (req, res) => {
   try {
-    const { name, fields } = req.body;
+    const { name, fields, showCreatedAt } = req.body;
     const entity = await Entity.findById(req.params.id);
     
     if (!entity) return res.status(404).json({ message: "Database not found" });
@@ -110,6 +111,7 @@ exports.updateEntity = async (req, res) => {
     // Update the schema blueprint
     entity.name = name || entity.name;
     entity.fields = fields || entity.fields;
+    entity.showCreatedAt = showCreatedAt || entity.showCreatedAt;
     
     await entity.save();
     res.status(200).json({ message: "Database schema updated successfully", entity });

@@ -3,6 +3,10 @@ import api from '../api/axiosConfig';
 
 export default function SchemaBuilder({ activeWorkspace, entities, fetchEntities, setIsCreatingEntity, setActiveTab, editingEntity, setEditingEntity }) {
   const [entityName, setEntityName] = useState('');
+  
+  // --- NEW: STATE FOR THE TOGGLE ---
+  const [showCreatedAt, setShowCreatedAt] = useState(false);
+
   const [entityFields, setEntityFields] = useState([
     { name: '', type: 'text', optionsArray: [], tempOption: '', targetEntity: '', formula: '', dependentField: '', conditionMap: {}, isRequired: false, isUnique: false, displayFieldsStr: '', cascadingParentField: '', cascadingTargetField: '', sourceRelationField: '', targetLookupField: '', rollupFunction: 'SUM' }
   ]);
@@ -11,6 +15,10 @@ export default function SchemaBuilder({ activeWorkspace, entities, fetchEntities
   useEffect(() => {
     if (editingEntity) {
       setEntityName(editingEntity.name);
+      
+      // Load the saved setting
+      setShowCreatedAt(editingEntity.showCreatedAt || false);
+
       const mappedFields = editingEntity.fields.map(f => {
         let conditionMap = {};
         if (f.type === 'conditional-formula' && f.conditions) {
@@ -84,10 +92,17 @@ export default function SchemaBuilder({ activeWorkspace, entities, fetchEntities
         return baseField;
       });
 
+      // --- SEND THE showCreatedAt TOGGLE IN THE PAYLOAD ---
+      const payload = { 
+        name: entityName, 
+        fields: formattedFields,
+        showCreatedAt: showCreatedAt 
+      };
+
       if (editingEntity) {
-        await api.put(`/entities/${editingEntity._id}`, { name: entityName, fields: formattedFields });
+        await api.put(`/entities/${editingEntity._id}`, payload);
       } else {
-        await api.post('/entities', { workspaceId: activeWorkspace._id, name: entityName, fields: formattedFields });
+        await api.post('/entities', { workspaceId: activeWorkspace._id, ...payload });
       }
       
       setIsCreatingEntity(false);
@@ -104,7 +119,6 @@ export default function SchemaBuilder({ activeWorkspace, entities, fetchEntities
   const addDropdownOption = (index) => { const val = (entityFields[index].tempOption || '').trim(); if (val) { const updatedFields = [...entityFields]; if (!updatedFields[index].optionsArray) updatedFields[index].optionsArray = []; if (!updatedFields[index].optionsArray.includes(val)) updatedFields[index].optionsArray.push(val); updatedFields[index].tempOption = ''; setEntityFields(updatedFields); } };
   const removeDropdownOption = (fieldIndex, optionIndex) => { const updatedFields = [...entityFields]; updatedFields[fieldIndex].optionsArray.splice(optionIndex, 1); setEntityFields(updatedFields); };
 
-  // Helper to find target database fields for Lookups/Rollups
   const getTargetDatabaseFields = (sourceRelationFieldName) => {
     const relationField = entityFields.find(f => f.name === sourceRelationFieldName && f.type === 'relation');
     if (!relationField || !relationField.targetEntity) return [];
@@ -112,7 +126,6 @@ export default function SchemaBuilder({ activeWorkspace, entities, fetchEntities
     return targetDb ? targetDb.fields : [];
   };
 
-  // Helper to find relations in CURRENT schema
   const relationFieldsInSchema = entityFields.filter(f => f.type === 'relation' && f.name);
 
   return (
@@ -122,17 +135,32 @@ export default function SchemaBuilder({ activeWorkspace, entities, fetchEntities
         {editingEntity && <button onClick={() => { setIsCreatingEntity(false); setEditingEntity(null); }} className="text-xs font-semibold text-zinc-400 hover:text-zinc-800">Cancel Edit</button>}
       </div>
       <form onSubmit={handleCreateOrUpdate} className="space-y-6">
-        <div>
-          <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5">Database Name</label>
-          <input type="text" required value={entityName} onChange={e => setEntityName(e.target.value)} className="w-full px-3 py-2 text-sm border border-zinc-200 rounded-md outline-none focus:border-indigo-500" />
+        
+        <div className="p-4 border border-zinc-200 rounded-lg bg-zinc-50 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5">Database Name</label>
+            <input type="text" required value={entityName} onChange={e => setEntityName(e.target.value)} className="w-full px-3 py-2 text-sm border border-zinc-200 rounded-md outline-none focus:border-indigo-500" />
+          </div>
+          
+          {/* --- THE NEW TOGGLE SWITCH --- */}
+          <label className="flex items-center gap-2 cursor-pointer mt-3 w-fit">
+            <input 
+              type="checkbox" 
+              checked={showCreatedAt} 
+              onChange={(e) => setShowCreatedAt(e.target.checked)} 
+              className="rounded text-indigo-600 w-4 h-4 cursor-pointer" 
+            />
+            <span className="text-sm font-bold text-zinc-700">Display "Created Date" in Table</span>
+          </label>
         </div>
+
         <div className="space-y-4">
           <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Columns (Fields)</label>
           
           {entityFields.map((field, index) => (
             <div 
               key={index} draggable onDragStart={() => handleDragStart(index)} onDragEnter={(e) => handleDragEnter(e, index)} onDragOver={(e) => e.preventDefault()} onDragEnd={handleDragEnd}
-              className={`flex flex-col gap-3 p-4 border rounded-xl shadow-sm transition-all ${draggedItemIndex === index ? 'opacity-50 border-indigo-400 bg-indigo-50/30' : 'bg-zinc-50 border-zinc-200'}`}
+              className={`flex flex-col gap-3 p-4 border rounded-xl shadow-sm transition-all ${draggedItemIndex === index ? 'opacity-50 border-indigo-400 bg-indigo-50/30' : 'bg-white border-zinc-200'}`}
             >
               <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
                 <div className="cursor-move p-1.5 text-zinc-400 hover:text-zinc-600 active:cursor-grabbing"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" /></svg></div>
@@ -140,7 +168,7 @@ export default function SchemaBuilder({ activeWorkspace, entities, fetchEntities
                 <div className="flex gap-2 w-full sm:w-auto">
                   <select value={field.type} onChange={(e) => updateField(index, 'type', e.target.value)} className="flex-1 sm:w-56 px-3 py-2 text-sm border border-zinc-200 rounded-md bg-white outline-none focus:border-indigo-500 font-medium">
                     <optgroup label="Standard Types">
-                      <option value="text">Short Text</option><option value="textarea">Long Text</option><option value="email">Email</option><option value="phone">Phone</option><option value="number">Number</option><option value="date">Date</option><option value="datetime">Date & Time</option><option value="checkbox">Checkbox</option><option value="dropdown">Dropdown</option><option value="media">Single File</option><option value="media-multiple">Image Gallery</option><option value="json">Raw JSON / Object</option>
+                      <option value="text">Short Text</option><option value="textarea">Long Text</option><option value="email">Email</option><option value="phone">Phone</option><option value="number">Number</option><option value="date">Date</option><option value="datetime">Date & Time</option><option value="checkbox">Checkbox</option><option value="dropdown">Dropdown</option><option value="user">Team Member (Assignee)</option><option value="media">Single File</option><option value="media-multiple">Image Gallery</option><option value="json">Raw JSON / Object</option>
                     </optgroup>
                     <optgroup label="Relational & Advanced">
                       <option value="relation">Linked Record</option>
@@ -205,18 +233,18 @@ export default function SchemaBuilder({ activeWorkspace, entities, fetchEntities
                   </div>
                   
                   {field.targetEntity && (
-                    <div className="bg-white p-3 border border-zinc-200 rounded-md shadow-sm space-y-3">
+                    <div className="bg-zinc-50 p-3 border border-zinc-200 rounded-md shadow-sm space-y-3">
                       <div>
                         <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Multi-Column Display (Optional)</label>
                         <input type="text" placeholder="e.g. First Name, Last Name, Company" value={field.displayFieldsStr || ''} onChange={(e) => updateField(index, 'displayFieldsStr', e.target.value)} className="w-full px-3 py-1.5 text-xs border border-zinc-200 rounded outline-none" />
                         <p className="text-[9px] text-zinc-400 mt-0.5">Separate column names with commas to display multiple columns when searching.</p>
                       </div>
-                      <div className="border-t border-zinc-100 pt-3">
+                      <div className="border-t border-zinc-200 pt-3">
                         <label className="block text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-1">Cascading Filter (Optional Sub-menus)</label>
                         <div className="flex gap-2 items-center">
-                          <input type="text" placeholder="Local Field (e.g., Service)" value={field.cascadingParentField || ''} onChange={(e) => updateField(index, 'cascadingParentField', e.target.value)} className="flex-1 px-2 py-1.5 text-xs border border-zinc-200 rounded outline-none bg-zinc-50" />
+                          <input type="text" placeholder="Local Field (e.g., Service)" value={field.cascadingParentField || ''} onChange={(e) => updateField(index, 'cascadingParentField', e.target.value)} className="flex-1 px-2 py-1.5 text-xs border border-zinc-200 rounded outline-none bg-white" />
                           <span className="text-xs font-bold text-zinc-400">must match</span>
-                          <input type="text" placeholder="Target Field (e.g., Parent Service)" value={field.cascadingTargetField || ''} onChange={(e) => updateField(index, 'cascadingTargetField', e.target.value)} className="flex-1 px-2 py-1.5 text-xs border border-zinc-200 rounded outline-none bg-zinc-50" />
+                          <input type="text" placeholder="Target Field (e.g., Parent Service)" value={field.cascadingTargetField || ''} onChange={(e) => updateField(index, 'cascadingTargetField', e.target.value)} className="flex-1 px-2 py-1.5 text-xs border border-zinc-200 rounded outline-none bg-white" />
                         </div>
                       </div>
                     </div>

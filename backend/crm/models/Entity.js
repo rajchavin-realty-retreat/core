@@ -29,7 +29,11 @@ const fieldSchema = new mongoose.Schema({
 const entitySchema = new mongoose.Schema({
   workspace: { type: mongoose.Schema.Types.ObjectId, ref: 'Workspace', required: true },
   name: { type: String, required: true },
-  fields: [fieldSchema]
+  fields: [fieldSchema],
+  
+  // --- NEW: CREATED AT TOGGLE ---
+  showCreatedAt: { type: Boolean, default: false } 
+  
 }, { timestamps: true });
 
 module.exports = mongoose.model('Entity', entitySchema);

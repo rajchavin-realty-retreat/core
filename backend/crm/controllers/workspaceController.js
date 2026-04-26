@@ -319,6 +319,9 @@ exports.getMemberStats = async (req, res) => {
     // 1. Security Check
     const isOwner = workspace.owner.toString() === userId.toString();
     const myMember = workspace.members.find(m => m.user.toString() === userId.toString());
+
+    const isRequestingOwnStats = userId.toString() === memberId.toString();
+    
     let canViewStats = isOwner;
 
     if (!isOwner && myMember && workspace.customRoles) {

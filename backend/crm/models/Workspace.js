@@ -50,6 +50,12 @@ const workspaceSchema = new mongoose.Schema({
   // 2. The Custom Roles stored in this workspace
   customRoles: [roleSchema],
 
+  // Add this inside workspaceSchema:
+  taskColumns: { 
+    type: [String], 
+    default: ['Inbox', 'To Do', 'In Progress', 'In Review', 'Done'] 
+  },
+
   members: [{
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     status: { type: String, enum: ['pending', 'accepted', 'declined'], default: 'pending' },

@@ -10,6 +10,8 @@ import AnalyticsView from './components/AnalyticsView';
 import SchemaBuilder from './components/SchemaBuilder';
 import SettingsModal from './components/SettingsModal';
 import MemberAnalytics from './components/MemberAnalytics';
+import LazyCalendar from './components/LazyCalendar';
+import LazyTasks from './components/LazyTasks';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -124,6 +126,8 @@ export default function Dashboard() {
             <div className="max-w-6xl mx-auto space-y-6">
               {activeTab === 'overview' && !isCreatingEntity && <AnalyticsView entities={entities} activeWorkspace={activeWorkspace} />}
               {activeTab === 'memberStats' && selectedMember && !isCreatingEntity && <MemberAnalytics workspace={activeWorkspace} member={selectedMember} onBack={() => setActiveTab('overview')} />}
+              {activeTab === 'calendar' && !isCreatingEntity && <LazyCalendar activeWorkspace={activeWorkspace} entities={entities} />}
+              {activeTab === 'tasks' && !isCreatingEntity && <LazyTasks activeWorkspace={activeWorkspace} entities={entities} />}
               {activeTab === 'databases' && !isCreatingEntity && <DatabaseGrid entities={entities} navigate={navigate} canManageDatabases={canManageDatabases} handleDeleteDatabase={handleDeleteDatabase} onEditDatabase={handleEditDatabase} />}
               {isCreatingEntity && canManageDatabases && <SchemaBuilder activeWorkspace={activeWorkspace} entities={entities} fetchEntities={fetchEntities} setIsCreatingEntity={setIsCreatingEntity} setActiveTab={setActiveTab} editingEntity={editingEntity} setEditingEntity={setEditingEntity} />}
             </div>

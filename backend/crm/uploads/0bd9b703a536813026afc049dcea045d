@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Modern Chat UI</title>
+  <style>
+    :root{
+      --bg:#0f1724; /* dark navy */
+      --card:#0b1220;
+      --muted:#9aa7b2;
+      --accent:#6ee7b7;
+      --accent-2:#60a5fa;
+      --me:#0ea5a4;
+      --bot:#1f2937;
+      --glass: rgba(255,255,255,0.04);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#071028);color:#e6eef6}
+
+    .app{
+      max-width:980px;
+      margin:4vh auto;
+      height:82vh;
+      display:grid;
+      grid-template-columns:320px 1fr;
+      gap:20px;
+      padding:18px;
+    }
+
+    /* Sidebar */
+    .sidebar{
+      background:linear-gradient(180deg,var(--card),#071020);
+      border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px;box-shadow:0 6px 24px rgba(2,6,23,0.6);
+    }
+    .brand{display:flex;align-items:center;gap:10px}
+    .logo{width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:700;color:#042;box-shadow:0 6px 18px rgba(96,165,250,0.12)}
+    .brand h1{font-size:16px;margin:0}
+    .conversations{flex:1;overflow:auto;padding-right:4px}
+    .conv{display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;cursor:pointer}
+    .conv:hover{background:var(--glass)}
+    .conv.active{background:rgba(96,165,250,0.08)}
+    .avatar{width:44px;height:44px;border-radius:10px;background:#0b1220;display:flex;align-items:center;justify-content:center;color:var(--accent-2);font-weight:600}
+    .meta{display:flex;flex-direction:column}
+    .meta small{color:var(--muted)}
+
+    /* Chat area */
+    .chat{
+      background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);
+      border-radius:12px;padding:14px;display:flex;flex-direction:column;height:100%;box-shadow:0 6px 32px rgba(2,6,23,0.6);
+    }
+
+    .chat-header{display:flex;align-items:center;gap:12px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.02)}
+    .chat-title{font-weight:600}
+    .chat-body{flex:1;overflow:auto;padding:18px 6px;display:flex;flex-direction:column;gap:12px}
+
+    .msg{max-width:76%;padding:10px 12px;border-radius:14px;line-height:1.35}
+    .msg.me{margin-left:auto;background:linear-gradient(180deg,var(--me),#08978b);color:#072b28;border-bottom-right-radius:6px}
+    .msg.bot{background:linear-gradient(180deg,var(--bot),#0f1724);color:#cfe3f1;border-bottom-left-radius:6px}
+    .meta-time{display:block;font-size:10px;color:var(--muted);margin-top:6px}
+
+    .typing{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13px}
+    .dot{width:7px;height:7px;border-radius:50%;background:var(--muted);opacity:0.6;animation:blink 1.2s infinite}
+    .dot:nth-child(2){animation-delay:0.15s}
+    .dot:nth-child(3){animation-delay:0.3s}
+    @keyframes blink{0%{opacity:0.2}50%{opacity:1}100%{opacity:0.2}}
+
+    .composer{display:flex;gap:8px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.02)}
+    .input-wrap{flex:1;display:flex;gap:8px;background:rgba(255,255,255,0.02);padding:8px;border-radius:10px;align-items:center}
+    .input-wrap input{flex:1;background:transparent;border:0;outline:none;color:inherit;padding:8px;font-size:15px}
+    .btn{background:linear-gradient(90deg,var(--accent-2),var(--accent));border:none;padding:10px 14px;border-radius:10px;color:#022;cursor:pointer;font-weight:600}
+    .icon-btn{background:transparent;border:0;color:var(--muted);cursor:pointer;padding:8px;border-radius:8px}
+
+    /* small screens */
+    @media (max-width:820px){
+      .app{grid-template-columns:1fr;max-width:760px}
+      .sidebar{display:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Conversations">
+      <div class="brand">
+        <div class="logo">C</div>
+        <div>
+          <h1>ChatCraft</h1>
+          <small style="color:var(--muted)">Built with HTML • CSS • JS</small>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px">
+        <button class="icon-btn" id="newConvBtn" title="New conversation">＋ New</button>
+        <button class="icon-btn" id="clearBtn" title="Clear chat">🗑️ Clear</button>
+      </div>
+
+      <div class="conversations" id="conversations">
+        <div class="conv active" data-id="default">
+          <div class="avatar">AI</div>
+          <div class="meta">
+            <strong>Assistant</strong>
+            <small class="desc">Your helpful assistant</small>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="chat" role="main">
+      <header class="chat-header">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="avatar">AI</div>
+          <div>
+            <div class="chat-title">Assistant</div>
+            <small style="color:var(--muted)">Online</small>
+          </div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <small style="color:var(--muted)">Theme</small>
+          <button class="icon-btn" id="themeBtn" aria-pressed="false">🌗</button>
+        </div>
+      </header>
+
+      <section class="chat-body" id="chatBody" aria-live="polite">
+        <!-- messages go here -->
+        <div class="msg bot" data-id="m1">
+          <div>Hello! 👋 I am your demo assistant. Try typing something below.</div>
+          <span class="meta-time">Now</span>
+        </div>
+      </section>
+
+      <form class="composer" id="composer" onsubmit="return false;">
+        <div class="input-wrap">
+          <button class="icon-btn" id="emojiBtn" title="Emoji">😊</button>
+          <input id="messageInput" type="text" inputmode="text" placeholder="Type a message — press Enter to send" autocomplete="off" aria-label="Message input" />
+          <button class="icon-btn" id="attachBtn" title="Attach">📎</button>
+        </div>
+        <button class="btn" id="sendBtn">Send</button>
+      </form>
+    </main>
+  </div>
+
+  <script>
+    // Basic chat UI behaviour (single-file, no backend)
+    const chatBody = document.getElementById('chatBody');
+    const input = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const newConvBtn = document.getElementById('newConvBtn');
+    const themeBtn = document.getElementById('themeBtn');
+
+    function formatTime(d = new Date()){
+      return d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+    }
+
+    function appendMessage(text, who = 'bot'){
+      const el = document.createElement('div');
+      el.className = `msg ${who}`;
+      el.innerHTML = `<div>${escapeHtml(text)}</div><span class="meta-time">${formatTime()}</span>`;
+      chatBody.appendChild(el);
+      chatBody.scrollTop = chatBody.scrollHeight - chatBody.clientHeight;
+      return el;
+    }
+
+    function escapeHtml(str){
+      return str.replace(/&/g, '&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function setTyping(on = true){
+      let t = document.querySelector('.typing');
+      if(on){
+        if(!t){
+          t = document.createElement('div');
+          t.className = 'typing';
+          t.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span><span style="margin-left:8px">Assistant is typing...</span>';
+          chatBody.appendChild(t);
+          chatBody.scrollTop = chatBody.scrollHeight;
+        }
+      } else {
+        if(t) t.remove();
+      }
+    }
+
+    function botReply(userText){
+      // simple simulated reply — replace with real API calls when you integrate backend
+      setTyping(true);
+      setTimeout(()=>{
+        setTyping(false);
+        const reply = generateReply(userText);
+        appendMessage(reply, 'bot');
+      }, 700 + Math.random()*900);
+    }
+
+    function generateReply(text){
+      // a very small demo of canned responses
+      const t = text.toLowerCase().trim();
+      if(!t) return "Say something so I can help!";
+      if(t.includes('hi')||t.includes('hello')) return 'Hi there! How can I help today?';
+      if(t.includes('help')) return 'I can help with UI ideas, code, or small tasks. What do you need?';
+      if(t.includes('design')) return 'Try a minimal layout: sidebar, message list, composer, and subtle gradients.';
+      return `You said: "${text}" — this is a demo echo. Replace generateReply() with your backend/API.`;
+    }
+
+    sendBtn.addEventListener('click', ()=>{
+      const v = input.value.trim();
+      if(!v) return input.focus();
+      appendMessage(v, 'me');
+      input.value = '';
+      botReply(v);
+    });
+
+    input.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault(); sendBtn.click();
+      }
+    });
+
+    clearBtn.addEventListener('click', ()=>{
+      chatBody.innerHTML = '';
+      appendMessage('Chat cleared. Say hello!', 'bot');
+    });
+
+    newConvBtn.addEventListener('click', ()=>{
+      // For demo, just clears conversation and focuses
+      chatBody.innerHTML = '';
+      appendMessage('New conversation started. I am here to help!', 'bot');
+      input.focus();
+    });
+
+    themeBtn.addEventListener('click', ()=>{
+      const pressed = themeBtn.getAttribute('aria-pressed') === 'true';
+      themeBtn.setAttribute('aria-pressed', String(!pressed));
+      if(pressed){
+        document.documentElement.style.setProperty('--bg', '#0f1724');
+      } else {
+        document.documentElement.style.setProperty('--bg', '#f6f9fc');
+        document.documentElement.style.setProperty('--card', '#ffffff');
+        document.documentElement.style.setProperty('--muted', '#55606a');
+        document.documentElement.style.setProperty('--accent', '#6ee7b7');
+        document.documentElement.style.setProperty('--accent-2', '#60a5fa');
+        document.documentElement.style.setProperty('--me', '#06b6d4');
+        document.documentElement.style.setProperty('--bot', '#f1f5f9');
+      }
+    });
+
+    // accessibility: ensure chat is scrolled to bottom initially
+    window.addEventListener('load', ()=>{ chatBody.scrollTop = chatBody.scrollHeight; input.focus(); });
+  </script>
+</body>
+</html>

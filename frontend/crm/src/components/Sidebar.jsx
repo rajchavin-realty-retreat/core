@@ -7,11 +7,10 @@ export default function Sidebar({
   isOwner, setIsSettingsOpen, handleCreateWorkspace,
   newWorkspaceName, setNewWorkspaceName, canManageTeam,
   handleInvite, inviteEmail, setInviteEmail, inviteRole, setInviteRole, isInviting,
-  setSelectedMember, setActiveTab, 
-  handleRemoveMember // <-- NEW PROP RECEIVED
+  setSelectedMember, setActiveTab, activeTab,
+  handleRemoveMember
 }) {
   
-  // We need to know who the current user is so they can't delete themselves!
   const userInfo = JSON.parse(localStorage.getItem('userInfo'));
 
   return (
@@ -24,9 +23,7 @@ export default function Sidebar({
             src="/logo.jpeg" 
             alt="Lazy Link Logo" 
             className="h-7 w-50 object-contain rounded-md"
-            onError={(e) => {
-              e.target.style.display = 'none';
-            }} 
+            onError={(e) => { e.target.style.display = 'none'; }} 
           />
         </div>
         
@@ -42,6 +39,7 @@ export default function Sidebar({
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-6">
+        
         {/* PENDING INVITES */}
         {pendingWorkspaces.length > 0 && (
           <div>
@@ -81,6 +79,49 @@ export default function Sidebar({
           </form>
         </div>
 
+        {/* --- NEW: PERSONAL STATS QUICK LINK --- */}
+        {activeWorkspace && userInfo && (
+          <div>
+            <h3 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-2 px-2">Personal</h3>
+            <button 
+              onClick={() => { 
+                setSelectedMember({ _id: userInfo.id || userInfo._id, name: userInfo.name || 'Me', email: userInfo.email }); 
+                setActiveTab('memberStats'); 
+                if (window.innerWidth < 1024) setIsMobileMenuOpen(false);
+              }} 
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+              My Workspace Stats
+            </button>
+          </div>
+        )}
+
+        {/* --- WORKSPACE APPS --- */}
+        {activeWorkspace && (
+          <div>
+            <h3 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-2 px-2">Apps</h3>
+            
+            {/* Existing Calendar Button */}
+            <button 
+              onClick={() => { setActiveTab('calendar'); if (window.innerWidth < 1024) setIsMobileMenuOpen(false); }} 
+              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors mb-1 ${activeTab === 'calendar' ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${activeTab === 'calendar' ? 'text-indigo-600' : 'text-zinc-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              Lazy Calendar
+            </button>
+
+            {/* NEW: Lazy Tasks Button */}
+            <button 
+              onClick={() => { setActiveTab('tasks'); if (window.innerWidth < 1024) setIsMobileMenuOpen(false); }} 
+              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${activeTab === 'tasks' ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${activeTab === 'tasks' ? 'text-indigo-600' : 'text-zinc-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+              Lazy Tasks
+            </button>
+          </div>
+        )}
+
         {/* TEAM DIRECTORY */}
         {activeWorkspace && canManageTeam && (
           <div>
@@ -104,8 +145,6 @@ export default function Sidebar({
             <ul className="space-y-1 px-2 text-xs">
               {activeWorkspace.members.map((m, i) => {
                 const assignedRole = activeWorkspace.customRoles?.find(r => String(r._id) === String(m.roleId));
-                
-                // Identify if the member being rendered is the logged-in user
                 const isCurrentUser = String(m.user?._id) === String(userInfo?.id || userInfo?._id);
 
                 return (
@@ -119,7 +158,7 @@ export default function Sidebar({
                         {assignedRole ? assignedRole.name : 'Unknown'}
                       </span>
                       
-                      {/* STATS BUTTON FOR ACCEPTED MEMBERS */}
+                      {/* ADMIN STATS BUTTON */}
                       {m.status === 'accepted' && setSelectedMember && setActiveTab && (
                         <button 
                           onClick={() => { setSelectedMember(m.user); setActiveTab('memberStats'); }} 
@@ -130,7 +169,7 @@ export default function Sidebar({
                         </button>
                       )}
 
-                      {/* NEW: REMOVE MEMBER BUTTON */}
+                      {/* REMOVE MEMBER BUTTON */}
                       {!isCurrentUser && handleRemoveMember && (
                         <button 
                           onClick={() => handleRemoveMember(m.user?._id)} 

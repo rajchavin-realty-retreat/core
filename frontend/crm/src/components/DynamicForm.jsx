@@ -8,8 +8,105 @@ export default function DynamicForm({ entity, onSuccess, onCancel }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [relationData, setRelationData] = useState({});
+  
+  // --- NEW: ROLE-BASED ASSIGNMENT STATE ---
+  const [workspaceUsers, setWorkspaceUsers] = useState([]); // Used to translate IDs to Names
+  const [assignableUsers, setAssignableUsers] = useState([]); // Used for the Dropdown options
 
-  // --- THE BULLETPROOF FORMULA ENGINE ---
+  const [memberActivityUserId, setMemberActivityUserId] = useState(null);
+  const [memberActivityRecords, setMemberActivityRecords] = useState([]);
+  const [isLoadingActivity, setIsLoadingActivity] = useState(false);
+
+  useEffect(() => {
+    const fetchUsersAndRelations = async () => {
+      try {
+        const currentUser = JSON.parse(localStorage.getItem('userInfo'));
+        const userIdStr = String(currentUser?.id || currentUser?._id);
+
+        const res = await api.get('/workspaces');
+        const wsId = entity.workspace || entity.workspaceId;
+        const currentWs = res.data.find(w => w._id === wsId);
+        
+        if (currentWs) {
+          // 1. Build the full list of users for display purposes
+          let usersList = [];
+          if (currentWs.owner) usersList.push(currentWs.owner);
+          currentWs.members.forEach(m => {
+            if (m.status === 'accepted' && m.user) {
+              if (!usersList.find(u => String(u._id) === String(m.user._id))) {
+                 usersList.push(m.user);
+              }
+            }
+          });
+          setWorkspaceUsers(usersList);
+
+          // 2. Check if the current user is an Admin
+          const isOwner = String(currentWs.owner?._id || currentWs.owner) === userIdStr;
+          let isAdmin = isOwner;
+          
+          if (!isAdmin) {
+            const myMember = currentWs.members.find(m => String(m.user?._id || m.user) === userIdStr);
+            if (myMember && currentWs.customRoles) {
+              const role = currentWs.customRoles.find(r => String(r._id) === String(myMember.roleId));
+              if (role && (role.permissions?.manageTeam || role.permissions?.editAllRecords)) {
+                isAdmin = true;
+              }
+            }
+          }
+
+          // 3. Filter the dropdown options based on role
+          if (!isAdmin) {
+            setAssignableUsers(usersList.filter(u => String(u._id) === userIdStr));
+          } else {
+            setAssignableUsers(usersList);
+          }
+        }
+      } catch (error) { 
+        console.error("Failed to load workspace users"); 
+      }
+
+      if (!entity || !entity.fields) return;
+      const relationFields = entity.fields.filter(f => f.type === 'relation' && f.targetEntity);
+      
+      const newRelationData = {};
+      for (let field of relationFields) {
+        try {
+          const res = await api.get(`/records/entity/${field.targetEntity}`);
+          newRelationData[field.name] = res.data;
+        } catch (error) { 
+          newRelationData[field.name] = []; 
+        }
+      }
+      setRelationData(newRelationData);
+    };
+
+    fetchUsersAndRelations();
+  }, [entity]);
+
+  const fetchMemberActivity = async (userId) => {
+    setMemberActivityUserId(userId);
+    setIsLoadingActivity(true);
+    try {
+      const res = await api.get(`/records/entity/${entity._id}`);
+      const myRecords = res.data.filter(rec => {
+        if (String(rec.createdBy?._id || rec.createdBy) === String(userId)) return true;
+        const userFields = entity.fields.filter(f => f.type === 'user');
+        return userFields.some(f => String(rec.data?.[f.name]) === String(userId));
+      });
+      setMemberActivityRecords(myRecords);
+    } catch (error) {
+      console.error("Failed to load user activity");
+    } finally {
+      setIsLoadingActivity(false);
+    }
+  };
+
+  const getUserDisplayName = (userId) => {
+    if (!userId) return '-';
+    const user = workspaceUsers.find(u => String(u._id) === String(userId));
+    return user ? (user.name || user.email) : 'Unknown User';
+  };
+
   const computeFormula = (currentData, formulaString) => {
     if (!formulaString) return '';
     let equation = formulaString;
@@ -48,7 +145,6 @@ export default function DynamicForm({ entity, onSuccess, onCancel }) {
     return '';
   };
 
-  // --- PHASE B: LOOKUP ENGINE ---
   const computeLookup = (field, currentData) => {
     if (!field.sourceRelationField || !field.targetLookupField) return '';
     const sourceId = currentData[field.sourceRelationField];
@@ -62,7 +158,6 @@ export default function DynamicForm({ entity, onSuccess, onCancel }) {
     return '';
   };
 
-  // --- PHASE B: ROLLUP MATH ENGINE ---
   const computeRollup = (field, currentData) => {
     if (!field.sourceRelationField || !field.targetLookupField) return '';
     const sourceValues = currentData[field.sourceRelationField];
@@ -98,51 +193,26 @@ export default function DynamicForm({ entity, onSuccess, onCancel }) {
     }
   };
 
-  // --- FETCH LINKED DATABASE RECORDS ---
-  useEffect(() => {
-    const fetchForwardRelations = async () => {
-      if (!entity || !entity.fields) return;
-      const relationFields = entity.fields.filter(f => f.type === 'relation' && f.targetEntity);
-      if (relationFields.length === 0) return;
-
-      const newRelationData = {};
-      for (let field of relationFields) {
-        try {
-          const res = await api.get(`/records/entity/${field.targetEntity}`);
-          newRelationData[field.name] = res.data;
-        } catch (error) { console.error('Failed to fetch relation data'); }
-      }
-      setRelationData(newRelationData);
-    };
-    fetchForwardRelations();
-  }, [entity]);
-
-  // --- UPGRADED: FLEXIBLE MULTI-COLUMN FORMATTER ---
   const getDisplayValue = (recordId, field) => {
     if (!recordId) return '-';
-    const targetRecords = relationData[field.name] || [];
+    const fieldName = typeof field === 'string' ? field : field.name; 
+    const targetRecords = relationData[fieldName] || [];
     const match = targetRecords.find(r => r._id === recordId);
     if (!match || !match.data) return `ID: ${String(recordId).slice(-4)}`;
     
-    // Check if the Admin defined multiple columns to show
-    if (field.displayFields && field.displayFields.length > 0) {
-      return field.displayFields.map(fieldName => {
-        // 1. Try an exact match first
-        if (match.data[fieldName] !== undefined) return match.data[fieldName];
-        
-        // 2. Try a flexible case-insensitive match (forgiving typos like 'first name' vs 'First Name')
-        const flexKey = Object.keys(match.data).find(k => k.toLowerCase().trim() === fieldName.toLowerCase().trim());
+    const fieldObj = typeof field === 'object' ? field : entity.fields.find(f => f.name === fieldName);
+
+    if (fieldObj && fieldObj.displayFields && fieldObj.displayFields.length > 0) {
+      return fieldObj.displayFields.map(fn => {
+        if (match.data[fn] !== undefined) return match.data[fn];
+        const flexKey = Object.keys(match.data).find(k => k.toLowerCase().trim() === fn.toLowerCase().trim());
         return flexKey ? match.data[flexKey] : null;
-        
       }).filter(val => val !== undefined && val !== null && val !== '').join(' - '); 
     }
-    
-    // Default fallback
     const keys = Object.keys(match.data);
     return keys.length > 0 ? match.data[keys[0]] : 'Unnamed';
   };
 
-  // --- PHASE B: CASCADING FILTERS ---
   const getFilteredRelations = (field) => {
     let allOptions = relationData[field.name] || [];
     if (field.cascadingParentField && field.cascadingTargetField) {
@@ -153,12 +223,9 @@ export default function DynamicForm({ entity, onSuccess, onCancel }) {
     return allOptions;
   };
 
-  // --- INPUT HANDLERS ---
   const handleChange = (fieldName, value) => {
     setFormData(prev => {
       const newData = { ...prev, [fieldName]: value };
-      
-      // Auto-clear dependent dropdowns if parent changes
       entity.fields.forEach(f => {
         if (f.cascadingParentField === fieldName) {
           newData[f.name] = ''; 
@@ -204,7 +271,6 @@ export default function DynamicForm({ entity, onSuccess, onCancel }) {
     setFormData(prev => ({ ...prev, [fieldName]: (prev[fieldName] || []).filter((_, idx) => idx !== indexToRemove) }));
   };
 
-  // --- SUBMIT AND VALIDATE ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -215,12 +281,9 @@ export default function DynamicForm({ entity, onSuccess, onCancel }) {
         if (field.type === 'formula' || field.type === 'conditional-formula') {
           payloadData[field.name] = computeFormula(payloadData, getActiveFormula(field, payloadData));
         }
-        if (field.type === 'lookup') {
-          payloadData[field.name] = computeLookup(field, payloadData);
-        }
-        if (field.type === 'rollup') {
-          payloadData[field.name] = computeRollup(field, payloadData);
-        }
+        if (field.type === 'lookup') payloadData[field.name] = computeLookup(field, payloadData);
+        if (field.type === 'rollup') payloadData[field.name] = computeRollup(field, payloadData);
+        
         if (field.type === 'json' && payloadData[field.name]) {
           try {
             payloadData[field.name] = JSON.parse(payloadData[field.name]);
@@ -241,31 +304,43 @@ export default function DynamicForm({ entity, onSuccess, onCancel }) {
 
   return (
     <div onClick={onCancel} className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4 cursor-pointer">
-      <div onClick={(e) => e.stopPropagation()} className="bg-white cursor-default rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-zinc-200">
+      <div onClick={(e) => e.stopPropagation()} className="bg-white cursor-default rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-zinc-200">
         
-        {/* MODAL HEADER */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-100 bg-zinc-50/50">
           <h3 className="text-sm font-semibold text-zinc-900">New {entity.name} Record</h3>
-          <button onClick={onCancel} className="text-zinc-400 hover:text-zinc-600 transition-colors p-1 rounded-md hover:bg-zinc-100">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-          </button>
+          <button onClick={onCancel} className="text-zinc-400 hover:text-zinc-600 transition-colors">✕</button>
         </div>
 
-        {/* DYNAMIC FORM BODY */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
           {entity.fields.map((field, idx) => (
             <div key={idx} className="flex flex-col gap-1.5">
               
               <label className="flex items-center text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                 {field.name}
-                {field.isRequired && <span className="text-red-500 ml-0.5 text-sm leading-none">*</span>}
-                {field.isUnique && <span className="text-indigo-400 ml-1.5 text-[9px] px-1.5 py-0.5 bg-indigo-50 border border-indigo-100 rounded-full font-bold">Unique</span>}
-                {(field.type === 'formula' || field.type === 'conditional-formula' || field.type === 'lookup' || field.type === 'rollup') && <span className="text-emerald-500 ml-1.5 text-[10px] font-bold px-1.5 py-0.5 bg-emerald-50 border border-emerald-100 rounded-full">Auto-Calculated</span>}
               </label>
               
-              {/* Auto-Calculated Read-Only Fields */}
+              {/* --- ROLE-AWARE TEAM MEMBER DROPDOWN WITH QUICK VIEW --- */}
+              {field.type === 'user' && (
+                <div className="flex gap-2 items-center">
+                  <select value={formData[field.name] || ''} onChange={(e) => handleChange(field.name, e.target.value)} required={field.isRequired} className="flex-1 px-3 py-2 text-sm border border-zinc-200 rounded-md bg-white outline-none focus:ring-1 focus:ring-indigo-500">
+                    <option value="">Select Team Member...</option>
+                    {/* Maps over the restricted assignableUsers array */}
+                    {assignableUsers.map(user => (
+                      <option key={user._id} value={user._id}>{user.name || user.email}</option>
+                    ))}
+                  </select>
+                  {formData[field.name] && (
+                    <button 
+                      type="button" 
+                      onClick={() => fetchMemberActivity(formData[field.name])}
+                      className="bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 text-xs font-bold px-3 py-2 rounded-md transition-colors"
+                    >
+                      👤 View Activity
+                    </button>
+                  )}
+                </div>
+              )}
+
               {(field.type === 'lookup' || field.type === 'rollup') && (
                 <input type="text" disabled value={field.type === 'lookup' ? computeLookup(field, formData) : computeRollup(field, formData)} className="px-3 py-2 text-sm border border-indigo-200 rounded-md bg-indigo-50/40 text-indigo-800 font-medium outline-none cursor-not-allowed transition-all" />
               )}
@@ -273,10 +348,18 @@ export default function DynamicForm({ entity, onSuccess, onCancel }) {
                 <input type="text" disabled value={computeFormula(formData, getActiveFormula(field, formData))} className="px-3 py-2 text-sm border border-emerald-200 rounded-md bg-emerald-50/50 text-emerald-700 font-mono outline-none cursor-not-allowed" />
               )}
 
-              {/* Data Input Fields */}
-              {field.type === 'json' && (<textarea value={formData[field.name] || ''} onChange={(e) => handleChange(field.name, e.target.value)} placeholder="{\n  &quot;key&quot;: &quot;value&quot;\n}" className="px-3 py-3 text-xs font-mono border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none bg-zinc-900 text-emerald-400 min-h-[150px] shadow-inner leading-relaxed" required={field.isRequired} />)}
+              {field.type === 'json' && (
+                <textarea value={formData[field.name] || ''} onChange={(e) => handleChange(field.name, e.target.value)} placeholder="{\n  &quot;key&quot;: &quot;value&quot;\n}" className="px-3 py-3 text-xs font-mono border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none bg-zinc-900 text-emerald-400 min-h-[150px] shadow-inner leading-relaxed" required={field.isRequired} />
+              )}
+
               {field.type === 'email' && <input type="email" placeholder="name@company.com" value={formData[field.name] || ''} onChange={(e) => handleChange(field.name, e.target.value)} required={field.isRequired} className="px-3 py-2 text-sm border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none" />}
-              {field.type === 'phone' && (<div className="border border-zinc-200 rounded-md focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500 bg-white px-3 py-1.5"><PhoneInput international defaultCountry="IN" value={formData[field.name] || ''} onChange={(val) => handleChange(field.name, val)} required={field.isRequired} className="text-sm outline-none w-full" /></div>)}
+              
+              {field.type === 'phone' && (
+                <div className="border border-zinc-200 rounded-md focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500 bg-white px-3 py-1.5">
+                  <PhoneInput international defaultCountry="IN" value={formData[field.name] || ''} onChange={(val) => handleChange(field.name, val)} required={field.isRequired} className="text-sm outline-none w-full" />
+                </div>
+              )}
+
               {field.type === 'text' && <input type="text" value={formData[field.name] || ''} onChange={(e) => handleChange(field.name, e.target.value)} required={field.isRequired} className="px-3 py-2 text-sm border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none" />}
               {field.type === 'number' && <input type="number" value={formData[field.name] || ''} onChange={(e) => handleChange(field.name, e.target.value)} required={field.isRequired} className="px-3 py-2 text-sm border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none" />}
               {field.type === 'textarea' && <textarea value={formData[field.name] || ''} onChange={(e) => handleChange(field.name, e.target.value)} required={field.isRequired} className="px-3 py-2 text-sm border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none min-h-[80px]" />}
@@ -290,7 +373,6 @@ export default function DynamicForm({ entity, onSuccess, onCancel }) {
                 </select>
               )}
 
-              {/* Linked Record with Cascading Support */}
               {field.type === 'relation' && (
                 <select 
                   value={formData[field.name] || ''} 
@@ -299,7 +381,11 @@ export default function DynamicForm({ entity, onSuccess, onCancel }) {
                   className={`px-3 py-2 text-sm border border-zinc-200 rounded-md bg-white outline-none focus:ring-1 focus:ring-indigo-500 ${field.cascadingParentField && !formData[field.cascadingParentField] ? 'bg-zinc-100 cursor-not-allowed opacity-70' : ''}`}
                   disabled={field.cascadingParentField && !formData[field.cascadingParentField]}
                 >
-                  <option value="">{field.cascadingParentField && !formData[field.cascadingParentField] ? `Select ${field.cascadingParentField} first...` : 'Select record...'}</option>
+                  <option value="">
+                    {field.cascadingParentField && !formData[field.cascadingParentField] 
+                      ? `Select ${field.cascadingParentField} first...` 
+                      : 'Select record...'}
+                  </option>
                   {getFilteredRelations(field).map(r => (
                     <option key={r._id} value={r._id}>
                       {getDisplayValue(r._id, field)}
@@ -315,10 +401,11 @@ export default function DynamicForm({ entity, onSuccess, onCancel }) {
                 </label>
               )}
               
-              {/* Media Uploaders */}
               {field.type === 'media' && (
                 <div className="flex flex-col gap-2">
-                  {formData[field.name] ? (<div className="relative w-20 h-20 border rounded-md overflow-hidden group"><img src={formData[field.name]} alt="preview" className="w-full h-full object-cover" /><button type="button" onClick={() => handleChange(field.name, '')} className="absolute inset-0 bg-black/60 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs">Clear</button></div>) : (<input type="file" onChange={(e) => handleFileUpload(e, field.name)} required={field.isRequired} className="text-xs" />)}
+                  {formData[field.name] ? (
+                    <div className="relative w-20 h-20 border rounded-md overflow-hidden group"><img src={formData[field.name]} alt="preview" className="w-full h-full object-cover" /><button type="button" onClick={() => handleChange(field.name, '')} className="absolute inset-0 bg-black/60 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs">Clear</button></div>
+                  ) : (<input type="file" onChange={(e) => handleFileUpload(e, field.name)} required={field.isRequired} className="text-xs" />)}
                 </div>
               )}
               
@@ -331,13 +418,48 @@ export default function DynamicForm({ entity, onSuccess, onCancel }) {
             </div>
           ))}
 
-          {/* FOOTER ACTIONS */}
           <div className="flex gap-2 mt-4 pt-5 border-t border-zinc-100 pb-2">
             <button type="button" onClick={onCancel} className="flex-1 bg-white border border-zinc-200 text-zinc-700 py-2.5 rounded-md font-bold text-sm hover:bg-zinc-50 transition-colors">Cancel</button>
             <button type="submit" disabled={isSubmitting || isUploadingFile} className="flex-1 bg-indigo-600 text-white py-2.5 rounded-md font-bold text-sm hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-sm">{isUploadingFile ? 'Uploading Files...' : isSubmitting ? 'Creating Record...' : 'Create Record'}</button>
           </div>
         </form>
       </div>
+
+      {/* --- THE MEMBER ACTIVITY SLIDE-OVER --- */}
+      {memberActivityUserId && (
+        <div className="absolute inset-y-0 right-0 w-full md:w-[350px] bg-white shadow-2xl border-l border-zinc-200 z-[80] flex flex-col">
+          <div className="px-4 py-3 border-b border-zinc-100 flex justify-between items-center bg-zinc-50">
+            <h3 className="font-bold text-zinc-900 text-sm">👤 {getUserDisplayName(memberActivityUserId)}'s Workload</h3>
+            <button onClick={() => setMemberActivityUserId(null)} className="text-zinc-400 hover:text-zinc-600">✕</button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4">
+            {isLoadingActivity ? (
+              <p className="text-xs text-zinc-400 text-center py-5">Loading activity...</p>
+            ) : memberActivityRecords.length === 0 ? (
+              <div className="text-center py-8 border-2 border-dashed border-zinc-200 rounded-lg bg-zinc-50">
+                <p className="text-xs font-medium text-zinc-500">This user is completely free!</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {memberActivityRecords.map(rec => {
+                  const titleF = entity.fields.find(f => f.type === 'text') || entity.fields[0];
+                  return (
+                    <div key={rec._id} className="bg-white p-3 rounded-md border border-zinc-200 shadow-sm">
+                      <div className="text-sm font-bold text-zinc-800 truncate mb-1">{rec.data?.[titleF?.name] || 'Unnamed'}</div>
+                      {entity.fields.find(f => f.type === 'dropdown') && (
+                         <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100">
+                           {rec.data[entity.fields.find(f => f.type === 'dropdown').name] || 'No Status'}
+                         </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
