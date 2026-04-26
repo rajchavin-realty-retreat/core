@@ -3,6 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 
+
 const app = express();
 
 // --- THE SECURITY BOUNCER (CORS WHITELIST) ---
@@ -52,6 +53,7 @@ app.use('/api/records', require('./routes/recordRoutes'));
 app.use('/api/workspaces', require('./routes/workspaceRoutes'));
 app.use('/api/entities', require('./routes/entityRoutes'));
 app.use('/api/upload', require('./routes/uploadRoutes'));
+app.use('/api/templates', require('./routes/templateRoutes'));
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

@@ -8,7 +8,10 @@ export default function Sidebar({
   newWorkspaceName, setNewWorkspaceName, canManageTeam,
   handleInvite, inviteEmail, setInviteEmail, inviteRole, setInviteRole, isInviting,
   setSelectedMember, setActiveTab, activeTab,
-  handleRemoveMember
+  handleRemoveMember,
+  entities, 
+  handleOpenDatabaseTab, 
+  activeDbId
 }) {
   
   const userInfo = JSON.parse(localStorage.getItem('userInfo'));
@@ -20,7 +23,7 @@ export default function Sidebar({
       <div className="h-14 flex items-center px-4 border-b border-zinc-200 justify-between">
         <div className="flex items-center gap-2.5">
           <img 
-            src="/logo.jpeg" 
+            src="/logo1.png" 
             alt="Lazy Link Logo" 
             className="h-7 w-50 object-contain rounded-md"
             onError={(e) => { e.target.style.display = 'none'; }} 
@@ -28,10 +31,21 @@ export default function Sidebar({
         </div>
         
         <div className="flex items-center gap-2">
-          <button onClick={() => window.location.href = '/profile'} className="text-zinc-400 hover:text-zinc-800 transition-colors p-1" title="User Profile">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+          {/* PROPER CIRCULAR PROFILE SYMBOL AT THE TOP */}
+          <button 
+            onClick={() => window.location.href = '/profile'} // Or handle a dropdown menu if you build one
+            className="h-7 w-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 hover:bg-indigo-200 hover:text-indigo-900 transition-colors overflow-hidden border border-indigo-200 shadow-sm"
+            title="Profile & Account"
+          >
+            {userInfo?.name ? (
+               <span className="text-xs font-bold">{userInfo.name.charAt(0).toUpperCase()}</span>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+              </svg>
+            )}
           </button>
-          <button onClick={handleLogout} className="text-xs text-zinc-500 hover:text-zinc-800 font-medium transition-colors">Logout</button>
+          
           <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden text-zinc-400 hover:text-zinc-600">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
           </button>
@@ -65,11 +79,14 @@ export default function Sidebar({
             {activeOrAcceptedWorkspaces.map(ws => (
               <li key={ws._id} onClick={() => selectWorkspace(ws)} className={`px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors flex items-center justify-between ${activeWorkspace?._id === ws._id ? 'bg-zinc-200/50 text-zinc-900 font-medium' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'}`}>
                 <span className="truncate">{ws.name}</span>
+                
+                {/* --- RESTORED: WORKSPACE GEAR ICON --- */}
                 {activeWorkspace?._id === ws._id && isOwner && (
                   <button onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(true); }} className="text-zinc-400 hover:text-zinc-800 p-1">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" /></svg>
                   </button>
                 )}
+
               </li>
             ))}
           </ul>
@@ -79,7 +96,7 @@ export default function Sidebar({
           </form>
         </div>
 
-        {/* --- NEW: PERSONAL STATS QUICK LINK --- */}
+        {/* --- PERSONAL STATS QUICK LINK --- */}
         {activeWorkspace && userInfo && (
           <div>
             <h3 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-2 px-2">Personal</h3>
@@ -102,7 +119,6 @@ export default function Sidebar({
           <div>
             <h3 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-2 px-2">Apps</h3>
             
-            {/* Existing Calendar Button */}
             <button 
               onClick={() => { setActiveTab('calendar'); if (window.innerWidth < 1024) setIsMobileMenuOpen(false); }} 
               className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors mb-1 ${activeTab === 'calendar' ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'}`}
@@ -111,7 +127,6 @@ export default function Sidebar({
               Lazy Calendar
             </button>
 
-            {/* NEW: Lazy Tasks Button */}
             <button 
               onClick={() => { setActiveTab('tasks'); if (window.innerWidth < 1024) setIsMobileMenuOpen(false); }} 
               className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${activeTab === 'tasks' ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'}`}
@@ -119,6 +134,45 @@ export default function Sidebar({
               <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${activeTab === 'tasks' ? 'text-indigo-600' : 'text-zinc-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
               Lazy Tasks
             </button>
+
+            <button 
+              onClick={() => { setActiveTab('templates'); if (window.innerWidth < 1024) setIsMobileMenuOpen(false); }} 
+              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors mb-1 ${activeTab === 'templates' ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${activeTab === 'templates' ? 'text-indigo-600' : 'text-zinc-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+              Lazy Templates
+            </button>
+
+          </div>
+        )}
+
+        {/* --- DIRECT DATABASE ACCESS (THE NOTION TREE) --- */}
+        {activeWorkspace && entities.length > 0 && (
+          <div className="mt-8 mb-4">
+            <div className="flex items-center justify-between px-3 mb-1.5 group cursor-pointer hover:opacity-80 transition-opacity">
+              <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Data Modules</h3>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            </div>
+            
+            <div className="space-y-0.5 px-2">
+              {entities.map(ent => (
+                <button
+                  key={ent._id}
+                  onClick={() => {
+                    handleOpenDatabaseTab(ent);
+                    if (window.innerWidth < 1024) setIsMobileMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] transition-colors group ${
+                    activeTab === 'database-viewer' && activeDbId === ent._id
+                      ? 'bg-zinc-200/60 text-zinc-900 font-bold'
+                      : 'text-zinc-600 hover:bg-zinc-200/40 font-medium'
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 shrink-0 ${activeTab === 'database-viewer' && activeDbId === ent._id ? 'text-indigo-600' : 'text-zinc-400 group-hover:text-zinc-600 transition-colors'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
+                  <span className="truncate">{ent.name}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -162,7 +216,7 @@ export default function Sidebar({
                       {m.status === 'accepted' && setSelectedMember && setActiveTab && (
                         <button 
                           onClick={() => { setSelectedMember(m.user); setActiveTab('memberStats'); }} 
-                          className="opacity-0 group-hover:opacity-100 p-1 bg-white border border-indigo-100 text-indigo-600 rounded hover:bg-indigo-50 transition-all shadow-sm"
+                          className=" opacity-0 group-hover:opacity-100 p-1 bg-white border border-indigo-100 text-indigo-600 rounded hover:bg-indigo-50 transition-all shadow-sm"
                           title="View Analytics"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" /></svg>
@@ -173,7 +227,7 @@ export default function Sidebar({
                       {!isCurrentUser && handleRemoveMember && (
                         <button 
                           onClick={() => handleRemoveMember(m.user?._id)} 
-                          className="opacity-0 group-hover:opacity-100 p-1 bg-white border border-red-100 text-red-500 rounded hover:bg-red-50 transition-all shadow-sm"
+                          className=" opacity-0 group-hover:opacity-100 p-1 bg-white border border-red-100 text-red-500 rounded hover:bg-red-50 transition-all shadow-sm"
                           title="Remove Member"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>

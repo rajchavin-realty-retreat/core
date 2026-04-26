@@ -1,141 +1,253 @@
-import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { useState, useEffect } from 'react';
+import api from '../api/axiosConfig';
 
 export default function AnalyticsView({ entities, activeWorkspace }) {
-  if (!activeWorkspace) return null;
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Real Data States
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [dbStats, setDbStats] = useState([]);
+  
+  const currentUser = JSON.parse(localStorage.getItem('userInfo'));
 
-  // --- STORAGE CALCULATIONS ---
-  const storageInMB = activeWorkspace.storageUsed ? (activeWorkspace.storageUsed / (1024 * 1024)).toFixed(2) : "0.00";
-  const limitInMB = 1024; // 1 GB Free Tier limit
-  const storagePercentage = Math.min((storageInMB / limitInMB) * 100, 100);
+  useEffect(() => {
+    const fetchRealWorkspaceData = async () => {
+      if (!entities || entities.length === 0) {
+        setIsLoading(false);
+        return;
+      }
 
-  // 1. Prepare data for the Bar Chart
-  const databaseStats = entities.map(entity => ({
-    name: entity.name,
-    columns: entity.fields.length,
-  }));
+      setIsLoading(true);
+      try {
+        // 1. Fetch all records for every database in this workspace
+        const fetchPromises = entities.map(ent => 
+          api.get(`/records/entity/${ent._id}`)
+            .then(res => ({ entity: ent, records: res.data }))
+            .catch(() => ({ entity: ent, records: [] })) 
+        );
+        
+        const results = await Promise.all(fetchPromises);
+        
+        // --- NEW: BUILD UNIVERSAL DICTIONARIES FOR ID RESOLUTION ---
+        
+        // A. Map every record in the workspace so we can resolve Relations instantly
+        const universalRecordMap = {};
+        results.forEach(({ entity, records }) => {
+          records.forEach(r => {
+            universalRecordMap[r._id] = { data: r.data, schema: entity };
+          });
+        });
 
-  // 2. Dummy Data for the Area Chart 
-  const activityData = [
-    { day: 'Mon', records: 12 },
-    { day: 'Tue', records: 19 },
-    { day: 'Wed', records: 15 },
-    { day: 'Thu', records: 28 },
-    { day: 'Fri', records: 22 },
-    { day: 'Sat', records: 5 },
-    { day: 'Sun', records: 8 },
-  ];
+        // B. Map all Workspace Members so we can resolve User IDs
+        const userDict = {};
+        if (activeWorkspace) {
+          const ownerId = activeWorkspace.owner?._id || activeWorkspace.owner;
+          if (ownerId) userDict[ownerId] = activeWorkspace.owner.name || activeWorkspace.owner.email;
+          
+          activeWorkspace.members?.forEach(m => {
+            const uid = m.user?._id || m.user;
+            if (uid) userDict[uid] = m.user.name || m.user.email;
+          });
+        }
 
-  // --- METRICS ---
-  const totalColumns = entities.reduce((acc, ent) => acc + ent.fields.length, 0);
-  const activeMembers = activeWorkspace.members?.filter(m => m.status === 'accepted').length || 0;
+        // C. The Smart Display Resolver
+        const resolveDisplayValue = (schema, recordData) => {
+          if (!recordData) return 'Empty Record';
+          
+          // Try to find a text field, otherwise fall back to the very first field
+          const primaryField = schema.fields.find(f => f.type === 'text' || f.type === 'email') || schema.fields[0];
+          if (!primaryField) return 'Unnamed Record';
+          
+          const rawValue = recordData[primaryField.name];
+          if (!rawValue) return 'Unnamed Record';
+
+          // If the field is a Team Member, translate the ID to their Name
+          if (primaryField.type === 'user') {
+            return userDict[rawValue] || `User ${String(rawValue).slice(-4)}`;
+          }
+
+          // If the field is a Relation, jump into the map and grab the target's text!
+          if (primaryField.type === 'relation') {
+            const target = universalRecordMap[rawValue];
+            if (target) {
+              const targetPrimary = target.schema.fields.find(f => f.type === 'text' || f.type === 'email') || target.schema.fields[0];
+              return target.data[targetPrimary?.name] || `Record ${String(rawValue).slice(-4)}`;
+            }
+            return `Linked Record`;
+          }
+
+          // Standard return for text, numbers, dropdowns, etc.
+          return String(rawValue);
+        };
+
+        // --- END RESOLVER ---
+
+        let allRecords = [];
+        let stats = [];
+        let count = 0;
+
+        // 2. Process the data
+        results.forEach(({ entity, records }) => {
+          count += records.length;
+          
+          stats.push({
+            name: entity.name,
+            count: records.length,
+            id: entity._id
+          });
+
+          // Tag records and intelligently resolve their display names!
+          const taggedRecords = records.map(r => ({
+            ...r,
+            databaseName: entity.name,
+            displayTitle: resolveDisplayValue(entity, r.data) 
+          }));
+          
+          allRecords = [...allRecords, ...taggedRecords];
+        });
+
+        // 3. Sort all records globally to get the "Recent Activity" feed
+        const sortedActivity = allRecords
+          .filter(r => r.createdAt) 
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .slice(0, 8); 
+
+        // 4. Update State
+        setTotalRecords(count);
+        setDbStats(stats.sort((a, b) => b.count - a.count)); 
+        setRecentActivity(sortedActivity);
+
+      } catch (error) {
+        console.error("Failed to aggregate workspace analytics", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRealWorkspaceData();
+  }, [entities, activeWorkspace]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-zinc-400 gap-3">
+        <svg className="animate-spin h-6 w-6 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        <span className="text-sm font-medium">Aggregating Workspace Data...</span>
+      </div>
+    );
+  }
+
+  const maxRecords = dbStats.length > 0 ? dbStats[0].count : 1;
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto animate-fade-in">
+    <div className="flex flex-col gap-8 max-w-[1200px] mx-auto w-full">
       
-      {/* --- HEADER --- */}
-      <div>
-        <h2 className="text-2xl font-bold text-zinc-900">Workspace Overview</h2>
-        <p className="text-sm text-zinc-500 mt-1">High-level metrics and system limits for {activeWorkspace.name}.</p>
+      {/* HEADER */}
+      <div className="pb-4 border-b border-zinc-100">
+        <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">
+          Welcome back, {currentUser?.name?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'User'}
+        </h1>
+        <p className="text-sm text-zinc-500 mt-1">Here is the real-time overview for <span className="font-bold text-zinc-700">{activeWorkspace?.name}</span>.</p>
       </div>
 
-      {/* --- THE MASTER STORAGE TRACKER --- */}
-      <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
-        <div className="flex justify-between items-end mb-4">
-          <div>
-            <h3 className="text-sm font-bold text-zinc-900">Storage Capacity</h3>
-            <p className="text-xs text-zinc-500 mt-0.5">Total file size of all media uploaded across all databases.</p>
+      {/* TOP METRICS CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm hover:border-indigo-200 transition-colors">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
+            </div>
+            <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Active Modules</h3>
           </div>
-          <div className="text-right">
-            <span className="text-2xl font-black text-zinc-900">{storageInMB} <span className="text-sm text-zinc-500 font-medium">MB</span></span>
-            <span className="text-sm text-zinc-400 mx-2">/</span>
-            <span className="text-sm font-bold text-zinc-600">1GB Limit</span>
-          </div>
+          <p className="text-4xl font-black text-zinc-900">{entities.length}</p>
         </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm hover:border-emerald-200 transition-colors">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            </div>
+            <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Total Records</h3>
+          </div>
+          <p className="text-4xl font-black text-zinc-900">{totalRecords}</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm hover:border-amber-200 transition-colors">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+            </div>
+            <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Team Members</h3>
+          </div>
+          <p className="text-4xl font-black text-zinc-900">{activeWorkspace?.members?.length || 1}</p>
+        </div>
+      </div>
+
+      {/* LOWER SECTION: SPLIT VIEW */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
-        <div className="w-full bg-zinc-100 rounded-full h-4 overflow-hidden border border-zinc-200">
-          <div 
-            className={`h-full rounded-full transition-all duration-1000 ease-out ${storagePercentage > 90 ? 'bg-red-500' : storagePercentage > 75 ? 'bg-amber-400' : 'bg-indigo-600'}`} 
-            style={{ width: `${storagePercentage}%` }}
-          ></div>
-        </div>
-        {storagePercentage > 90 && (
-          <p className="text-xs text-red-600 font-bold mt-3 text-right">⚠️ Approaching storage limit. Please delete old files.</p>
-        )}
-      </div>
-
-      {/* --- TOP STATS ROW --- */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm flex flex-col justify-center">
-          <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Total Databases</p>
-          <p className="text-3xl font-black text-zinc-900">{entities.length}</p>
-        </div>
-        <div className="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm flex flex-col justify-center">
-          <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Total Schema Columns</p>
-          <p className="text-3xl font-black text-zinc-900">{totalColumns}</p>
-        </div>
-        <div className="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm flex flex-col justify-center">
-          <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">System Health</p>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-            </span>
-            <span className="text-sm font-semibold text-emerald-600 tracking-tight">All Systems Operational</span>
-          </div>
-        </div>
-      </div>
-
-      {/* --- CHARTS ROW --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Chart 1: Database Complexity */}
-        <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
-          <h3 className="text-sm font-semibold text-zinc-800 mb-6">Database Complexity (Columns)</h3>
-          <div className="h-64">
-            {entities.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={databaseStats} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} />
-                  <Tooltip 
-                    cursor={{ fill: '#f4f4f5' }} 
-                    contentStyle={{ borderRadius: '8px', border: '1px solid #e4e4e7', boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)' }}
-                  />
-                  <Bar dataKey="columns" fill="#4f46e5" radius={[4, 4, 0, 0]} barSize={32} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-sm text-zinc-400 italic">
-                No databases to analyze.
-              </div>
-            )}
-          </div>
+        {/* LEFT: Data Distribution */}
+        <div className="bg-white p-8 rounded-2xl border border-zinc-200 shadow-sm">
+          <h3 className="text-sm font-bold text-zinc-900 mb-6 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+            Record Distribution
+          </h3>
+          
+          {dbStats.length === 0 ? (
+            <p className="text-sm text-zinc-500 italic">No records found in this workspace.</p>
+          ) : (
+            <div className="space-y-5">
+              {dbStats.map((stat) => (
+                <div key={stat.id}>
+                  <div className="flex justify-between items-end mb-1.5">
+                    <span className="text-sm font-medium text-zinc-700">{stat.name}</span>
+                    <span className="text-xs font-bold text-zinc-400">{stat.count} records</span>
+                  </div>
+                  <div className="h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-indigo-500 rounded-full transition-all duration-1000 ease-out"
+                      style={{ width: `${(stat.count / maxRecords) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Chart 2: Workspace Activity */}
-        <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
-          <h3 className="text-sm font-semibold text-zinc-800 mb-6">Workspace Activity (Last 7 Days)</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={activityData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorRecords" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #e4e4e7', boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)' }}
-                />
-                <Area type="monotone" dataKey="records" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorRecords)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+        {/* RIGHT: Recent Activity Feed */}
+        <div className="bg-white p-8 rounded-2xl border border-zinc-200 shadow-sm">
+          <h3 className="text-sm font-bold text-zinc-900 mb-6 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            Workspace Activity
+          </h3>
+
+          {recentActivity.length === 0 ? (
+            <p className="text-sm text-zinc-500 italic">No recent activity. Start adding records!</p>
+          ) : (
+            <div className="space-y-0 relative before:absolute before:inset-y-0 before:left-4 before:w-[2px] before:bg-zinc-100">
+              {recentActivity.map((record, idx) => (
+                <div key={record._id} className="relative flex gap-4 items-start pb-6 last:pb-0 group">
+                  {/* Timeline Node */}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-4 border-white relative z-10 ${idx === 0 ? 'bg-indigo-500 text-white' : 'bg-zinc-200 text-zinc-500 group-hover:bg-indigo-400 group-hover:text-white transition-colors'}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                  </div>
+                  
+                  {/* Activity Details */}
+                  <div className="pt-1 flex-1 min-w-0">
+                    <p className="text-sm text-zinc-800 font-medium truncate">
+                      New record added: <span className="font-bold text-zinc-900">{record.displayTitle}</span>
+                    </p>
+                    <div className="flex items-center gap-2 mt-1 text-xs font-medium text-zinc-400">
+                      <span className="bg-zinc-100 text-zinc-600 px-1.5 py-0.5 rounded-sm">{record.databaseName}</span>
+                      <span>•</span>
+                      <span>{new Date(record.createdAt).toLocaleDateString()} at {new Date(record.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>
