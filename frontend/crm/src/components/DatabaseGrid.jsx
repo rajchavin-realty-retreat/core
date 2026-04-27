@@ -105,7 +105,7 @@ export default function DatabaseGrid({
               
               {/* Admin Actions */}
               {canManageDatabases && (
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 group-hover:opacity-100 transition-opacity">
                   <button 
                     onClick={(e) => { e.stopPropagation(); onEditDatabase(ent); }}
                     className="p-1.5 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"

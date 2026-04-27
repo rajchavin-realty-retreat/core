@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '../api/axiosConfig';
 
 export default function LazyTasks({ activeWorkspace, entities }) {
-  // --- CORE STATE ---
   const [selectedBoardId, setSelectedBoardId] = useState('');
   const [allRecords, setAllRecords] = useState({}); 
   const [universalMap, setUniversalMap] = useState({}); 
@@ -10,25 +9,25 @@ export default function LazyTasks({ activeWorkspace, entities }) {
   const [workspaceUsers, setWorkspaceUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // --- SECURITY STATE ---
   const [isUserAdmin, setIsUserAdmin] = useState(false);
   const currentUser = JSON.parse(localStorage.getItem('userInfo'));
   const userIdStr = String(currentUser?.id || currentUser?._id);
 
-  // --- UI TOGGLES ---
   const [showMyTasks, setShowMyTasks] = useState(false);
   const [isCreatingBoard, setIsCreatingBoard] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [isEditingTask, setIsEditingTask] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
 
-  // --- FORM STATES ---
+  // --- THE FIX: NEW SUBMISSION LOCK STATES ---
+  const [isSubmittingBoard, setIsSubmittingBoard] = useState(false);
+  const [isSavingTask, setIsSavingTask] = useState(false);
+
   const [newBoardData, setNewBoardData] = useState({ name: '', statuses: 'To Do, In Progress, Done', linkedDatabases: [] });
   const [taskFormData, setTaskFormData] = useState({}); 
   const [newComment, setNewComment] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
-  // --- DATA SEPARATION ---
   const taskBoards = entities.filter(ent => ent.isTaskBoard);
   const standardDatabases = entities.filter(ent => !ent.isTaskBoard);
   
@@ -46,7 +45,6 @@ export default function LazyTasks({ activeWorkspace, entities }) {
     }
   }, [taskBoards, selectedBoardId]);
 
-  // --- DATA FETCHING ---
   const fetchEverything = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -91,7 +89,6 @@ export default function LazyTasks({ activeWorkspace, entities }) {
 
       responses.forEach((res, index) => {
         const entity = entities[index];
-        // FIX: Enforce string keys so IDs map perfectly
         recordsByEntity[String(entity._id)] = res.data; 
         res.data.forEach(record => { uMap[String(record._id)] = { data: record.data, schema: entity }; });
       });
@@ -116,7 +113,6 @@ export default function LazyTasks({ activeWorkspace, entities }) {
     if (entities.length > 0) fetchEverything();
   }, [entities, fetchEverything]);
 
-  // THE FIX: Robust string conversion for display values
   const getDisplayValue = (field, rawValue) => {
     if (!rawValue) return '-';
     if (field.type === 'relation') {
@@ -134,11 +130,12 @@ export default function LazyTasks({ activeWorkspace, entities }) {
     return String(rawValue);
   };
 
-  // --- BOARD CREATION ---
+  // --- THE FIX: BOARD CREATION LOCK ---
   const handleCreateBoard = async (e) => {
     e.preventDefault();
     if (!newBoardData.name.trim()) return alert("Board name is required.");
     
+    setIsSubmittingBoard(true); // Lock the button instantly
     try {
       const customRelations = newBoardData.linkedDatabases.map(dbId => {
          const db = standardDatabases.find(d => String(d._id) === String(dbId));
@@ -163,7 +160,11 @@ export default function LazyTasks({ activeWorkspace, entities }) {
       setIsCreatingBoard(false);
       setNewBoardData({ name: '', statuses: 'To Do, In Progress, Done', linkedDatabases: [] });
       window.location.reload(); 
-    } catch (err) { alert("Failed to create project board."); }
+    } catch (err) { 
+      alert("Failed to create project board."); 
+    } finally {
+      setIsSubmittingBoard(false); // Release the lock
+    }
   };
 
   const toggleDatabaseLink = (dbId) => {
@@ -173,7 +174,6 @@ export default function LazyTasks({ activeWorkspace, entities }) {
     });
   };
 
-  // --- TASK CREATION & EDITING ---
   const openNewTaskForm = () => {
     const initial = {};
     selectedBoard.fields.forEach(f => {
@@ -190,8 +190,10 @@ export default function LazyTasks({ activeWorkspace, entities }) {
     setIsEditingTask(true);
   };
 
+  // --- THE FIX: TASK CREATION LOCK ---
   const handleTaskSubmit = async (e) => {
     e.preventDefault();
+    setIsSavingTask(true); // Lock the button instantly
     try {
       if (isCreatingTask) {
         await api.post('/records', {
@@ -211,10 +213,11 @@ export default function LazyTasks({ activeWorkspace, entities }) {
       fetchEverything();
     } catch (err) {
       alert("Failed to save task.");
+    } finally {
+      setIsSavingTask(false); // Release the lock
     }
   };
 
-  // Drag and Drop Inline Update
   const handleDrop = async (e, newStatus) => {
     e.preventDefault();
     const recordId = e.dataTransfer.getData('recordId');
@@ -271,7 +274,6 @@ export default function LazyTasks({ activeWorkspace, entities }) {
   const handleDragEnd = (e) => { e.target.style.opacity = '1'; };
   const handleDragOver = (e) => e.preventDefault(); 
 
-  // --- KANBAN LOGIC ---
   let currentBoardRecords = allRecords[String(selectedBoardId)] || [];
   if (showMyTasks && assigneeField) {
     currentBoardRecords = currentBoardRecords.filter(rec => 
@@ -285,7 +287,6 @@ export default function LazyTasks({ activeWorkspace, entities }) {
   return (
     <div className="flex flex-col h-[85vh] gap-4 relative overflow-hidden font-sans text-zinc-800">
       
-      {/* HEADER */}
       <div className="bg-white p-4 sm:p-5 rounded-xl border border-zinc-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
         <div className="flex items-center gap-4">
           <h2 className="text-xl font-semibold tracking-tight text-zinc-800">Projects & Tasks</h2>
@@ -304,7 +305,6 @@ export default function LazyTasks({ activeWorkspace, entities }) {
             </select>
           )}
           
-          {/* THE FIX: Professional SVG Icon for New Board */}
           <button onClick={() => setIsCreatingBoard(true)} className="bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 px-4 py-2.5 rounded-xl text-sm font-medium shadow-sm transition-colors flex items-center gap-1.5 shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
@@ -320,7 +320,6 @@ export default function LazyTasks({ activeWorkspace, entities }) {
         </div>
       </div>
 
-      {/* EMPTY STATE */}
       {taskBoards.length === 0 ? (
         <div className="bg-white p-8 rounded-xl border border-zinc-200 shadow-sm flex flex-col items-center justify-center flex-1 text-center max-w-2xl mx-auto mt-6 sm:mt-10">
           <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mb-4 border border-indigo-100">
@@ -338,7 +337,6 @@ export default function LazyTasks({ activeWorkspace, entities }) {
         <div className="flex-1 flex items-center justify-center text-zinc-500 font-medium text-sm">Syncing Tasks...</div>
       ) : statusField && (
         
-        /* KANBAN BOARD */
         <div className="flex-1 overflow-x-auto pb-4">
           <div className="flex gap-4 h-full min-w-max px-1">
             {boardColumns.map((col, index) => {
@@ -360,7 +358,6 @@ export default function LazyTasks({ activeWorkspace, entities }) {
                           {getDisplayValue(titleField, record.data?.[titleField.name])}
                         </div>
                         
-                        {/* Linked Databases Inline Badge */}
                         <div className="flex flex-wrap gap-1.5 mb-3">
                           {relationFields.map(f => {
                             const val = record.data?.[f.name];
@@ -395,7 +392,7 @@ export default function LazyTasks({ activeWorkspace, entities }) {
         </div>
       )}
 
-      {/* --- 1. DEDICATED BOARD BUILDER MODAL --- */}
+      {/* --- DEDICATED BOARD BUILDER MODAL --- */}
       {isCreatingBoard && (
         <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-zinc-200">
@@ -427,25 +424,27 @@ export default function LazyTasks({ activeWorkspace, entities }) {
               </div>
               <div className="pt-3 flex justify-end gap-3 border-t border-zinc-100">
                 <button type="button" onClick={() => setIsCreatingBoard(false)} className="px-5 py-2.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 rounded-xl transition-colors">Cancel</button>
-                <button type="submit" className="px-6 py-2.5 bg-zinc-900 text-white rounded-xl text-sm font-medium hover:bg-zinc-800 shadow-sm transition-colors">Create Board</button>
+                <button type="submit" disabled={isSubmittingBoard} className="px-6 py-2.5 bg-zinc-900 text-white rounded-xl text-sm font-medium hover:bg-zinc-800 shadow-sm transition-colors disabled:opacity-50">
+                  {isSubmittingBoard ? 'Creating...' : 'Create Board'}
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* --- 2. DEDICATED CREATE TASK MODAL --- */}
-      {isCreatingTask && (
+      {/* --- DEDICATED CREATE TASK MODAL --- */}
+      {(isCreatingTask || isEditingTask) && (
         <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl overflow-hidden border border-zinc-200">
             <div className="px-6 py-5 border-b border-zinc-100 bg-zinc-50 flex justify-between items-center">
               <div>
                 <span className="text-[10px] font-semibold text-indigo-600 uppercase tracking-widest bg-indigo-100/50 px-2 py-1 rounded border border-indigo-100">
-                  Create Issue
+                  {isEditingTask ? 'Edit Issue' : 'Create Issue'}
                 </span>
                 <h3 className="font-semibold tracking-tight text-zinc-800 mt-2">{selectedBoard?.name}</h3>
               </div>
-              <button onClick={() => setIsCreatingTask(false)} className="text-zinc-400 hover:text-zinc-600 bg-white p-1.5 rounded-lg border border-zinc-200 transition-colors shadow-sm">
+              <button onClick={() => { setIsCreatingTask(false); setIsEditingTask(false); }} className="text-zinc-400 hover:text-zinc-600 bg-white p-1.5 rounded-lg border border-zinc-200 transition-colors shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
               </button>
             </div>
@@ -518,15 +517,17 @@ export default function LazyTasks({ activeWorkspace, entities }) {
               )}
 
               <div className="pt-4 flex justify-end gap-3 border-t border-zinc-100 mt-2">
-                <button type="button" onClick={() => setIsCreatingTask(false)} className="px-5 py-2.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 rounded-xl transition-colors">Cancel</button>
-                <button type="submit" className="px-6 py-2.5 bg-zinc-900 text-white rounded-xl text-sm font-medium hover:bg-zinc-800 shadow-sm transition-colors">Create Task</button>
+                <button type="button" onClick={() => { setIsCreatingTask(false); setIsEditingTask(false); }} className="px-5 py-2.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 rounded-xl transition-colors">Cancel</button>
+                <button type="submit" disabled={isSavingTask} className="px-6 py-2.5 bg-zinc-900 text-white rounded-xl text-sm font-medium hover:bg-zinc-800 shadow-sm transition-colors disabled:opacity-50">
+                  {isSavingTask ? 'Saving...' : (isEditingTask ? 'Save Changes' : 'Create Task')}
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* --- 3. INLINE VIEW / EDIT SLIDE-OVER --- */}
+      {/* --- INLINE VIEW / EDIT SLIDE-OVER --- */}
       {selectedTask && (
         <div className="absolute inset-y-0 right-0 w-full md:w-[450px] bg-white shadow-2xl border-l border-zinc-200 z-50 flex flex-col transform transition-transform duration-300">
           
@@ -601,7 +602,6 @@ export default function LazyTasks({ activeWorkspace, entities }) {
                 </div>
               )}
 
-              {/* --- THE FIX: INLINE EDITABLE LINKED DATABASES --- */}
               {relationFields.length > 0 && (
                 <div className="pt-4 border-t border-zinc-100">
                   <h4 className="text-[11px] font-semibold text-indigo-600 uppercase tracking-widest mb-3 pl-1">Linked Databases</h4>
