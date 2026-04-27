@@ -89,8 +89,8 @@ export default function DatabaseGrid({
           <div>
             <div className="flex items-start justify-between">
               
-              {/* Standard Clean Icon Container */}
-              <div className={`p-2 bg-zinc-50 border border-zinc-100 group-hover:bg-indigo-50 text-zinc-400 group-hover:text-indigo-600 rounded-lg transition-colors flex items-center justify-center shrink-0 ${canManageDatabases ? 'cursor-grab active:cursor-grabbing' : ''}`}>
+              {/* THE FIX: Added 'relative' to this container so the absolute grip icon stays locked inside it */}
+              <div className={`relative p-2 bg-zinc-50 border border-zinc-100 group-hover:bg-indigo-50 text-zinc-400 group-hover:text-indigo-600 rounded-lg transition-colors flex items-center justify-center shrink-0 ${canManageDatabases ? 'cursor-grab active:cursor-grabbing' : ''}`}>
                 {canManageDatabases ? (
                   // Show grip icon on hover for admins
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity absolute" fill="none" viewBox="0 0 24 24" stroke="currentColor">

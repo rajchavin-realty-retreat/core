@@ -9,12 +9,13 @@ const { deleteFromCloudinary } = require('../config/cloudinary');
 // @access  Private
 exports.createEntity = async (req, res) => {
   try {
-    const { workspaceId, name, fields, showCreatedAt } = req.body;
+    const { workspaceId, name, fields,isTaskBoard, showCreatedAt } = req.body;
     
     const entity = await Entity.create({
       workspace: workspaceId,
       name,
       fields, // e.g., [{ name: "Budget", type: "number" }]
+      isTaskBoard: isTaskBoard === true ? true : false, // Hard-forced boolean check
       showCreatedAt: showCreatedAt || false, // <-- Save it to the database!
     });
 

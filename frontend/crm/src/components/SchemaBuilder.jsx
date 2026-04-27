@@ -4,7 +4,7 @@ import api from '../api/axiosConfig';
 export default function SchemaBuilder({ activeWorkspace, entities, fetchEntities, setIsCreatingEntity, setActiveTab, editingEntity, setEditingEntity }) {
   const [entityName, setEntityName] = useState('');
   
-  // --- NEW: STATE FOR THE TOGGLE ---
+  // State for the Table Toggle
   const [showCreatedAt, setShowCreatedAt] = useState(false);
 
   const [entityFields, setEntityFields] = useState([
@@ -15,8 +15,6 @@ export default function SchemaBuilder({ activeWorkspace, entities, fetchEntities
   useEffect(() => {
     if (editingEntity) {
       setEntityName(editingEntity.name);
-      
-      // Load the saved setting
       setShowCreatedAt(editingEntity.showCreatedAt || false);
 
       const mappedFields = editingEntity.fields.map(f => {
@@ -64,15 +62,20 @@ export default function SchemaBuilder({ activeWorkspace, entities, fetchEntities
 
       const formattedFields = entityFields.map(field => {
         let baseField = { name: field.name, type: field.type, isRequired: field.isRequired, isUnique: field.isUnique };
+        
         if (field.type === 'dropdown') return { ...baseField, options: field.optionsArray || [] };
         if (field.type === 'formula') return { ...baseField, formula: field.formula };
+        
+        // --- FIXED: COMPILES THE CONDITIONAL LOGIC DYNAMICALLY ---
         if (field.type === 'conditional-formula') {
           const dependentFieldSchema = entityFields.find(f => f.name === field.dependentField);
-          const compiledConditions = (dependentFieldSchema?.optionsArray || []).map(opt => ({ value: opt, formula: field.conditionMap[opt] || '' }));
+          const compiledConditions = (dependentFieldSchema?.optionsArray || []).map(opt => ({ 
+            value: opt, 
+            formula: field.conditionMap[opt] || '' 
+          }));
           return { ...baseField, dependentField: field.dependentField, conditions: compiledConditions };
         }
         
-        // --- PHASE B PAYLOAD COMPILERS ---
         if (field.type === 'relation') {
           return { 
             ...baseField, 
@@ -92,7 +95,6 @@ export default function SchemaBuilder({ activeWorkspace, entities, fetchEntities
         return baseField;
       });
 
-      // --- SEND THE showCreatedAt TOGGLE IN THE PAYLOAD ---
       const payload = { 
         name: entityName, 
         fields: formattedFields,
@@ -109,13 +111,23 @@ export default function SchemaBuilder({ activeWorkspace, entities, fetchEntities
       if (setEditingEntity) setEditingEntity(null);
       fetchEntities(activeWorkspace._id);
       setActiveTab('databases'); 
-    } catch (error) { alert(error.message || error.response?.data?.message || 'Failed to save database'); }
+    } catch (error) { 
+      alert(error.message || error.response?.data?.message || 'Failed to save database'); 
+    }
   };
 
   const addFieldToSchema = () => setEntityFields([...entityFields, { name: '', type: 'text', optionsArray: [], tempOption: '', targetEntity: '', formula: '', dependentField: '', conditionMap: {}, isRequired: false, isUnique: false, displayFieldsStr: '', cascadingParentField: '', cascadingTargetField: '', sourceRelationField: '', targetLookupField: '', rollupFunction: 'SUM' }]);
   const removeFieldFromSchema = (indexToRemove) => setEntityFields(entityFields.filter((_, index) => index !== indexToRemove));
   const updateField = (index, key, value) => { const updatedFields = [...entityFields]; updatedFields[index][key] = value; setEntityFields(updatedFields); };
-  const updateConditionMap = (fieldIndex, optionName, formulaValue) => { const updatedFields = [...entityFields]; if (!updatedFields[fieldIndex].conditionMap) updatedFields[fieldIndex].conditionMap = {}; updatedFields[fieldIndex].conditionMap[optionName] = formulaValue; setEntityFields(updatedFields); };
+  
+  // Condtional Formula Map Updater
+  const updateConditionMap = (fieldIndex, optionName, formulaValue) => { 
+    const updatedFields = [...entityFields]; 
+    if (!updatedFields[fieldIndex].conditionMap) updatedFields[fieldIndex].conditionMap = {}; 
+    updatedFields[fieldIndex].conditionMap[optionName] = formulaValue; 
+    setEntityFields(updatedFields); 
+  };
+  
   const addDropdownOption = (index) => { const val = (entityFields[index].tempOption || '').trim(); if (val) { const updatedFields = [...entityFields]; if (!updatedFields[index].optionsArray) updatedFields[index].optionsArray = []; if (!updatedFields[index].optionsArray.includes(val)) updatedFields[index].optionsArray.push(val); updatedFields[index].tempOption = ''; setEntityFields(updatedFields); } };
   const removeDropdownOption = (fieldIndex, optionIndex) => { const updatedFields = [...entityFields]; updatedFields[fieldIndex].optionsArray.splice(optionIndex, 1); setEntityFields(updatedFields); };
 
@@ -142,7 +154,6 @@ export default function SchemaBuilder({ activeWorkspace, entities, fetchEntities
             <input type="text" required value={entityName} onChange={e => setEntityName(e.target.value)} className="w-full px-3 py-2 text-sm border border-zinc-200 rounded-md outline-none focus:border-indigo-500" />
           </div>
           
-          {/* --- THE NEW TOGGLE SWITCH --- */}
           <label className="flex items-center gap-2 cursor-pointer mt-3 w-fit">
             <input 
               type="checkbox" 
@@ -190,7 +201,7 @@ export default function SchemaBuilder({ activeWorkspace, entities, fetchEntities
                 </div>
               )}
 
-              {/* --- PHASE B: LOOKUPS & ROLLUPS --- */}
+              {/* LOOKUPS & ROLLUPS */}
               {(field.type === 'lookup' || field.type === 'rollup') && (
                 <div className="pt-3 border-t border-zinc-200 pl-8 space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -222,7 +233,7 @@ export default function SchemaBuilder({ activeWorkspace, entities, fetchEntities
                 </div>
               )}
 
-              {/* --- PHASE B: ENHANCED RELATIONS --- */}
+              {/* RELATIONS */}
               {field.type === 'relation' && (
                 <div className="pt-3 border-t border-zinc-200 pl-8 space-y-4">
                   <div>
@@ -252,20 +263,86 @@ export default function SchemaBuilder({ activeWorkspace, entities, fetchEntities
                 </div>
               )}
 
-              {/* Formulas & Dropdowns */}
-              {field.type === 'formula' && (<div className="pt-3 border-t border-zinc-200 pl-8"><input type="text" required placeholder="e.g., {Price} * {Qty}" value={field.formula || ''} onChange={(e) => updateField(index, 'formula', e.target.value)} className="w-full font-mono text-xs px-3 py-2 border border-emerald-200 rounded-md bg-emerald-50/30 text-emerald-900 outline-none" /></div>)}
+              {/* STANDARD FORMULA */}
+              {field.type === 'formula' && (
+                <div className="pt-3 border-t border-zinc-200 pl-8">
+                  <label className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Calculation</label>
+                  <input type="text" required placeholder="e.g., {Price} * {Qty}" value={field.formula || ''} onChange={(e) => updateField(index, 'formula', e.target.value)} className="w-full font-mono text-xs px-3 py-2 border border-emerald-200 rounded-md bg-emerald-50/30 text-emerald-900 outline-none" />
+                </div>
+              )}
+
+              {/* --- RESTORED: CONDITIONAL FORMULA UI --- */}
+              {field.type === 'conditional-formula' && (
+                <div className="pt-3 border-t border-zinc-200 pl-8 space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">1. Select Trigger Column (Dropdowns Only)</label>
+                    <select required value={field.dependentField || ''} onChange={(e) => updateField(index, 'dependentField', e.target.value)} className="w-full sm:w-1/2 px-3 py-1.5 text-sm border border-emerald-200 rounded-md bg-emerald-50/30 text-emerald-900 outline-none">
+                      <option value="">Select trigger field...</option>
+                      {entityFields.filter(f => f.type === 'dropdown' && f.name).map((f, i) => (
+                        <option key={i} value={f.name}>{f.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {field.dependentField && (
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">2. Define Formula Per Option</label>
+                      {(() => {
+                        const depField = entityFields.find(f => f.name === field.dependentField);
+                        if (!depField || !depField.optionsArray || depField.optionsArray.length === 0) {
+                           return <p className="text-xs font-medium text-zinc-500">The selected trigger column has no options defined.</p>;
+                        }
+                        return depField.optionsArray.map((opt, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className="w-1/3 text-[11px] font-bold text-zinc-600 truncate bg-white px-2 py-1.5 rounded border border-zinc-200 shadow-sm">{opt}</span>
+                            <span className="text-zinc-300">→</span>
+                            <input 
+                              type="text" 
+                              placeholder="e.g. {Price} * 1.5" 
+                              value={field.conditionMap?.[opt] || ''} 
+                              onChange={(e) => updateConditionMap(index, opt, e.target.value)} 
+                              className="flex-1 font-mono text-xs px-3 py-1.5 border border-emerald-200 rounded-md bg-emerald-50/30 text-emerald-900 outline-none focus:border-emerald-400" 
+                            />
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* DROPDOWN OPTIONS */}
               {field.type === 'dropdown' && (
                 <div className="pt-3 border-t border-zinc-200 pl-8">
-                  <div className="flex flex-wrap gap-1.5 mb-2">{field.optionsArray?.map((opt, i) => (<span key={i} className="bg-white border border-zinc-200 text-[11px] font-medium px-2 py-1 rounded flex items-center gap-1.5">{opt} <button type="button" onClick={() => removeDropdownOption(index, i)} className="text-zinc-400 hover:text-red-500">&times;</button></span>))}</div>
-                  <div className="flex gap-2"><input type="text" placeholder="Add option..." value={field.tempOption || ''} onChange={(e) => updateField(index, 'tempOption', e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); addDropdownOption(index); }}} className="flex-1 text-sm px-3 py-1.5 border border-zinc-200 rounded outline-none" /><button type="button" onClick={() => addDropdownOption(index)} className="text-sm font-semibold bg-zinc-800 text-white px-4 py-1.5 rounded hover:bg-zinc-700">Add</button></div>
+                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Dropdown Options</label>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {field.optionsArray?.map((opt, i) => (
+                      <span key={i} className="bg-white border border-zinc-200 text-[11px] font-medium px-2 py-1 rounded flex items-center gap-1.5">
+                        {opt} 
+                        <button type="button" onClick={() => removeDropdownOption(index, i)} className="text-zinc-400 hover:text-red-500">&times;</button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <input type="text" placeholder="Add option..." value={field.tempOption || ''} onChange={(e) => updateField(index, 'tempOption', e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); addDropdownOption(index); }}} className="flex-1 text-sm px-3 py-1.5 border border-zinc-200 rounded outline-none focus:border-indigo-400" />
+                    <button type="button" onClick={() => addDropdownOption(index)} className="text-sm font-semibold bg-zinc-800 text-white px-4 py-1.5 rounded hover:bg-zinc-700">Add</button>
+                  </div>
                 </div>
               )}
             </div>
           ))}
         </div>
         
-        <button type="button" onClick={addFieldToSchema} className="text-indigo-600 hover:text-indigo-800 text-sm font-bold inline-flex items-center gap-1 p-1"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" /></svg> Add Column</button>
-        <div className="pt-6 border-t border-zinc-200"><button type="submit" className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-md font-bold text-sm shadow-md">Deploy Engine Updates</button></div>
+        <button type="button" onClick={addFieldToSchema} className="text-indigo-600 hover:text-indigo-800 text-sm font-bold inline-flex items-center gap-1 p-1">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" /></svg> 
+          Add Column
+        </button>
+        
+        <div className="pt-6 border-t border-zinc-200">
+          <button type="submit" className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-md font-bold text-sm shadow-md">
+            Deploy Engine Updates
+          </button>
+        </div>
       </form>
     </div>
   );

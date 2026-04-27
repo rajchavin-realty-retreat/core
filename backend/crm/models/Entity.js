@@ -30,7 +30,7 @@ const entitySchema = new mongoose.Schema({
   workspace: { type: mongoose.Schema.Types.ObjectId, ref: 'Workspace', required: true },
   name: { type: String, required: true },
   fields: [fieldSchema],
-  
+  isTaskBoard: { type: Boolean, default: false },
   // --- NEW: CREATED AT TOGGLE ---
   showCreatedAt: { type: Boolean, default: false } 
   
