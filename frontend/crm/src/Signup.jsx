@@ -2,27 +2,64 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from './api/axiosConfig';
 
-export default function Signup({setAuth}) {
+export default function Signup({ setAuth }) {
+  const [step, setStep] = useState(1); // 1 = Details, 2 = OTP
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
+  // --- STEP 1: Request Account & OTP ---
   const handleSignup = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
     
     try {
-      const res = await api.post('/users/register', { name, email, password });
+      // Calls the new signup route we built in the backend
+      await api.post('/auth/signup', { name, email, password });
+      setStep(2); // Move to OTP verification
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to create account');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // --- OTP Input Handlers ---
+  const handleOtpChange = (element, index) => {
+    if (isNaN(element.value)) return;
+    setOtp([...otp.map((d, idx) => (idx === index ? element.value : d))]);
+    if (element.nextSibling && element.value) element.nextSibling.focus();
+  };
+
+  const handleOtpKeyDown = (e, index) => {
+    if (e.key === 'Backspace' && !otp[index] && e.target.previousSibling) {
+      e.target.previousSibling.focus();
+    }
+  };
+
+  // --- STEP 2: Verify OTP & Login ---
+  const handleVerify = async (e) => {
+    e.preventDefault();
+    const otpCode = otp.join('');
+    if (otpCode.length !== 6) return setError("Please enter the full 6-digit code.");
+
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const res = await api.post('/auth/verify-signup', { email, otp: otpCode });
       
       localStorage.setItem('userInfo', JSON.stringify(res.data));
       setAuth(true);
       navigate('/'); 
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create account');
+      setError(err.response?.data?.message || 'Invalid or expired code.');
     } finally {
       setIsLoading(false);
     }
@@ -33,8 +70,6 @@ export default function Signup({setAuth}) {
       
       {/* --- LEFT PANE (Premium Visual Branding) --- */}
       <div className="hidden lg:flex lg:w-1/2 bg-zinc-950 flex-col justify-between p-14 relative overflow-hidden">
-        
-        {/* Abstract Ambient Background */}
         <div className="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMSkiLz48L3N2Zz4=')]"></div>
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-zinc-800 rounded-full blur-3xl opacity-30"></div>
         <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-zinc-800 rounded-full blur-3xl opacity-30"></div>
@@ -59,16 +94,14 @@ export default function Signup({setAuth}) {
       <div className="flex-1 flex flex-col justify-center px-8 sm:px-16 lg:px-24 bg-white relative">
         <div className="w-full max-w-sm mx-auto">
           
-          {/* Logo & Header */}
           <div className="mb-10">
-            <img 
-              src="/logo1.png" 
-              alt="OAAS Logo" 
-              className="h-10 object-contain mb-8"
-              onError={(e) => { e.target.style.display = 'none'; }} 
-            />
-            <h2 className="text-3xl font-bold text-zinc-900 tracking-tight">Create an account</h2>
-            <p className="text-sm text-zinc-500 mt-2 font-medium">Enter your details to register your organization.</p>
+            <img src="/logo1.png" alt="OAAS Logo" className="h-10 object-contain mb-8" onError={(e) => { e.target.style.display = 'none'; }} />
+            <h2 className="text-3xl font-bold text-zinc-900 tracking-tight">
+              {step === 1 ? 'Create an account' : 'Verify your email'}
+            </h2>
+            <p className="text-sm text-zinc-500 mt-2 font-medium">
+              {step === 1 ? 'Enter your details to register your organization.' : `We sent a 6-digit code to ${email}`}
+            </p>
           </div>
 
           {error && (
@@ -78,65 +111,53 @@ export default function Signup({setAuth}) {
             </div>
           )}
 
-          <form onSubmit={handleSignup} className="space-y-5">
-            <div>
-              <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Full Name</label>
-              <input 
-                type="text" 
-                required 
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-3.5 text-sm border border-zinc-200 rounded-xl outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-500/10 transition-all bg-zinc-50 hover:bg-zinc-100 focus:bg-white text-zinc-900 font-medium placeholder-zinc-400"
-                placeholder="John Doe"
-              />
-            </div>
+          {step === 1 ? (
+            <form onSubmit={handleSignup} className="space-y-5">
+              <div>
+                <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Full Name</label>
+                <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-3.5 text-sm border border-zinc-200 rounded-xl outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-500/10 transition-all bg-zinc-50 hover:bg-zinc-100 focus:bg-white text-zinc-900 font-medium placeholder-zinc-400" placeholder="John Doe" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Email Address</label>
+                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-4 py-3.5 text-sm border border-zinc-200 rounded-xl outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-500/10 transition-all bg-zinc-50 hover:bg-zinc-100 focus:bg-white text-zinc-900 font-medium placeholder-zinc-400" placeholder="name@company.com" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Password</label>
+                <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-4 py-3.5 text-sm border border-zinc-200 rounded-xl outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-500/10 transition-all bg-zinc-50 hover:bg-zinc-100 focus:bg-white text-zinc-900 font-medium placeholder-zinc-400" placeholder="Create a strong password" minLength={6} />
+              </div>
 
-            <div>
-              <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Email Address</label>
-              <input 
-                type="email" 
-                required 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3.5 text-sm border border-zinc-200 rounded-xl outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-500/10 transition-all bg-zinc-50 hover:bg-zinc-100 focus:bg-white text-zinc-900 font-medium placeholder-zinc-400"
-                placeholder="name@company.com"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Password</label>
-              <input 
-                type="password" 
-                required 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3.5 text-sm border border-zinc-200 rounded-xl outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-500/10 transition-all bg-zinc-50 hover:bg-zinc-100 focus:bg-white text-zinc-900 font-medium placeholder-zinc-400"
-                placeholder="Create a strong password"
-                minLength={6}
-              />
-            </div>
+              <button type="submit" disabled={isLoading} className="w-full bg-zinc-900 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-zinc-800 transition-all disabled:opacity-50 mt-4 shadow-md hover:shadow-lg flex justify-center items-center gap-2">
+                {isLoading ? <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : 'Create Account'}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerify} className="space-y-6">
+              <div className="flex justify-between gap-2">
+                {otp.map((data, index) => (
+                  <input
+                    key={index} type="text" maxLength="1" value={data}
+                    onChange={e => handleOtpChange(e.target, index)} onKeyDown={e => handleOtpKeyDown(e, index)} onFocus={e => e.target.select()}
+                    className="w-12 h-14 bg-zinc-50 border border-zinc-200 rounded-xl text-center text-xl font-bold text-zinc-900 outline-none focus:border-zinc-400 focus:bg-white transition-all"
+                  />
+                ))}
+              </div>
+              <button type="submit" disabled={isLoading || otp.join('').length !== 6} className="w-full bg-zinc-900 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-zinc-800 transition-all disabled:opacity-50 mt-4 shadow-md flex justify-center items-center">
+                {isLoading ? <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : 'Verify & Complete Setup'}
+              </button>
+              <button type="button" onClick={() => setStep(1)} className="w-full text-center text-sm font-semibold text-zinc-500 hover:text-zinc-900 mt-4">
+                ← Use a different email
+              </button>
+            </form>
+          )}
 
-            <button 
-              type="submit" 
-              disabled={isLoading}
-              className="w-full bg-zinc-900 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-zinc-800 transition-all disabled:opacity-50 mt-4 shadow-md hover:shadow-lg flex justify-center items-center gap-2"
-            >
-              {isLoading ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                  Setting up...
-                </>
-              ) : 'Create Account'}
-            </button>
-          </form>
-
-          <p className="mt-10 text-center text-sm text-zinc-500 font-medium">
-            Already have an account?{' '}
-            <Link to="/login" className="font-bold text-zinc-900 hover:text-zinc-600 transition-colors">
-              Sign in
-            </Link>
-          </p>
-          
+          {step === 1 && (
+            <p className="mt-10 text-center text-sm text-zinc-500 font-medium">
+              Already have an account?{' '}
+              <Link to="/login" className="font-bold text-zinc-900 hover:text-zinc-600 transition-colors">
+                Sign in
+              </Link>
+            </p>
+          )}
         </div>
       </div>
     </div>

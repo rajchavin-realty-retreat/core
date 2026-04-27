@@ -10,7 +10,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['Admin', 'Agent', 'Manager'],
     default: 'Agent'
-  }
+  },
+  isVerified: { type: Boolean, default: false },
+  otp: { type: String },
+  otpExpires: { type: Date },
 }, { timestamps: true });
 
 // Hash the password automatically before saving to MongoDB
