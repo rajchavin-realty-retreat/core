@@ -14,7 +14,7 @@ const generateToken = (id) => {
 const sendOtpEmail = async (email, otp, type = 'verify') => {
   const subject = type === 'verify' ? 'Verify your OAAS Account' : 'Reset your OAAS Password';
   await resend.emails.send({
-    from: 'OAAS <auth@rajchavin.com>', // Update this to your verified domain in production
+    from: 'OAAS <auth@oaas.rajchavin.com>', // Update this to your verified domain in production
     to: email,
     subject: subject,
     html: `
