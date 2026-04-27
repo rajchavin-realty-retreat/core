@@ -24,18 +24,29 @@ export default function DynamicForm({ entity, record, onSuccess, onCancel }) {
 
   // --- INITIALIZATION ---
   useEffect(() => {
-    // 1. Safe Form Initialization (Prevents 'undefined' Backend Crashes)
+    // 1. Safe Form Initialization
     if (record && record._id !== 'new') {
       const formattedData = { ...record.data };
       entity.fields.forEach(f => {
         if (f.type === 'json' && formattedData[f.name]) {
           formattedData[f.name] = JSON.stringify(formattedData[f.name], null, 2);
         }
+        // FIX: Ensure existing media-multiple fields are treated as arrays
+        if (f.type === 'media-multiple' && !Array.isArray(formattedData[f.name])) {
+          formattedData[f.name] = formattedData[f.name] ? [formattedData[f.name]] : [];
+        }
       });
       setFormData(formattedData);
     } else {
       const initialData = {};
-      entity.fields.forEach(f => { initialData[f.name] = ''; });
+      entity.fields.forEach(f => { 
+        // FIX: Initialize media-multiple as an array, everything else as empty string
+        if (f.type === 'media-multiple') {
+          initialData[f.name] = [];
+        } else {
+          initialData[f.name] = ''; 
+        }
+      });
       setFormData(initialData);
     }
 
@@ -279,13 +290,23 @@ export default function DynamicForm({ entity, record, onSuccess, onCancel }) {
       });
       const responses = await Promise.all(promises);
       const newUrls = responses.map(r => r.data.url || r.data.secure_url || r.data);
-      setFormData(prev => ({ ...prev, [fieldName]: [...(prev[fieldName] || []), ...newUrls] }));
+      // Ensure we treat the previous state as an array safely
+      setFormData(prev => ({ 
+        ...prev, 
+        [fieldName]: [...(Array.isArray(prev[fieldName]) ? prev[fieldName] : []), ...newUrls] 
+      }));
     } catch (err) { alert("Upload failed"); } 
     finally { setIsUploadingFile(false); }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (isUploadingFile) {
+      setError("Please wait for files to finish uploading before saving.");
+      return;
+    }
+
     setIsSubmitting(true);
     setError('');
 
@@ -308,7 +329,6 @@ export default function DynamicForm({ entity, record, onSuccess, onCancel }) {
         }
       }
 
-      // THE FIX: We explicitly pass BOTH `data` and `dynamicData` to satisfy all backend routing variations!
       const finalPayload = {
         entityId: entity._id, 
         workspaceId: entity.workspace || entity.workspaceId,
@@ -368,7 +388,7 @@ export default function DynamicForm({ entity, record, onSuccess, onCancel }) {
             {error && (
               <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-xl text-sm font-medium flex items-start gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
-                <span>Backend rejected the save: <strong className="block mt-1">{error}</strong></span>
+                <span><strong className="block">{error}</strong></span>
               </div>
             )}
 
@@ -445,10 +465,19 @@ export default function DynamicForm({ entity, record, onSuccess, onCancel }) {
                       ) : (<input type="file" required={field.isRequired} onChange={(e) => handleFileUpload(e, field.name)} className="text-xs text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-zinc-100 file:text-zinc-700 hover:file:bg-zinc-200 transition-colors cursor-pointer" />)}
                     </div>
                   )}
+                  
+                  {/* THE FIX: Defensively verify Array before mapping */}
                   {field.type === 'media-multiple' && (
                     <div className="flex flex-col gap-3 p-4 border border-zinc-200 rounded-xl bg-zinc-50/50 mt-1">
-                       <div className="flex flex-wrap gap-3">{formData[field.name]?.map((url, i) => <div key={i} className="relative w-16 h-16 border border-zinc-200 rounded-lg overflow-hidden group shadow-sm"><img src={url} alt="file" className="w-full h-full object-cover" /><button type="button" onClick={() => setFormData(prev => ({ ...prev, [field.name]: prev[field.name].filter((_, idx) => idx !== i) }))} className="absolute top-1 right-1 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">✕</button></div>)}</div>
-                       <input type="file" multiple required={field.isRequired && (!formData[field.name] || formData[field.name].length === 0)} onChange={(e) => handleMultiUpload(e, field.name)} className="text-xs text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-zinc-100 file:text-zinc-700 hover:file:bg-zinc-200 transition-colors cursor-pointer" />
+                       <div className="flex flex-wrap gap-3">
+                         {Array.isArray(formData[field.name]) && formData[field.name].map((url, i) => (
+                           <div key={i} className="relative w-16 h-16 border border-zinc-200 rounded-lg overflow-hidden group shadow-sm">
+                             <img src={url} alt="file" className="w-full h-full object-cover" />
+                             <button type="button" onClick={() => setFormData(prev => ({ ...prev, [field.name]: prev[field.name].filter((_, idx) => idx !== i) }))} className="absolute top-1 right-1 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">✕</button>
+                           </div>
+                         ))}
+                       </div>
+                       <input type="file" multiple required={field.isRequired && (!Array.isArray(formData[field.name]) || formData[field.name].length === 0)} onChange={(e) => handleMultiUpload(e, field.name)} className="text-xs text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-zinc-100 file:text-zinc-700 hover:file:bg-zinc-200 transition-colors cursor-pointer" />
                     </div>
                   )}
 
@@ -458,8 +487,13 @@ export default function DynamicForm({ entity, record, onSuccess, onCancel }) {
 
             <div className="pt-6 mt-2 border-t border-zinc-100 flex justify-end gap-3 shrink-0">
               <button type="button" onClick={onCancel} className="px-5 py-2.5 text-sm font-semibold text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl transition-colors">Cancel</button>
-              <button type="submit" disabled={isSubmitting || isUploadingFile} className="bg-zinc-900 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-zinc-800 disabled:opacity-50 transition-all shadow-md flex items-center gap-2">
-                {(isSubmitting || isUploadingFile) ? 'Processing...' : 'Save Record'}
+              
+              <button 
+                type="submit" 
+                disabled={isSubmitting || isUploadingFile} 
+                className="bg-zinc-900 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md flex items-center gap-2"
+              >
+                {isUploadingFile ? 'Uploading Files...' : isSubmitting ? 'Saving...' : 'Save Record'}
               </button>
             </div>
           </form>

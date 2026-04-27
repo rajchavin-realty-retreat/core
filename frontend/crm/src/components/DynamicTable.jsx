@@ -1,27 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom'; 
 import api from '../api/axiosConfig';
-import PhoneInput from 'react-phone-number-input';
-import 'react-phone-number-input/style.css';
+import DynamicForm from './DynamicForm'; // --- NEW: Connected the standalone form component ---
 
 export default function DynamicTable({ entity, records, userPermissions, currentUser }) {
   const navigate = useNavigate();
   const location = useLocation();
 
   const [editingRecord, setEditingRecord] = useState(null);
-  const [editFormData, setEditFormData] = useState({});
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [modalError, setModalError] = useState(''); 
-  const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   const [relationData, setRelationData] = useState({}); 
-  const [subRecords, setSubRecords] = useState([]);     
-  const [modalTab, setModalTab] = useState('details');  
-  const [isLoadingRelations, setIsLoadingRelations] = useState(false);
-  
   const [workspaceUsers, setWorkspaceUsers] = useState([]); 
-  const [assignableUsers, setAssignableUsers] = useState([]); 
   const [memberActivityUserId, setMemberActivityUserId] = useState(null);
   const [localPerms, setLocalPerms] = useState(null);
   const [localUser, setLocalUser] = useState(null);
@@ -30,8 +20,6 @@ export default function DynamicTable({ entity, records, userPermissions, current
     const fetchUsers = async () => {
       try {
         const userInfo = currentUser || JSON.parse(localStorage.getItem('userInfo'));
-        const userIdStr = String(userInfo?.id || userInfo?._id);
-
         const res = await api.get('/workspaces');
         const wsId = entity.workspace || entity.workspaceId;
         const currentWs = res.data.find(w => w._id === wsId);
@@ -47,22 +35,6 @@ export default function DynamicTable({ entity, records, userPermissions, current
             }
           });
           setWorkspaceUsers(usersList);
-
-          const isOwner = String(currentWs.owner?._id || currentWs.owner) === userIdStr;
-          let isAdmin = isOwner;
-          const myMember = currentWs.members.find(m => String(m.user?._id || m.user) === userIdStr);
-          if (myMember && currentWs.customRoles) {
-            const role = currentWs.customRoles.find(r => String(r._id) === String(myMember.roleId));
-            if (role && (role.permissions?.manageTeam || role.permissions?.editAllRecords)) {
-              isAdmin = true;
-            }
-          }
-
-          if (!isAdmin) {
-            setAssignableUsers(usersList.filter(u => String(u._id) === userIdStr));
-          } else {
-            setAssignableUsers(usersList);
-          }
         }
       } catch (error) {
         console.error("Failed to load workspace users for table");
@@ -242,71 +214,8 @@ export default function DynamicTable({ entity, records, userPermissions, current
     return keys.length > 0 ? match.data[keys[0]] : 'Unnamed';
   };
 
-  const getFilteredRelations = (field) => {
-    let allOptions = relationData[field.name] || [];
-    if (field.cascadingParentField && field.cascadingTargetField) {
-      const selectedParentId = editFormData[field.cascadingParentField];
-      if (!selectedParentId) return [];
-      allOptions = allOptions.filter(record => record.data && record.data[field.cascadingTargetField] === selectedParentId);
-    }
-    return allOptions;
-  };
-
-  const handleEditClick = async (record) => {
+  const handleEditClick = (record) => {
     setEditingRecord(record);
-
-    const formattedData = { ...record.data };
-    entity.fields.forEach(f => {
-      if (f.type === 'json' && formattedData[f.name]) {
-        formattedData[f.name] = JSON.stringify(formattedData[f.name], null, 2);
-      }
-    });
-    setEditFormData(formattedData || {});
-
-    setModalTab('details');
-    setSubRecords([]); 
-    setIsLoadingRelations(true);
-
-    try {
-      const workspaceId = entity.workspace || entity.workspaceId;
-      const resEntities = await api.get(`/entities/workspace/${workspaceId}`);
-      const linkedEntities = resEntities.data.filter(e => e.fields.some(f => f.type === 'relation' && f.targetEntity === entity._id));
-
-      const relatedData = [];
-      for (let linkedEnt of linkedEntities) {
-        const linkField = linkedEnt.fields.find(f => f.type === 'relation' && f.targetEntity === entity._id).name;
-        const resRecords = await api.get(`/records/entity/${linkedEnt._id}`);
-        const matches = resRecords.data.filter(r => r.data && r.data[linkField] === record._id);
-        
-        if (matches.length > 0) {
-          const otherRelationFields = linkedEnt.fields.filter(f => f.type === 'relation' && f.name !== linkField);
-          const lookupDict = {};
-          for (let orf of otherRelationFields) {
-            try {
-              const targetRes = await api.get(`/records/entity/${orf.targetEntity}`);
-              lookupDict[orf.name] = targetRes.data;
-            } catch (e) { }
-          }
-          const resolvedMatches = matches.map(m => {
-            const resolvedData = { ...m.data };
-            for (let orf of otherRelationFields) {
-              const rawId = resolvedData[orf.name];
-              if (rawId && lookupDict[orf.name]) {
-                const targetRec = lookupDict[orf.name].find(tr => tr._id === rawId);
-                if (targetRec && targetRec.data) {
-                  const keys = Object.keys(targetRec.data);
-                  if (keys.length > 0) resolvedData[orf.name] = targetRec.data[keys[0]]; 
-                }
-              }
-            }
-            return { ...m, data: resolvedData };
-          });
-          relatedData.push({ entityName: linkedEnt.name, records: resolvedMatches });
-        }
-      }
-      setSubRecords(relatedData);
-    } catch (error) { console.error("Failed to load sub-records", error); } 
-    finally { setIsLoadingRelations(false); }
   };
 
   useEffect(() => {
@@ -329,84 +238,6 @@ export default function DynamicTable({ entity, records, userPermissions, current
       await api.delete(`/records/${id}`);
       window.location.reload(); 
     } catch (error) { alert(error.response?.data?.message || "Delete failed"); }
-  };
-
-  const handleEditChange = (fieldName, value) => {
-    setEditFormData(prev => {
-      const newData = { ...prev, [fieldName]: value };
-      entity.fields.forEach(f => {
-        if (f.cascadingParentField === fieldName) newData[f.name] = ''; 
-      });
-      return newData;
-    });
-  };
-
-  const handleFileUpload = async (e, fieldName) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setIsUploadingFile(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('workspaceId', entity.workspace || entity.workspaceId);
-    try {
-      const res = await api.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' }});
-      handleEditChange(fieldName, res.data.url || res.data.secure_url || res.data);
-    } catch (error) { alert("Upload failed"); } 
-    finally { setIsUploadingFile(false); }
-  };
-
-  const handleMultiUpload = async (e, fieldName) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    setIsUploadingFile(true);
-    try {
-      const uploadPromises = files.map(file => {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('workspaceId', entity.workspace || entity.workspaceId);
-        return api.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-      });
-      const responses = await Promise.all(uploadPromises);
-      const newUrls = responses.map(res => res.data.url || res.data.secure_url || res.data);
-      setEditFormData(prev => ({ ...prev, [fieldName]: [...(prev[fieldName] || []), ...newUrls] }));
-    } catch (error) { alert("Upload failed"); } 
-    finally { setIsUploadingFile(false); }
-  };
-
-  const removeFileFromArray = (fieldName, indexToRemove) => {
-    setEditFormData(prev => ({ ...prev, [fieldName]: (prev[fieldName] || []).filter((_, idx) => idx !== indexToRemove) }));
-  };
-
-  const submitUpdate = async (e) => {
-    e.preventDefault();
-    setIsUpdating(true);
-    setModalError(''); 
-    
-    try {
-      if (editingRecord._id === 'new') {
-        // CLEAN POST PAYLOAD (Ensures both dynamicData and workspaceId are passed)
-        await api.post('/records', {
-          entityId: entity._id, 
-          workspaceId: entity.workspace || entity.workspaceId,
-          data: editFormData,
-          dynamicData: editFormData
-        });
-      } else {
-        await api.put(`/records/${editingRecord._id}`, {
-          data: editFormData,
-          dynamicData: editFormData
-        });
-      }
-      
-      setEditingRecord(null);
-      window.location.reload(); 
-      
-    } catch (error) {
-      const backendMessage = error.response?.data?.message || error.response?.data?.error || 'Unknown validation error occurred.';
-      setModalError(backendMessage);
-    } finally {
-      setIsUpdating(false);
-    }
   };
 
   const filteredRecords = records.filter(record => {
@@ -442,19 +273,14 @@ export default function DynamicTable({ entity, records, userPermissions, current
           <input type="text" placeholder="Filter records..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-8 pr-3 py-1.5 text-sm border border-zinc-200 rounded-md outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all bg-zinc-50 focus:bg-white" />
         </div>
 
-        {/* --- FIX: PROPERLY CLEARS editFormData ON "NEW" --- */}
+        {/* --- DELEGATE TO DYNAMIC FORM --- */}
         <button 
-          onClick={() => {
-            setEditingRecord({ _id: 'new', data: {} });
-            setEditFormData({}); // Forces a completely blank form slate!
-            setModalTab('details');
-          }} 
+          onClick={() => setEditingRecord({ _id: 'new', data: {} })} 
           className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm shrink-0"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
           New
         </button>
-
       </div>
 
       <div className="bg-white rounded-lg border border-zinc-200 overflow-hidden shadow-sm">
@@ -528,7 +354,7 @@ export default function DynamicTable({ entity, records, userPermissions, current
                         {new Date(record.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
                       </td>
                     )}
-                    <td className="px-4 py-2.5 text-right flex justify-end gap-2 opacity-100  sm:group-hover:opacity-100 transition-opacity">
+                    <td className="px-4 py-2.5 text-right flex justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       {canEdit && <button onClick={() => handleEditClick(record)} className="text-zinc-400 hover:text-indigo-600 p-1"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>}
                       {canDelete && <button onClick={() => handleDelete(record._id)} className="text-zinc-400 hover:text-red-600 p-1"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>}
                     </td>
@@ -540,173 +366,17 @@ export default function DynamicTable({ entity, records, userPermissions, current
         </div>
       </div>
 
-      {/* --- EDIT / NEW RECORD MODAL --- */}
+      {/* --- THE FIX: DELEGATED RECORD MODAL TO STANDALONE COMPONENT --- */}
       {editingRecord && (
-        <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-zinc-200">
-            <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-100 bg-zinc-50/50">
-              <h3 className="text-sm font-semibold text-zinc-900">{editingRecord._id === 'new' ? `Create ${entity.name}` : `Edit ${entity.name} Record`}</h3>
-              <button onClick={() => setEditingRecord(null)} className="text-zinc-400 hover:text-zinc-600"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg></button>
-            </div>
-
-            <div className="flex border-b border-zinc-200 px-6 pt-2 bg-zinc-50/30">
-              <button onClick={() => setModalTab('details')} className={`pb-3 text-sm font-semibold transition-colors border-b-2 ${modalTab === 'details' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>Record Details</button>
-              {editingRecord._id !== 'new' && (
-                <button onClick={() => setModalTab('related')} className={`pb-3 ml-6 text-sm font-semibold transition-colors border-b-2 flex items-center gap-1.5 ${modalTab === 'related' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>
-                  Related Activity {subRecords.length > 0 && <span className="bg-indigo-100 text-indigo-700 py-0.5 px-2 rounded-full text-[10px]">{subRecords.reduce((acc, sr) => acc + sr.records.length, 0)}</span>}
-                </button>
-              )}
-            </div>
-
-            {modalTab === 'details' && (
-              <form onSubmit={submitUpdate} className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
-
-                {modalError && (
-                  <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-lg text-sm font-medium flex items-start gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
-                    <span>Backend rejected the save: <strong className="block mt-1">{modalError}</strong></span>
-                  </div>
-                )}
-
-                {entity.fields.map((field, idx) => (
-                  <div key={idx} className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                      {field.name} {(field.type === 'formula' || field.type === 'conditional-formula') && <span className="text-emerald-500 ml-1 text-[10px]">(Auto-Calculated)</span>}
-                    </label>
-
-                    {/* --- ROLE-AWARE TEAM MEMBER EDIT DROPDOWN --- */}
-                    {field.type === 'user' && (
-                      <div className="flex gap-2 items-center">
-                        <select value={editFormData[field.name] || ''} onChange={(e) => handleEditChange(field.name, e.target.value)} className="flex-1 px-3 py-2 text-sm border border-zinc-200 rounded-md bg-white outline-none focus:ring-1 focus:ring-indigo-500">
-                          <option value="">Select Team Member...</option>
-                          {assignableUsers.map(user => (
-                            <option key={user._id} value={user._id}>{user.name || user.email}</option>
-                          ))}
-                        </select>
-                        {editFormData[field.name] && (
-                          <button 
-                            type="button" 
-                            onClick={() => setMemberActivityUserId(editFormData[field.name])}
-                            className="bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 text-xs font-bold px-3 py-2 rounded-md transition-colors"
-                          >
-                            👤 View Activity
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {(field.type === 'formula' || field.type === 'conditional-formula') && (
-                      <input 
-                        type="text" 
-                        disabled 
-                        value={computeFormula(editFormData, getActiveFormula(field, editFormData))} 
-                        className="px-3 py-2 text-sm border border-emerald-200 rounded-md bg-emerald-50/50 text-emerald-700 font-mono outline-none cursor-not-allowed transition-all" 
-                      />
-                    )}
-
-                    {field.type === 'json' && (
-                      <textarea 
-                        value={editFormData[field.name] || ''} 
-                        onChange={(e) => handleEditChange(field.name, e.target.value)} 
-                        placeholder="{\n  &quot;key&quot;: &quot;value&quot;\n}"
-                        className="px-3 py-3 text-xs font-mono border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none bg-zinc-900 text-emerald-400 min-h-[150px] shadow-inner leading-relaxed" 
-                      />
-                    )}
-
-                    {field.type === 'email' && <input type="email" placeholder="name@company.com" value={editFormData[field.name] || ''} onChange={(e) => handleEditChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none" />}
-                    
-                    {field.type === 'phone' && (
-                      <div className="border border-zinc-200 rounded-md focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500 bg-white px-3 py-1.5">
-                        <PhoneInput international defaultCountry="IN" value={editFormData[field.name] || ''} onChange={(val) => handleEditChange(field.name, val)} className="text-sm outline-none w-full" />
-                      </div>
-                    )}
-
-                    {field.type === 'text' && <input type="text" value={editFormData[field.name] || ''} onChange={(e) => handleEditChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none" />}
-                    {field.type === 'number' && <input type="number" value={editFormData[field.name] || ''} onChange={(e) => handleEditChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none" />}
-                    {field.type === 'textarea' && <textarea value={editFormData[field.name] || ''} onChange={(e) => handleEditChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none min-h-[80px]" />}
-                    {field.type === 'date' && <input type="date" value={editFormData[field.name] ? editFormData[field.name].split('T')[0] : ''} onChange={(e) => handleEditChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md outline-none focus:ring-1 focus:ring-indigo-500" />}
-                    {field.type === 'datetime' && <input type="datetime-local" value={editFormData[field.name] ? new Date(editFormData[field.name]).toISOString().slice(0, 16) : ''} onChange={(e) => handleEditChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md outline-none focus:ring-1 focus:ring-indigo-500" />}
-                    
-                    {(field.type === 'dropdown' || field.type === 'relation') && (
-                      <select value={editFormData[field.name] || ''} onChange={(e) => handleEditChange(field.name, e.target.value)} className="px-3 py-2 text-sm border border-zinc-200 rounded-md bg-white outline-none focus:ring-1 focus:ring-indigo-500">
-                        <option value="">Select option...</option>
-                        {field.type === 'dropdown' && (field.options || []).map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
-                        {field.type === 'relation' && getFilteredRelations(field).map(r => <option key={r._id} value={r._id}>{getDisplayValue(r._id, field.name)}</option>)}
-                      </select>
-                    )}
-
-                    {field.type === 'checkbox' && <label className="flex items-center gap-2 mt-1 w-fit"><input type="checkbox" checked={editFormData[field.name] || false} onChange={(e) => handleEditChange(field.name, e.target.checked)} className="w-4 h-4 text-indigo-600 rounded" /><span className="text-sm text-zinc-600">Enabled</span></label>}
-                    
-                    {field.type === 'media' && (
-                      <div className="flex flex-col gap-2">
-                        {editFormData[field.name] ? (
-                          <div className="relative w-20 h-20 border rounded-md overflow-hidden group"><img src={editFormData[field.name]} alt="preview" className="w-full h-full object-cover" /><button type="button" onClick={() => handleEditChange(field.name, '')} className="absolute inset-0 bg-black/60 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs">Clear</button></div>
-                        ) : (<input type="file" onChange={(e) => handleFileUpload(e, field.name)} className="text-xs" />)}
-                      </div>
-                    )}
-                    
-                    {/* --- FIX: DEFENSIVE ARRAY CHECK PREVENTS REACT CRASHES --- */}
-                    {field.type === 'media-multiple' && (
-                      <div className="flex flex-col gap-3 p-3 border rounded-md">
-                         <div className="flex flex-wrap gap-2">
-                           {Array.isArray(editFormData[field.name]) && editFormData[field.name].map((url, i) => (
-                             <div key={i} className="relative w-16 h-16 border rounded overflow-hidden group">
-                               <img src={url} alt="file" className="w-full h-full object-cover" />
-                               <button type="button" onClick={() => removeFileFromArray(field.name, i)} className="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100">×</button>
-                             </div>
-                           ))}
-                         </div>
-                         <input type="file" multiple onChange={(e) => handleMultiUpload(e, field.name)} className="text-xs" />
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                <div className="flex gap-2 mt-4 pt-5 border-t border-zinc-100">
-                  <button type="button" onClick={() => setEditingRecord(null)} className="flex-1 bg-white border border-zinc-200 text-zinc-700 py-2 rounded-md font-medium text-sm hover:bg-zinc-50">Cancel</button>
-                  <button type="submit" disabled={isUpdating} className="flex-1 bg-indigo-600 text-white py-2 rounded-md font-medium text-sm hover:bg-indigo-700 disabled:opacity-50">
-                    {isUpdating ? 'Saving...' : 'Save Changes'}
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {modalTab === 'related' && (
-               <div className="flex-1 overflow-y-auto p-6 bg-zinc-50/50">
-               {isLoadingRelations ? (
-                 <div className="text-center py-10 text-sm text-zinc-500">Scanning workspace for related records...</div>
-               ) : subRecords.length === 0 ? (
-                 <div className="text-center py-12 border-2 border-dashed border-zinc-200 rounded-xl bg-white">
-                   <p className="text-sm font-medium text-zinc-600">No linked records found.</p>
-                 </div>
-               ) : (
-                 <div className="space-y-6">
-                   {subRecords.map((subSet, index) => (
-                     <div key={index} className="space-y-3">
-                       <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{subSet.entityName}</h4>
-                       <div className="grid gap-3">
-                         {subSet.records.map(rec => (
-                           <div key={rec._id} className="bg-white p-3.5 rounded-lg border border-zinc-200 shadow-sm flex flex-col gap-1.5">
-                             {Object.entries(rec.data).map(([key, val], i) => {
-                               if (val === editingRecord._id) return null;
-                               return (
-                                 <div key={i} className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline gap-1">
-                                   <span className="text-[11px] font-semibold text-zinc-400 uppercase">{key}</span>
-                                   <span className="text-sm text-zinc-800 font-medium truncate max-w-[250px]">{String(val)}</span>
-                                 </div>
-                               );
-                             })}
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-                   ))}
-                 </div>
-               )}
-             </div>
-            )}
-          </div>
-        </div>
+        <DynamicForm 
+          entity={entity} 
+          record={editingRecord} 
+          onCancel={() => setEditingRecord(null)}
+          onSuccess={() => {
+            setEditingRecord(null);
+            window.location.reload(); 
+          }}
+        />
       )}
 
       {/* --- THE MEMBER ACTIVITY SLIDE-OVER --- */}
