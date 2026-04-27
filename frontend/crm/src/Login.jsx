@@ -9,6 +9,10 @@ export default function Login({ setAuth }) {
   const [newPassword, setNewPassword] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   
+  // Toggle States
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -52,7 +56,6 @@ export default function Login({ setAuth }) {
     setError('');
     try {
       const res = await api.post('/auth/reset-password', { email, otp: otpCode, newPassword });
-      // Log them in immediately after reset
       localStorage.setItem('userInfo', JSON.stringify(res.data));
       setAuth(true);
       navigate('/');
@@ -63,7 +66,6 @@ export default function Login({ setAuth }) {
     }
   };
 
-  // --- OTP Handlers ---
   const handleOtpChange = (element, index) => {
     if (isNaN(element.value)) return;
     setOtp([...otp.map((d, idx) => (idx === index ? element.value : d))]);
@@ -79,7 +81,6 @@ export default function Login({ setAuth }) {
   return (
     <div className="flex min-h-screen bg-white font-sans text-zinc-900 selection:bg-zinc-200">
       
-      {/* --- LEFT PANE --- */}
       <div className="hidden lg:flex lg:w-1/2 bg-zinc-950 flex-col justify-between p-14 relative overflow-hidden">
         <div className="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMSkiLz48L3N2Zz4=')]"></div>
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-zinc-800 rounded-full blur-3xl opacity-30"></div>
@@ -101,7 +102,6 @@ export default function Login({ setAuth }) {
         </div>
       </div>
 
-      {/* --- RIGHT PANE --- */}
       <div className="flex-1 flex flex-col justify-center px-8 sm:px-16 lg:px-24 bg-white relative">
         <div className="w-full max-w-sm mx-auto">
           
@@ -133,11 +133,35 @@ export default function Login({ setAuth }) {
               </div>
               
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Password</label>
-                  <button type="button" onClick={() => { setMode('forgot'); setError(''); }} className="text-[11px] font-bold text-zinc-500 hover:text-zinc-900 transition-colors uppercase tracking-wider">Forgot?</button>
+                <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Password</label>
+                <div className="relative">
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    required 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)} 
+                    className="w-full px-4 py-3.5 pr-12 text-sm border border-zinc-200 rounded-xl outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-500/10 transition-all bg-zinc-50 hover:bg-zinc-100 focus:bg-white text-zinc-900 font-medium placeholder-zinc-400" 
+                    placeholder="••••••••" 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPassword(!showPassword)} 
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors"
+                  >
+                    {showPassword ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    )}
+                  </button>
                 </div>
-                <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-4 py-3.5 text-sm border border-zinc-200 rounded-xl outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-500/10 transition-all bg-zinc-50 hover:bg-zinc-100 focus:bg-white text-zinc-900 font-medium placeholder-zinc-400" placeholder="••••••••" />
+                
+                {/* Forgot Password Link moved BELOW the input */}
+                <div className="flex justify-end mt-2">
+                  <button type="button" onClick={() => { setMode('forgot'); setError(''); }} className="text-[11px] font-bold text-zinc-500 hover:text-zinc-900 transition-colors uppercase tracking-wider">
+                    Forgot Password?
+                  </button>
+                </div>
               </div>
 
               <button type="submit" disabled={isLoading} className="w-full bg-zinc-900 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-zinc-800 transition-all disabled:opacity-50 mt-4 shadow-md flex justify-center items-center gap-2">
@@ -176,7 +200,27 @@ export default function Login({ setAuth }) {
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-2">New Password</label>
-                <input type="password" required minLength={6} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full px-4 py-3.5 text-sm border border-zinc-200 rounded-xl outline-none focus:border-zinc-400 transition-all bg-zinc-50 focus:bg-white" placeholder="Enter new secure password" />
+                <div className="relative">
+                  <input 
+                    type={showNewPassword ? "text" : "password"} 
+                    required minLength={6} 
+                    value={newPassword} 
+                    onChange={(e) => setNewPassword(e.target.value)} 
+                    className="w-full px-4 py-3.5 pr-12 text-sm border border-zinc-200 rounded-xl outline-none focus:border-zinc-400 transition-all bg-zinc-50 focus:bg-white" 
+                    placeholder="Enter new secure password" 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowNewPassword(!showNewPassword)} 
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors"
+                  >
+                    {showNewPassword ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    )}
+                  </button>
+                </div>
               </div>
               <button type="submit" disabled={isLoading || otp.join('').length !== 6} className="w-full bg-zinc-900 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-zinc-800 transition-all disabled:opacity-50 mt-4 shadow-md">
                 {isLoading ? 'Resetting...' : 'Reset & Login'}
